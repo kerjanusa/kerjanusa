@@ -20,6 +20,7 @@ BACKUP_DIR="$SCRIPT_DIR/backupdeploy"
 TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
 BACKUP_FILE="$BACKUP_DIR/backup-$TIMESTAMP.zip"
 COMMIT_MESSAGE="${*:-Backup $TIMESTAMP dan push ke GitHub}"
+SSH_KEY_PATH="${GITHUB_SSH_KEY:-}"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -30,6 +31,15 @@ require_command() {
 
 require_command git
 require_command zip
+
+if [[ "$REMOTE_MODE" == "ssh" && -z "$SSH_KEY_PATH" ]]; then
+  for candidate in "$HOME/.ssh/id_ed25519_reggy" "$HOME/.ssh/id_ed25519"; do
+    if [[ -f "$candidate" ]]; then
+      SSH_KEY_PATH="$candidate"
+      break
+    fi
+  done
+fi
 
 mkdir -p "$BACKUP_DIR"
 
@@ -89,6 +99,9 @@ if [[ "$REMOTE_MODE" == "https" && -n "${GITHUB_TOKEN:-}" ]]; then
     echo "Error: format REPO_URL untuk mode https tidak dikenali: $REPO_URL"
     exit 1
   fi
+elif [[ "$REMOTE_MODE" == "ssh" && -n "$SSH_KEY_PATH" ]]; then
+  export GIT_SSH_COMMAND="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes"
+  echo "Menggunakan SSH key: $SSH_KEY_PATH"
 fi
 
 echo "Push ke branch '$DEFAULT_BRANCH'..."
