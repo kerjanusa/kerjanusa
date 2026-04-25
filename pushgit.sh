@@ -5,7 +5,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-REPO_URL="${GITHUB_REPO_URL:-https://github.com/reggy29012025-design/kerjanusa.git}"
+DEFAULT_HTTPS_REPO_URL="https://github.com/reggy29012025-design/kerjanusa.git"
+DEFAULT_SSH_REPO_URL="git@github.com:reggy29012025-design/kerjanusa.git"
+REMOTE_MODE="${GIT_REMOTE_MODE:-https}"
+REPO_URL="${GITHUB_REPO_URL:-$DEFAULT_HTTPS_REPO_URL}"
 DEFAULT_BRANCH="${GIT_DEFAULT_BRANCH:-main}"
 BACKUP_DIR="$SCRIPT_DIR/backupdeploy"
 TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
@@ -21,6 +24,10 @@ require_command() {
 
 require_command git
 require_command zip
+
+if [[ "$REMOTE_MODE" == "ssh" && -z "${GITHUB_REPO_URL:-}" ]]; then
+  REPO_URL="$DEFAULT_SSH_REPO_URL"
+fi
 
 mkdir -p "$BACKUP_DIR"
 
@@ -69,8 +76,37 @@ if [[ "${SKIP_PUSH:-0}" == "1" ]]; then
   exit 0
 fi
 
+PUSH_TARGET="origin"
+
+if [[ "$REMOTE_MODE" == "https" && -n "${GITHUB_TOKEN:-}" ]]; then
+  if [[ "$REPO_URL" =~ ^https://github\.com/(.+)$ ]]; then
+    REPO_PATH="${BASH_REMATCH[1]}"
+    GITHUB_USERNAME_VALUE="${GITHUB_USERNAME:-git}"
+    PUSH_TARGET="https://${GITHUB_USERNAME_VALUE}:${GITHUB_TOKEN}@github.com/${REPO_PATH}"
+  else
+    echo "Error: format REPO_URL untuk mode https tidak dikenali: $REPO_URL"
+    exit 1
+  fi
+fi
+
 echo "Push ke branch '$DEFAULT_BRANCH'..."
-git push -u origin "$DEFAULT_BRANCH"
+if ! git push -u "$PUSH_TARGET" "$DEFAULT_BRANCH"; then
+  cat <<'EOF'
+Push gagal karena autentikasi GitHub.
+
+Pilih salah satu cara:
+1. HTTPS + Personal Access Token (PAT)
+   export GITHUB_USERNAME="reggy29012025-design"
+   export GITHUB_TOKEN="token_github_anda"
+   ./pushgit.sh "pesan commit"
+
+2. SSH
+   GIT_REMOTE_MODE=ssh ./pushgit.sh "pesan commit"
+
+Jika pakai SSH, pastikan public key Anda sudah ditambahkan ke GitHub.
+EOF
+  exit 1
+fi
 
 echo "Selesai."
 echo "Backup tersimpan di: $BACKUP_FILE"
