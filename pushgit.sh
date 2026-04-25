@@ -7,8 +7,14 @@ cd "$SCRIPT_DIR"
 
 DEFAULT_HTTPS_REPO_URL="https://github.com/reggy29012025-design/kerjanusa.git"
 DEFAULT_SSH_REPO_URL="git@github.com:reggy29012025-design/kerjanusa.git"
-REMOTE_MODE="${GIT_REMOTE_MODE:-https}"
-REPO_URL="${GITHUB_REPO_URL:-$DEFAULT_HTTPS_REPO_URL}"
+REMOTE_MODE="${GIT_REMOTE_MODE:-ssh}"
+if [[ -n "${GITHUB_REPO_URL:-}" ]]; then
+  REPO_URL="$GITHUB_REPO_URL"
+elif [[ "$REMOTE_MODE" == "https" ]]; then
+  REPO_URL="$DEFAULT_HTTPS_REPO_URL"
+else
+  REPO_URL="$DEFAULT_SSH_REPO_URL"
+fi
 DEFAULT_BRANCH="${GIT_DEFAULT_BRANCH:-main}"
 BACKUP_DIR="$SCRIPT_DIR/backupdeploy"
 TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
@@ -24,10 +30,6 @@ require_command() {
 
 require_command git
 require_command zip
-
-if [[ "$REMOTE_MODE" == "ssh" && -z "${GITHUB_REPO_URL:-}" ]]; then
-  REPO_URL="$DEFAULT_SSH_REPO_URL"
-fi
 
 mkdir -p "$BACKUP_DIR"
 
@@ -95,13 +97,13 @@ if ! git push -u "$PUSH_TARGET" "$DEFAULT_BRANCH"; then
 Push gagal karena autentikasi GitHub.
 
 Pilih salah satu cara:
-1. HTTPS + Personal Access Token (PAT)
-   export GITHUB_USERNAME="reggy29012025-design"
-   export GITHUB_TOKEN="token_github_anda"
+1. SSH
    ./pushgit.sh "pesan commit"
 
-2. SSH
-   GIT_REMOTE_MODE=ssh ./pushgit.sh "pesan commit"
+2. HTTPS + Personal Access Token (PAT)
+   export GITHUB_USERNAME="reggy29012025-design"
+   export GITHUB_TOKEN="token_github_anda"
+   GIT_REMOTE_MODE=https ./pushgit.sh "pesan commit"
 
 Jika pakai SSH, pastikan public key Anda sudah ditambahkan ke GitHub.
 EOF
