@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import '../styles/authForm.css';
 
@@ -13,7 +13,7 @@ const LoginForm = ({ onSuccess }) => {
     try {
       const authData = await login(email, password);
       onSuccess?.(authData);
-    } catch (err) {
+    } catch {
       // Error is handled by Zustand store
     }
   };
@@ -66,11 +66,7 @@ const LoginForm = ({ onSuccess }) => {
         </button>
       </div>
 
-      <button 
-        type="submit" 
-        className="btn btn-primary"
-        disabled={isLoading}
-      >
+      <button type="submit" className="btn btn-primary" disabled={isLoading}>
         {isLoading ? 'Memproses...' : 'Login'}
       </button>
     </form>

@@ -1,15 +1,16 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
-import HomePage from './pages/HomePage.jsx';
-import AboutPage from './pages/AboutPage.jsx';
-import PlatformPage from './pages/PlatformPage.jsx';
-import JobListPage from './pages/JobListPage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
-import RecruiterDashboardPage from './pages/RecruiterDashboardPage.jsx';
-import RecruiterJobCreatePage from './pages/RecruiterJobCreatePage.jsx';
 import useScrollReveal from './hooks/useScrollReveal.js';
+
+const HomePage = lazy(() => import('./pages/HomePage.jsx'));
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const PlatformPage = lazy(() => import('./pages/PlatformPage.jsx'));
+const JobListPage = lazy(() => import('./pages/JobListPage.jsx'));
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'));
+const RecruiterDashboardPage = lazy(() => import('./pages/RecruiterDashboardPage.jsx'));
+const RecruiterJobCreatePage = lazy(() => import('./pages/RecruiterJobCreatePage.jsx'));
 
 const FORCE_SCROLL_TOP_PATHS = new Set(['/', '/about', '/platform']);
 
@@ -18,6 +19,12 @@ const scrollWindowToTop = () => {
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 };
+
+const AppRouteFallback = () => (
+  <main className="app-container">
+    <div className="loading">Memuat halaman...</div>
+  </main>
+);
 
 function AppLayout() {
   const location = useLocation();
@@ -98,37 +105,39 @@ function AppLayout() {
   return (
     <>
       {!hideNavbar && <Navbar />}
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/platform" element={<PlatformPage />} />
-        <Route
-          path="/jobs"
-          element={
-            <main className="app-container app-container-jobs">
-              <JobListPage />
-            </main>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <main className={loginShellClassName}>
-              <LoginPage />
-            </main>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <main className="auth-shell">
-              <RegisterPage />
-            </main>
-          }
-        />
-        <Route path="/recruiter/jobs/create" element={<RecruiterJobCreatePage />} />
-        <Route path="/recruiter" element={<RecruiterDashboardPage />} />
-      </Routes>
+      <Suspense fallback={<AppRouteFallback />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/platform" element={<PlatformPage />} />
+          <Route
+            path="/jobs"
+            element={
+              <main className="app-container app-container-jobs">
+                <JobListPage />
+              </main>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <main className={loginShellClassName}>
+                <LoginPage />
+              </main>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <main className="auth-shell">
+                <RegisterPage />
+              </main>
+            }
+          />
+          <Route path="/recruiter/jobs/create" element={<RecruiterJobCreatePage />} />
+          <Route path="/recruiter" element={<RecruiterDashboardPage />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

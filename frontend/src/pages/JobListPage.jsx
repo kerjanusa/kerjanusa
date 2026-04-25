@@ -92,7 +92,7 @@ const JobListPage = () => {
       try {
         const locations = await JobService.getAvailableLocations();
         setAvailableLocations(locations);
-      } catch (loadError) {
+      } catch {
         setAvailableLocations([]);
       }
     };
@@ -315,7 +315,7 @@ const JobListPage = () => {
     }
   };
 
-  const groupedLocationOptions = React.useMemo(() => indonesiaLocationOptions, []);
+  const groupedLocationOptions = indonesiaLocationOptions;
 
   const filteredLocationGroups = React.useMemo(() => {
     const normalizedQuery = normalizeLocationKey(locationSearchQuery);

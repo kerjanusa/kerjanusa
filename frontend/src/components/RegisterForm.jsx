@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import '../styles/authForm.css';
 
@@ -45,7 +45,7 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
     try {
       await register(formData);
       onSuccess?.();
-    } catch (submissionError) {
+    } catch {
       // Error state is already handled in the auth store.
     }
   };

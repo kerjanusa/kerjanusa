@@ -1,4 +1,3 @@
-import React from 'react';
 import '../styles/jobCard.css';
 import {
   formatExperienceLevel,
@@ -57,10 +56,7 @@ const JobCard = ({ job, index = 0, onApply }) => {
       <p className="job-description">{job.description?.substring(0, 150)}...</p>
 
       <div className="job-actions">
-        <button 
-          className="btn btn-primary"
-          onClick={() => onApply?.(job)}
-        >
+        <button className="btn btn-primary" onClick={() => onApply?.(job)}>
           Lamar Sekarang
         </button>
       </div>

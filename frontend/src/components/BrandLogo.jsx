@@ -1,5 +1,3 @@
-import React from 'react';
-
 const BrandLogo = () => {
   return (
     <div className="auth-brand-logo">

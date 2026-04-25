@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import RecruiterTopbar from '../components/RecruiterTopbar.jsx';
 import useAuth from '../hooks/useAuth';

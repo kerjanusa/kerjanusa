@@ -139,13 +139,6 @@ textarea {
   min-height: calc(100vh - 88px);
 }
 
-.platform-empty-page {
-  min-height: calc(100vh - 88px);
-  background:
-    radial-gradient(circle at top right, rgba(212, 170, 68, 0.14), transparent 18%),
-    linear-gradient(180deg, rgba(255, 250, 244, 0.98), rgba(247, 237, 228, 0.96));
-}
-
 /* Buttons */
 .btn {
   padding: 0.72rem 1.3rem;

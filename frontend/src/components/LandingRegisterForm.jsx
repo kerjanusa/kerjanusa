@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useState } from 'react';
 import useAuth from '../hooks/useAuth';
 
 /**
@@ -54,7 +54,7 @@ const LandingRegisterForm = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const { register, isLoading, error, clearError } = useAuth();
 
-  const errorMessage = useMemo(() => getErrorMessage(error), [error]);
+  const errorMessage = getErrorMessage(error);
 
   /**
    * Menyimpan perubahan input lalu membersihkan pesan sukses/error lama agar form tetap sinkron.
@@ -96,7 +96,7 @@ const LandingRegisterForm = () => {
       setSuccessMessage(
         `Akun recruiter berhasil dibuat. Password awal Anda: ${generatedPassword}. Simpan lalu ubah setelah login.`
       );
-    } catch (submissionError) {
+    } catch {
       // Error state is already managed in the auth store.
     }
   };
