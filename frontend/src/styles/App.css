@@ -88,6 +88,17 @@ body {
   }
 }
 
+@media (max-width: 860px) {
+  .workspace-page-candidate [data-reveal].reveal-ready,
+  .workspace-page-candidate [data-reveal].reveal-ready.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+    will-change: auto;
+  }
+}
+
 .auth-login-layout,
 .auth-card,
 .job-list-page,

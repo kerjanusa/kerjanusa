@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
+import useJobs from '../hooks/useJobs.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
+import {
+  formatExperienceLevel,
+  formatVideoScreeningRequirement,
+  formatWorkMode,
+} from '../utils/jobFormatters.js';
 import '../styles/workspace.css';
 
 const CANDIDATE_SECTION_OPTIONS = [
+  { value: 'resume', label: 'Profile' },
   { value: 'profile', label: 'Info Data Diri' },
   { value: 'jobs', label: 'Cari Pekerjaan' },
   { value: 'chat', label: 'Chat' },
@@ -108,6 +115,10 @@ const readCandidateProfile = (user) => {
 };
 
 const resolveCandidateSectionFromHash = (hash) => {
+  if (hash === '#resume') {
+    return 'resume';
+  }
+
   if (hash === '#chat') {
     return 'chat';
   }
@@ -125,6 +136,13 @@ const getCandidateSectionRoute = (section) =>
     : `${APP_ROUTES.candidateDashboard}#${section}`;
 
 const countFilledItems = (items) => items.filter((item) => item?.trim()).length;
+
+const formatDisplayLabel = (value = '') =>
+  String(value)
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
 const CANDIDATE_CHAT_THREADS = [
   {
@@ -147,47 +165,19 @@ const CANDIDATE_CHAT_THREADS = [
   },
 ];
 
-const CANDIDATE_CHECKLIST_ITEMS = [
-  'Foto diri terbaru',
-  'Ringkasan profil yang jelas',
-  'Pendidikan terakhir',
-  'Pengalaman kerja atau magang',
-  'Keahlian utama',
-  'Minat lokasi kerja',
-  'Minat posisi',
-  'Resume atau sertifikat terbaru',
-];
-
-const resolveCandidateChecklistStatus = (profile, filledSkills, filledLocations, filledRoles) =>
-  CANDIDATE_CHECKLIST_ITEMS.map((item) => ({
-    label: item,
-    isCompleted:
-      item === 'Foto diri terbaru'
-        ? Boolean(profile.photoFileName)
-        : item === 'Ringkasan profil yang jelas'
-          ? Boolean(profile.profileSummary.trim())
-          : item === 'Pendidikan terakhir'
-            ? Boolean(profile.education.institution.trim())
-            : item === 'Pengalaman kerja atau magang'
-              ? profile.experiences.some((experience) => experience.company.trim())
-              : item === 'Keahlian utama'
-                ? filledSkills.length > 0
-                : item === 'Minat lokasi kerja'
-                  ? filledLocations.length > 0
-                  : item === 'Minat posisi'
-                    ? filledRoles.length > 0
-                    : profile.resumeFiles.length > 0 || profile.certificateFiles.length > 0,
-  }));
-
 const CandidateDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { jobs, isLoading: isLoadingJobs, error: jobsError, fetchJobs } = useJobs();
   const [activeSection, setActiveSection] = useState(resolveCandidateSectionFromHash(location.hash));
   const [profile, setProfile] = useState(() => readCandidateProfile(user));
   const [saveMessage, setSaveMessage] = useState('');
   const [activeOverviewCard, setActiveOverviewCard] = useState(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const topbarRef = useRef(null);
+  const overviewSectionRef = useRef(null);
+  const profileSectionRef = useRef(null);
 
   useEffect(() => {
     setActiveSection(resolveCandidateSectionFromHash(location.hash));
@@ -201,6 +191,48 @@ const CandidateDashboardPage = () => {
   useEffect(() => {
     setIsMobileNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (activeSection === 'jobs') {
+      fetchJobs({}, 1, 24);
+    }
+  }, [activeSection, fetchJobs]);
+
+  useEffect(() => {
+    if (activeSection !== 'profile' && activeOverviewCard) {
+      setActiveOverviewCard(null);
+    }
+  }, [activeOverviewCard, activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== 'profile' || !activeOverviewCard || typeof window === 'undefined') {
+      return;
+    }
+
+    const detailSection = profileSectionRef.current;
+
+    if (!detailSection) {
+      return;
+    }
+
+    const topbarHeight = topbarRef.current?.offsetHeight ?? 0;
+    const overviewHeight = overviewSectionRef.current?.offsetHeight ?? 0;
+    const targetTop =
+      detailSection.getBoundingClientRect().top +
+      window.scrollY -
+      topbarHeight -
+      overviewHeight -
+      16;
+
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: Math.max(targetTop, 0),
+        behavior: 'smooth',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeOverviewCard]);
 
   const completionSummary = useMemo(() => {
     const checklist = [
@@ -318,12 +350,6 @@ const CandidateDashboardPage = () => {
   const filledSkills = profile.skills.filter((item) => item.trim());
   const filledLocations = profile.preferredLocations.filter((item) => item.trim());
   const filledRoles = profile.preferredRoles.filter((item) => item.trim());
-  const checklistStatus = resolveCandidateChecklistStatus(
-    profile,
-    filledSkills,
-    filledLocations,
-    filledRoles
-  );
   const overviewCards = [
     {
       key: 'profile',
@@ -350,6 +376,13 @@ const CandidateDashboardPage = () => {
       note: 'Resume dan sertifikat yang terdata',
     },
   ];
+  const availableJobs = useMemo(
+    () => [...jobs].sort((firstJob, secondJob) => Number(secondJob.id) - Number(firstJob.id)),
+    [jobs]
+  );
+  const profileSectionClassName = `workspace-section-stack${
+    activeOverviewCard ? ` is-overview-filtered filter-${activeOverviewCard}` : ''
+  }`;
 
   const handleOverviewCardToggle = (cardKey) => {
     setActiveOverviewCard((currentCard) => (currentCard === cardKey ? null : cardKey));
@@ -358,6 +391,7 @@ const CandidateDashboardPage = () => {
   return (
     <div className="workspace-page workspace-page-candidate">
       <header
+        ref={topbarRef}
         className={`workspace-topbar workspace-topbar-candidate${
           isMobileNavOpen ? ' workspace-topbar-nav-open' : ''
         }`}
@@ -433,175 +467,148 @@ const CandidateDashboardPage = () => {
       </header>
 
       <main className="workspace-shell workspace-main">
-        <section className="workspace-candidate-kpi-slot" data-reveal>
-          <div className="workspace-kpi-grid">
-            {overviewCards.map((card) => (
-              <button
-                key={card.key}
-                type="button"
-                className={`workspace-kpi-card workspace-kpi-card-button${
-                  activeOverviewCard === card.key ? ' is-active' : ''
-                }`}
-                onClick={() => handleOverviewCardToggle(card.key)}
-                aria-expanded={activeOverviewCard === card.key}
-              >
-                <span>{card.label}</span>
-                <strong>{card.value}</strong>
-                <small>{card.note}</small>
-              </button>
-            ))}
-          </div>
-        </section>
+        {activeSection === 'profile' && (
+          <>
+            <section ref={overviewSectionRef} className="workspace-candidate-kpi-slot">
+              <div className="workspace-kpi-grid">
+                {overviewCards.map((card) => (
+                  <button
+                    key={card.key}
+                    type="button"
+                    className={`workspace-kpi-card workspace-kpi-card-button${
+                      activeOverviewCard === card.key ? ' is-active' : ''
+                    }`}
+                    onClick={() => handleOverviewCardToggle(card.key)}
+                    aria-expanded={activeOverviewCard === card.key}
+                  >
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.note}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
 
-        {activeOverviewCard && (
-          <section className="workspace-kpi-detail-wrap" data-reveal>
-            <article className="workspace-panel workspace-kpi-detail-panel">
-              {activeOverviewCard === 'profile' && (
-                <>
-                  <div className="workspace-panel-heading">
-                    <div>
-                      <span className="workspace-section-label">Ringkasan Profil</span>
-                      <h2>Progress kelengkapan profil</h2>
-                    </div>
-                    <p>
-                      Klik kartu lagi untuk menutup panel ini. Lengkapi komponen yang belum terisi
-                      agar recruiter lebih mudah memproses profil Anda.
-                    </p>
+        {saveMessage && <div className="success workspace-feedback">{saveMessage}</div>}
+
+        {activeSection === 'resume' && (
+          <section id="resume" className="workspace-section-stack">
+            <article className="workspace-panel workspace-profile-resume-panel" data-reveal>
+              <div className="workspace-panel-heading">
+                <div>
+                  <span className="workspace-section-label">Profile</span>
+                  <h2>Resume singkat kandidat</h2>
+                </div>
+                <p>
+                  Ringkasan ini mengambil data langsung dari empat card utama, jadi setiap perubahan
+                  pada profil, keahlian, lokasi, dan dokumen akan otomatis ikut diperbarui di sini.
+                </p>
+              </div>
+
+              <div className="workspace-profile-resume-hero">
+                <div className="workspace-profile-resume-identity">
+                  <strong>{profile.fullName || user.name}</strong>
+                  <span>{profile.email || 'Email pelamar belum diisi'}</span>
+                </div>
+                <div className="workspace-profile-resume-progress">
+                  <strong>{completionSummary.completionPercent}% lengkap</strong>
+                  <small>
+                    {completionSummary.completedItems}/{completionSummary.totalItems} komponen inti
+                  </small>
+                </div>
+              </div>
+
+              <div className="workspace-profile-resume-grid">
+                <article className="workspace-subcard workspace-profile-resume-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Profil terisi</strong>
+                    <span>{completionSummary.completionPercent}%</span>
                   </div>
+                  <p>
+                    {completionSummary.completedItems} dari {completionSummary.totalItems} komponen
+                    utama sudah diisi.
+                  </p>
+                </article>
 
-                  <div className="workspace-progress-card">
-                    <div className="workspace-progress-head">
-                      <strong>{completionSummary.completionPercent}% selesai</strong>
-                      <span>
-                        {completionSummary.completedItems}/{completionSummary.totalItems} komponen
-                      </span>
-                    </div>
-                    <div className="workspace-progress-track" aria-hidden="true">
-                      <span style={{ width: `${completionSummary.completionPercent}%` }} />
-                    </div>
-                    <p>Lengkapi data profil utama, preferensi kerja, dan dokumen pendukung.</p>
+                <article className="workspace-subcard workspace-profile-resume-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Keahlian utama</strong>
+                    <span>{filledSkills.length}/5</span>
                   </div>
-
-                  <div className="workspace-checklist">
-                    {checklistStatus.map((item) => (
-                      <div
-                        key={item.label}
-                        className={`workspace-checklist-item${item.isCompleted ? ' is-done' : ''}`}
-                      >
-                        <span>{item.isCompleted ? '✓' : '•'}</span>
-                        <strong>{item.label}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {activeOverviewCard === 'skills' && (
-                <>
-                  <div className="workspace-panel-heading">
-                    <div>
-                      <span className="workspace-section-label">Keahlian</span>
-                      <h2>Daftar keahlian utama Anda</h2>
-                    </div>
-                    <p>
-                      Klik kartu yang sama untuk menutup. Isi sampai lima kemampuan yang paling
-                      relevan dengan posisi yang Anda incar.
-                    </p>
-                  </div>
-
                   <div className="workspace-chip-wrap">
                     {filledSkills.length > 0 ? (
-                      filledSkills.map((skill) => (
-                        <span key={skill} className="workspace-chip">
+                      filledSkills.slice(0, 5).map((skill) => (
+                        <span key={`resume-skill-${skill}`} className="workspace-chip">
                           {skill}
                         </span>
                       ))
                     ) : (
                       <span className="workspace-chip workspace-chip-muted">
-                        Belum ada keahlian yang diisi
+                        Belum ada keahlian utama
                       </span>
                     )}
                   </div>
-                </>
-              )}
+                </article>
 
-              {activeOverviewCard === 'locations' && (
-                <>
-                  <div className="workspace-panel-heading">
-                    <div>
-                      <span className="workspace-section-label">Preferensi Lokasi</span>
-                      <h2>Lokasi kerja yang diprioritaskan</h2>
-                    </div>
-                    <p>
-                      Klik kartu yang sama untuk menutup. Tambahkan beberapa area target agar
-                      lowongan yang relevan lebih mudah dipantau.
-                    </p>
+                <article className="workspace-subcard workspace-profile-resume-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Minat lokasi</strong>
+                    <span>{filledLocations.length}/5</span>
                   </div>
-
                   <div className="workspace-chip-wrap">
                     {filledLocations.length > 0 ? (
-                      filledLocations.map((locationItem) => (
-                        <span key={locationItem} className="workspace-chip workspace-chip-secondary">
+                      filledLocations.slice(0, 5).map((locationItem) => (
+                        <span
+                          key={`resume-location-${locationItem}`}
+                          className="workspace-chip workspace-chip-secondary"
+                        >
                           {locationItem}
                         </span>
                       ))
                     ) : (
                       <span className="workspace-chip workspace-chip-muted">
-                        Belum ada lokasi kerja yang diprioritaskan
+                        Belum ada lokasi prioritas
                       </span>
                     )}
                   </div>
-                </>
-              )}
+                </article>
 
-              {activeOverviewCard === 'documents' && (
-                <>
-                  <div className="workspace-panel-heading">
-                    <div>
-                      <span className="workspace-section-label">Dokumen</span>
-                      <h2>Ringkasan dokumen yang tersimpan</h2>
-                    </div>
-                    <p>
-                      Klik kartu yang sama untuk menutup. Pastikan resume dan sertifikat terbaru
-                      sudah diunggah agar siap saat recruiter meminta verifikasi.
-                    </p>
+                <article className="workspace-subcard workspace-profile-resume-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Dokumen</strong>
+                    <span>{profile.resumeFiles.length + profile.certificateFiles.length}</span>
                   </div>
+                  <div className="workspace-profile-resume-doc-list">
+                    <span>Resume: {profile.resumeFiles.length}</span>
+                    <span>Sertifikat: {profile.certificateFiles.length}</span>
+                  </div>
+                </article>
+              </div>
 
-                  <div className="workspace-file-grid workspace-file-grid-detail">
-                    <article className="workspace-file-card">
-                      <strong>Resume</strong>
-                      <ul>
-                        {profile.resumeFiles.length > 0 ? (
-                          profile.resumeFiles.map((fileName) => <li key={fileName}>{fileName}</li>)
-                        ) : (
-                          <li>Belum ada resume yang diunggah</li>
-                        )}
-                      </ul>
-                    </article>
-                    <article className="workspace-file-card">
-                      <strong>Sertifikat</strong>
-                      <ul>
-                        {profile.certificateFiles.length > 0 ? (
-                          profile.certificateFiles.map((fileName) => (
-                            <li key={fileName}>{fileName}</li>
-                          ))
-                        ) : (
-                          <li>Belum ada sertifikat yang diunggah</li>
-                        )}
-                      </ul>
-                    </article>
-                  </div>
-                </>
-              )}
+              <div className="workspace-action-row">
+                <button type="button" className="btn btn-primary" onClick={handleSaveProfile}>
+                  Simpan Data Pelamar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => handleSectionChange('profile')}
+                >
+                  Lengkapi Info Data Diri
+                </button>
+              </div>
             </article>
           </section>
         )}
 
-        {saveMessage && <div className="success workspace-feedback">{saveMessage}</div>}
-
         {activeSection === 'profile' && (
-          <section id="profile" className="workspace-section-stack">
-            <article className="workspace-panel" data-reveal>
+          <section ref={profileSectionRef} id="profile" className={profileSectionClassName}>
+            <article
+              className="workspace-panel workspace-profile-block workspace-profile-block-profile"
+              data-reveal
+            >
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Data Diri</span>
@@ -691,7 +698,11 @@ const CandidateDashboardPage = () => {
               )}
             </article>
 
-            <article className="workspace-panel" data-reveal data-reveal-delay="60ms">
+            <article
+              className="workspace-panel workspace-profile-block workspace-profile-block-profile"
+              data-reveal
+              data-reveal-delay="60ms"
+            >
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Ringkasan & Media Sosial</span>
@@ -751,7 +762,11 @@ const CandidateDashboardPage = () => {
               </div>
             </article>
 
-            <article className="workspace-panel" data-reveal data-reveal-delay="80ms">
+            <article
+              className="workspace-panel workspace-profile-block workspace-profile-block-profile"
+              data-reveal
+              data-reveal-delay="80ms"
+            >
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Pendidikan Terakhir</span>
@@ -801,7 +816,11 @@ const CandidateDashboardPage = () => {
               </div>
             </article>
 
-            <article className="workspace-panel" data-reveal data-reveal-delay="100ms">
+            <article
+              className="workspace-panel workspace-profile-block workspace-profile-block-profile"
+              data-reveal
+              data-reveal-delay="100ms"
+            >
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Pengalaman Kerja / Magang</span>
@@ -907,7 +926,7 @@ const CandidateDashboardPage = () => {
               </div>
             </article>
 
-            <section className="workspace-two-column-grid">
+            <section className="workspace-two-column-grid workspace-profile-block workspace-profile-block-skills">
               <article className="workspace-panel" data-reveal data-reveal-delay="120ms">
                 <div className="workspace-panel-heading">
                   <div>
@@ -975,7 +994,7 @@ const CandidateDashboardPage = () => {
               </article>
             </section>
 
-            <section className="workspace-two-column-grid">
+            <section className="workspace-two-column-grid workspace-profile-block workspace-profile-block-locations">
               <article className="workspace-panel" data-reveal data-reveal-delay="160ms">
                 <div className="workspace-panel-heading">
                   <div>
@@ -1027,7 +1046,11 @@ const CandidateDashboardPage = () => {
               </article>
             </section>
 
-            <article className="workspace-panel" data-reveal data-reveal-delay="200ms">
+            <article
+              className="workspace-panel workspace-profile-block workspace-profile-block-documents"
+              data-reveal
+              data-reveal-delay="200ms"
+            >
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Upload Dokumen</span>
@@ -1096,50 +1119,67 @@ const CandidateDashboardPage = () => {
         )}
 
         {activeSection === 'jobs' && (
-          <section id="jobs" className="workspace-two-column-grid">
+          <section id="jobs" className="workspace-section-stack">
             <article className="workspace-panel" data-reveal>
               <div className="workspace-panel-heading">
                 <div>
                   <span className="workspace-section-label">Cari Pekerjaan</span>
-                  <h2>Siapkan preferensi sebelum melamar</h2>
+                  <h2>Lowongan yang sudah tersedia</h2>
                 </div>
                 <p>
-                  Gunakan data diri, minat posisi, lokasi, dan gaji untuk mempercepat pencarian
-                  lowongan yang lebih sesuai.
+                  Menu ini menampilkan isi lowongan yang sebelumnya sudah dibuat recruiter,
+                  termasuk lowongan demo dan lowongan baru yang ditambahkan dari dashboard company.
                 </p>
               </div>
 
-              <div className="workspace-chip-wrap">
-                {filledRoles.length > 0 ? (
-                  filledRoles.map((role) => (
-                    <span key={role} className="workspace-chip">
-                      {role}
-                    </span>
-                  ))
-                ) : (
-                  <span className="workspace-chip workspace-chip-muted">
-                    Belum ada posisi yang diprioritaskan
-                  </span>
-                )}
+              <div className="workspace-job-summary-row">
+                <article className="workspace-subcard workspace-job-summary-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Posisi yang diminati</strong>
+                    <span>{filledRoles.length}/5</span>
+                  </div>
+                  <div className="workspace-chip-wrap">
+                    {filledRoles.length > 0 ? (
+                      filledRoles.map((role) => (
+                        <span key={role} className="workspace-chip">
+                          {role}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="workspace-chip workspace-chip-muted">
+                        Belum ada posisi yang diprioritaskan
+                      </span>
+                    )}
+                  </div>
+                </article>
+
+                <article className="workspace-subcard workspace-job-summary-card">
+                  <div className="workspace-subcard-heading">
+                    <strong>Lokasi yang diminati</strong>
+                    <span>{filledLocations.length}/5</span>
+                  </div>
+                  <div className="workspace-chip-wrap">
+                    {filledLocations.length > 0 ? (
+                      filledLocations.map((locationItem) => (
+                        <span
+                          key={locationItem}
+                          className="workspace-chip workspace-chip-secondary"
+                        >
+                          {locationItem}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="workspace-chip workspace-chip-muted">
+                        Belum ada lokasi kerja yang diprioritaskan
+                      </span>
+                    )}
+                  </div>
+                </article>
               </div>
 
-              <div className="workspace-chip-wrap workspace-chip-wrap-secondary">
-                {filledLocations.length > 0 ? (
-                  filledLocations.map((locationItem) => (
-                    <span key={locationItem} className="workspace-chip workspace-chip-secondary">
-                      {locationItem}
-                    </span>
-                  ))
-                ) : (
-                  <span className="workspace-chip workspace-chip-muted">
-                    Belum ada lokasi kerja yang diprioritaskan
-                  </span>
-                )}
-              </div>
-
-              <div className="workspace-action-row">
+              <div className="workspace-action-row workspace-job-action-row">
                 <Link to="/jobs" className="btn btn-primary">
-                  Buka Halaman Lowongan
+                  Buka Halaman Lowongan Lengkap
                 </Link>
                 <button type="button" className="btn btn-outline" onClick={handleSaveProfile}>
                   Simpan Preferensi Dulu
@@ -1150,28 +1190,79 @@ const CandidateDashboardPage = () => {
             <article className="workspace-panel" data-reveal data-reveal-delay="80ms">
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Checklist Lamaran</span>
-                  <h2>Pastikan profil siap dibaca recruiter</h2>
+                  <span className="workspace-section-label">Daftar Lowongan</span>
+                  <h2>Lowongan yang pernah dibuat</h2>
                 </div>
                 <p>
-                  Berikut komponen yang paling sering diperiksa recruiter sebelum menghubungi
-                  pelamar.
+                  Saat recruiter membuat lowongan baru, isinya akan muncul di bagian ini setelah
+                  halaman dibuka ulang atau menu ini diakses kembali.
                 </p>
               </div>
 
-              <div className="workspace-checklist">
-                {checklistStatus.map((item) => {
-                  return (
-                    <div
-                      key={item.label}
-                      className={`workspace-checklist-item${item.isCompleted ? ' is-done' : ''}`}
-                    >
-                      <span>{item.isCompleted ? '✓' : '•'}</span>
-                      <strong>{item.label}</strong>
-                    </div>
-                  );
-                })}
-              </div>
+              {isLoadingJobs ? (
+                <p className="workspace-inline-note">Memuat daftar lowongan...</p>
+              ) : null}
+
+              {!isLoadingJobs && jobsError ? (
+                <p className="workspace-inline-note workspace-inline-note-error">{jobsError}</p>
+              ) : null}
+
+              {!isLoadingJobs && !jobsError && availableJobs.length === 0 ? (
+                <div className="workspace-job-empty-state">
+                  <strong>Belum ada lowongan yang tersedia.</strong>
+                  <p>
+                    Minta recruiter membuat lowongan terlebih dahulu, lalu buka lagi menu ini
+                    untuk melihat hasilnya.
+                  </p>
+                </div>
+              ) : null}
+
+              {!isLoadingJobs && !jobsError && availableJobs.length > 0 ? (
+                <div className="workspace-job-list-grid">
+                  {availableJobs.map((job) => {
+                    const videoScreeningLabel = formatVideoScreeningRequirement(
+                      job.video_screening_requirement
+                    );
+
+                    return (
+                      <article key={job.id} className="workspace-job-list-card">
+                        <div className="workspace-job-list-head">
+                          <div>
+                            <strong>{job.title}</strong>
+                            <span>{job.recruiter?.name || 'Recruiter KerjaNusa'}</span>
+                          </div>
+                          <small>{formatDisplayLabel(job.job_type)}</small>
+                        </div>
+
+                        <div className="workspace-job-badge-row">
+                          <span className="workspace-job-badge">{job.location || '-'}</span>
+                          <span className="workspace-job-badge">
+                            {formatExperienceLevel(job.experience_level)}
+                          </span>
+                          <span className="workspace-job-badge">
+                            {formatWorkMode(job.work_mode)}
+                          </span>
+                          <span className="workspace-job-badge">
+                            {job.category || 'Umum'}
+                          </span>
+                        </div>
+
+                        <p className="workspace-job-list-description">{job.description || '-'}</p>
+
+                        <div className="workspace-job-list-stats">
+                          <span>{formatCurrency(job.salary_min)} - {formatCurrency(job.salary_max)}</span>
+                          <span>{Number(job.openings_count) || 0} kebutuhan</span>
+                          <span>{Number(job.applications_count) || 0} pelamar</span>
+                        </div>
+
+                        {videoScreeningLabel ? (
+                          <p className="workspace-job-list-note">{videoScreeningLabel}</p>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
             </article>
           </section>
         )}
