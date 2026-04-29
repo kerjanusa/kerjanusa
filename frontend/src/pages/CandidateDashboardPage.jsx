@@ -1120,6 +1120,14 @@ const CandidateDashboardPage = () => {
 
         {activeSection === 'jobs' && (
           <section id="jobs" className="workspace-section-stack">
+            <section className="workspace-candidate-job-action-slot">
+              <div className="workspace-action-row workspace-job-action-row">
+                <Link to="/jobs" className="btn btn-primary">
+                  Buka Halaman Lowongan Lengkap
+                </Link>
+              </div>
+            </section>
+
             <article className="workspace-panel" data-reveal>
               <div className="workspace-panel-heading">
                 <div>
@@ -1152,39 +1160,8 @@ const CandidateDashboardPage = () => {
                     )}
                   </div>
                 </article>
-
-                <article className="workspace-subcard workspace-job-summary-card">
-                  <div className="workspace-subcard-heading">
-                    <strong>Lokasi yang diminati</strong>
-                    <span>{filledLocations.length}/5</span>
-                  </div>
-                  <div className="workspace-chip-wrap">
-                    {filledLocations.length > 0 ? (
-                      filledLocations.map((locationItem) => (
-                        <span
-                          key={locationItem}
-                          className="workspace-chip workspace-chip-secondary"
-                        >
-                          {locationItem}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="workspace-chip workspace-chip-muted">
-                        Belum ada lokasi kerja yang diprioritaskan
-                      </span>
-                    )}
-                  </div>
-                </article>
               </div>
 
-              <div className="workspace-action-row workspace-job-action-row">
-                <Link to="/jobs" className="btn btn-primary">
-                  Buka Halaman Lowongan Lengkap
-                </Link>
-                <button type="button" className="btn btn-outline" onClick={handleSaveProfile}>
-                  Simpan Preferensi Dulu
-                </button>
-              </div>
             </article>
 
             <article className="workspace-panel" data-reveal data-reveal-delay="80ms">
