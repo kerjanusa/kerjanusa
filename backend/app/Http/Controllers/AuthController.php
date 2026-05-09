@@ -66,13 +66,17 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'password.required' => 'Password wajib diisi.',
         ]);
 
         $user = $this->authService->login($validated['email'], $validated['password']);
 
         if (!$user) {
             return response()->json([
-                'message' => 'Invalid credentials',
+                'message' => 'Email atau password salah.',
             ], 401);
         }
 

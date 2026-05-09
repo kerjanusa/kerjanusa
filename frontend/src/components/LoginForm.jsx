@@ -11,7 +11,26 @@ const LoginForm = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(true);
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, validationErrors, clearError } = useAuth();
+
+  const hasFieldErrors = Object.keys(validationErrors || {}).length > 0;
+  const getFieldError = (fieldName) => validationErrors?.[fieldName]?.[0] || '';
+
+  const handleEmailChange = (value) => {
+    setEmail(value);
+
+    if (error || hasFieldErrors) {
+      clearError();
+    }
+  };
+
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+
+    if (error || hasFieldErrors) {
+      clearError();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,9 +44,9 @@ const LoginForm = ({
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
-      {error && <div className="error-message">{error}</div>}
+      {error && !hasFieldErrors && <div className="error-message">{error}</div>}
 
-      <div className="form-group">
+      <div className={`form-group${getFieldError('email') ? ' has-error' : ''}`}>
         <label htmlFor="email">Email</label>
         <input
           id="email"
@@ -35,13 +54,15 @@ const LoginForm = ({
           autoComplete="username"
           placeholder={emailPlaceholder}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => handleEmailChange(e.target.value)}
           required
           disabled={isLoading}
+          aria-invalid={Boolean(getFieldError('email'))}
         />
+        {getFieldError('email') && <p className="field-error">{getFieldError('email')}</p>}
       </div>
 
-      <div className="form-group">
+      <div className={`form-group${getFieldError('password') ? ' has-error' : ''}`}>
         <label htmlFor="password">Password</label>
         <input
           id="password"
@@ -49,10 +70,12 @@ const LoginForm = ({
           autoComplete="current-password"
           placeholder="Ketik password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => handlePasswordChange(e.target.value)}
           required
           disabled={isLoading}
+          aria-invalid={Boolean(getFieldError('password'))}
         />
+        {getFieldError('password') && <p className="field-error">{getFieldError('password')}</p>}
       </div>
 
       <div className="auth-form-support">
