@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Job;
 use App\Models\User;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class AdminService
 {
@@ -35,45 +36,144 @@ class AdminService
      */
     public function getDashboardData(): array
     {
+        $sevenDaysAgo = now()->subDays(7);
+
+        $userAggregates = User::query()
+            ->selectRaw('COUNT(*) as total_users')
+            ->selectRaw(
+                'SUM(CASE WHEN role = ? THEN 1 ELSE 0 END) as candidates',
+                [User::ROLE_CANDIDATE]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN role = ? THEN 1 ELSE 0 END) as recruiters',
+                [User::ROLE_RECRUITER]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN role = ? THEN 1 ELSE 0 END) as superadmins',
+                [User::ROLE_SUPERADMIN]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN role = ? AND created_at >= ? THEN 1 ELSE 0 END) as new_candidates_last_7_days',
+                [User::ROLE_CANDIDATE, $sevenDaysAgo]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN role = ? AND created_at >= ? THEN 1 ELSE 0 END) as new_recruiters_last_7_days',
+                [User::ROLE_RECRUITER, $sevenDaysAgo]
+            )
+            ->first();
+
+        $jobAggregates = Job::query()
+            ->selectRaw('COUNT(*) as total_jobs')
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as active_jobs',
+                [Job::STATUS_ACTIVE]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as inactive_jobs',
+                [Job::STATUS_INACTIVE]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_jobs_last_7_days',
+                [$sevenDaysAgo]
+            )
+            ->first();
+
+        $applicationAggregates = Application::query()
+            ->selectRaw('COUNT(*) as total_applications')
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending_applications',
+                [Application::STATUS_PENDING]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as accepted_applications',
+                [Application::STATUS_ACCEPTED]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as rejected_applications',
+                [Application::STATUS_REJECTED]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as withdrawn_applications',
+                [Application::STATUS_WITHDRAWN]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_applications_last_7_days',
+                [$sevenDaysAgo]
+            )
+            ->first();
+
         $totals = [
-            'candidates' => User::where('role', User::ROLE_CANDIDATE)->count(),
-            'recruiters' => User::where('role', User::ROLE_RECRUITER)->count(),
-            'superadmins' => User::where('role', User::ROLE_SUPERADMIN)->count(),
-            'total_jobs' => Job::count(),
-            'active_jobs' => Job::where('status', Job::STATUS_ACTIVE)->count(),
-            'inactive_jobs' => Job::where('status', Job::STATUS_INACTIVE)->count(),
-            'total_applications' => Application::count(),
-            'pending_applications' => Application::where('status', Application::STATUS_PENDING)->count(),
-            'accepted_applications' => Application::where('status', Application::STATUS_ACCEPTED)->count(),
-            'rejected_applications' => Application::where('status', Application::STATUS_REJECTED)->count(),
-            'withdrawn_applications' => Application::where('status', Application::STATUS_WITHDRAWN)->count(),
+            'candidates' => (int) ($userAggregates->candidates ?? 0),
+            'recruiters' => (int) ($userAggregates->recruiters ?? 0),
+            'superadmins' => (int) ($userAggregates->superadmins ?? 0),
+            'total_jobs' => (int) ($jobAggregates->total_jobs ?? 0),
+            'active_jobs' => (int) ($jobAggregates->active_jobs ?? 0),
+            'inactive_jobs' => (int) ($jobAggregates->inactive_jobs ?? 0),
+            'total_applications' => (int) ($applicationAggregates->total_applications ?? 0),
+            'pending_applications' => (int) ($applicationAggregates->pending_applications ?? 0),
+            'accepted_applications' => (int) ($applicationAggregates->accepted_applications ?? 0),
+            'rejected_applications' => (int) ($applicationAggregates->rejected_applications ?? 0),
+            'withdrawn_applications' => (int) ($applicationAggregates->withdrawn_applications ?? 0),
         ];
 
         $growth = [
-            'new_candidates_last_7_days' => User::where('role', User::ROLE_CANDIDATE)
-                ->where('created_at', '>=', now()->subDays(7))
-                ->count(),
-            'new_recruiters_last_7_days' => User::where('role', User::ROLE_RECRUITER)
-                ->where('created_at', '>=', now()->subDays(7))
-                ->count(),
-            'new_jobs_last_7_days' => Job::where('created_at', '>=', now()->subDays(7))->count(),
-            'new_applications_last_7_days' => Application::where('created_at', '>=', now()->subDays(7))->count(),
+            'new_candidates_last_7_days' => (int) ($userAggregates->new_candidates_last_7_days ?? 0),
+            'new_recruiters_last_7_days' => (int) ($userAggregates->new_recruiters_last_7_days ?? 0),
+            'new_jobs_last_7_days' => (int) ($jobAggregates->new_jobs_last_7_days ?? 0),
+            'new_applications_last_7_days' => (int) ($applicationAggregates->new_applications_last_7_days ?? 0),
         ];
+
+        $latestCandidateApplicationQuery = Application::query()
+            ->leftJoin('jobs as latest_jobs', 'latest_jobs.id', '=', 'applications.job_id')
+            ->whereColumn('applications.candidate_id', 'users.id')
+            ->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC')
+            ->orderByDesc('applications.id');
 
         $candidateTable = User::query()
             ->where('role', User::ROLE_CANDIDATE)
-            ->withCount('applications')
-            ->with([
-                'applications' => fn ($query) => $query
-                    ->with('job:id,title')
-                    ->orderByDesc('applied_at')
-                    ->orderByDesc('created_at'),
+            ->select([
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.phone',
+                'users.account_status',
+                'users.account_status_reason',
+                'users.candidate_profile',
+                'users.created_at',
             ])
+            ->selectSub(
+                Application::query()
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('applications.candidate_id', 'users.id'),
+                'applications_count'
+            )
+            ->selectSub(
+                (clone $latestCandidateApplicationQuery)
+                    ->select('applications.status')
+                    ->limit(1),
+                'latest_application_status'
+            )
+            ->selectSub(
+                (clone $latestCandidateApplicationQuery)
+                    ->select('applications.stage')
+                    ->limit(1),
+                'latest_application_stage'
+            )
+            ->selectSub(
+                (clone $latestCandidateApplicationQuery)
+                    ->select('latest_jobs.title')
+                    ->limit(1),
+                'latest_job_title'
+            )
+            ->selectSub(
+                (clone $latestCandidateApplicationQuery)
+                    ->selectRaw('COALESCE(applications.applied_at, applications.created_at)')
+                    ->limit(1),
+                'latest_applied_at'
+            )
             ->latest()
             ->get()
             ->map(function (User $candidate) {
-                $latestApplication = $candidate->applications->first();
-
                 return [
                     'id' => $candidate->id,
                     'name' => $candidate->name,
@@ -89,10 +189,10 @@ class AdminService
                         'skills',
                         'resumeFiles',
                     ]),
-                    'applications_count' => $candidate->applications_count,
-                    'latest_application_status' => $latestApplication?->status,
-                    'latest_application_stage' => $latestApplication?->stage,
-                    'latest_job_title' => $latestApplication?->job?->title,
+                    'applications_count' => (int) ($candidate->applications_count ?? 0),
+                    'latest_application_status' => $candidate->latest_application_status,
+                    'latest_application_stage' => $candidate->latest_application_stage,
+                    'latest_job_title' => $candidate->latest_job_title,
                     'profile_summary' => Arr::get($candidate->candidate_profile ?? [], 'profileSummary'),
                     'preferred_roles' => collect(Arr::get($candidate->candidate_profile ?? [], 'preferredRoles', []))
                         ->filter(fn ($role) => filled($role))
@@ -110,28 +210,65 @@ class AdminService
                         ->filter(fn ($file) => filled($file))
                         ->count(),
                     'created_at' => $candidate->created_at?->toIso8601String(),
-                    'latest_applied_at' => $latestApplication?->applied_at?->toIso8601String()
-                        ?? $latestApplication?->created_at?->toIso8601String(),
+                    'latest_applied_at' => $candidate->latest_applied_at,
                 ];
             })
             ->values()
             ->all();
 
+        $latestRecruiterJobQuery = Job::query()
+            ->whereColumn('jobs.recruiter_id', 'users.id')
+            ->orderByDesc('jobs.created_at')
+            ->orderByDesc('jobs.id');
+
         $recruiterTable = User::query()
             ->where('role', User::ROLE_RECRUITER)
-            ->withCount([
-                'jobs',
-                'jobs as active_jobs_count' => fn ($query) => $query->where('status', Job::STATUS_ACTIVE),
+            ->select([
+                'users.id',
+                'users.name',
+                'users.company_name',
+                'users.email',
+                'users.phone',
+                'users.account_status',
+                'users.account_status_reason',
+                'users.recruiter_profile',
+                'users.created_at',
             ])
-            ->with([
-                'jobs' => fn ($query) => $query
-                    ->select('id', 'recruiter_id', 'title', 'created_at')
-                    ->latest(),
-            ])
+            ->selectSub(
+                Job::query()
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('jobs.recruiter_id', 'users.id'),
+                'jobs_count'
+            )
+            ->selectSub(
+                Job::query()
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('jobs.recruiter_id', 'users.id')
+                    ->where('jobs.status', Job::STATUS_ACTIVE),
+                'active_jobs_count'
+            )
+            ->selectSub(
+                (clone $latestRecruiterJobQuery)
+                    ->select('jobs.title')
+                    ->limit(1),
+                'latest_job_title'
+            )
+            ->selectSub(
+                (clone $latestRecruiterJobQuery)
+                    ->select('jobs.created_at')
+                    ->limit(1),
+                'latest_job_created_at'
+            )
             ->latest()
             ->get()
             ->map(function (User $recruiter) {
-                $latestJob = $recruiter->jobs->first();
+                $profileReady = $this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
+                    'companyName',
+                    'contactRole',
+                    'companyLocation',
+                    'companyDescription',
+                    'hiringFocus',
+                ]);
 
                 return [
                     'id' => $recruiter->id,
@@ -143,24 +280,12 @@ class AdminService
                     'phone' => $recruiter->phone,
                     'account_status' => $recruiter->account_status,
                     'account_status_reason' => $recruiter->account_status_reason,
-                    'profile_ready' => $this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
-                        'companyName',
-                        'contactRole',
-                        'companyLocation',
-                        'companyDescription',
-                        'hiringFocus',
-                    ]),
-                    'jobs_count' => $recruiter->jobs_count,
-                    'active_jobs_count' => $recruiter->active_jobs_count,
-                    'latest_job_title' => $latestJob?->title,
+                    'profile_ready' => $profileReady,
+                    'jobs_count' => (int) ($recruiter->jobs_count ?? 0),
+                    'active_jobs_count' => (int) ($recruiter->active_jobs_count ?? 0),
+                    'latest_job_title' => $recruiter->latest_job_title,
                     'verification_status' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationStatus')
-                        ?? ($this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
-                            'companyName',
-                            'contactRole',
-                            'companyLocation',
-                            'companyDescription',
-                            'hiringFocus',
-                        ]) ? 'verified' : 'pending'),
+                        ?? ($profileReady ? 'verified' : 'pending'),
                     'verification_notes' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationNotes'),
                     'verified_at' => Arr::get($recruiter->recruiter_profile ?? [], 'verifiedAt'),
                     'contact_role' => Arr::get($recruiter->recruiter_profile ?? [], 'contactRole')
@@ -172,18 +297,40 @@ class AdminService
                         ->values()
                         ->all(),
                     'created_at' => $recruiter->created_at?->toIso8601String(),
-                    'latest_job_created_at' => $latestJob?->created_at?->toIso8601String(),
+                    'latest_job_created_at' => $recruiter->latest_job_created_at,
                 ];
             })
             ->values()
             ->all();
 
+        $jobApplicationCountsQuery = Application::query()
+            ->selectRaw('job_id, COUNT(*) as applications_count')
+            ->groupBy('job_id');
+
         $jobs = Job::query()
-            ->with('recruiter:id,name,email,company_name')
-            ->withCount('applications')
+            ->leftJoin('users as recruiters', 'recruiters.id', '=', 'jobs.recruiter_id')
+            ->leftJoinSub($jobApplicationCountsQuery, 'application_totals', function ($join) {
+                $join->on('application_totals.job_id', '=', 'jobs.id');
+            })
+            ->select([
+                'jobs.id',
+                'jobs.title',
+                'jobs.category',
+                'jobs.location',
+                'jobs.status',
+                'jobs.workflow_status',
+                'jobs.job_type',
+                'jobs.experience_level',
+                'jobs.created_at',
+                DB::raw('COALESCE(application_totals.applications_count, 0) as applications_count'),
+                'recruiters.id as recruiter_id',
+                'recruiters.name as recruiter_name',
+                'recruiters.email as recruiter_email',
+                'recruiters.company_name as recruiter_company_name',
+            ])
             ->latest()
             ->get()
-            ->map(fn (Job $job) => [
+            ->map(fn ($job) => [
                 'id' => $job->id,
                 'title' => $job->title,
                 'category' => $job->category,
@@ -192,49 +339,63 @@ class AdminService
                 'workflow_status' => $job->workflow_status,
                 'job_type' => $job->job_type,
                 'experience_level' => $job->experience_level,
-                'applications_count' => $job->applications_count,
-                'created_at' => $job->created_at?->toIso8601String(),
+                'applications_count' => (int) ($job->applications_count ?? 0),
+                'created_at' => optional($job->created_at)->toIso8601String(),
                 'recruiter' => [
-                    'id' => $job->recruiter?->id,
-                    'name' => $job->recruiter?->name,
-                    'company_name' => $job->recruiter?->company_name,
-                    'email' => $job->recruiter?->email,
+                    'id' => $job->recruiter_id,
+                    'name' => $job->recruiter_name,
+                    'company_name' => $job->recruiter_company_name,
+                    'email' => $job->recruiter_email,
                 ],
             ])
             ->values()
             ->all();
 
         $applications = Application::query()
-            ->with([
-                'candidate:id,name,email,phone',
-                'job:id,title,location,recruiter_id',
-                'job.recruiter:id,name,email,company_name',
+            ->leftJoin('users as candidates', 'candidates.id', '=', 'applications.candidate_id')
+            ->leftJoin('jobs', 'jobs.id', '=', 'applications.job_id')
+            ->leftJoin('users as recruiters', 'recruiters.id', '=', 'jobs.recruiter_id')
+            ->select([
+                'applications.id',
+                'applications.status',
+                'applications.stage',
+                DB::raw('COALESCE(applications.applied_at, applications.created_at) as applied_at'),
+                'candidates.id as candidate_id',
+                'candidates.name as candidate_name',
+                'candidates.email as candidate_email',
+                'candidates.phone as candidate_phone',
+                'jobs.id as job_id',
+                'jobs.title as job_title',
+                'jobs.location as job_location',
+                'recruiters.id as recruiter_id',
+                'recruiters.name as recruiter_name',
+                'recruiters.company_name as recruiter_company_name',
+                'recruiters.email as recruiter_email',
             ])
-            ->orderByDesc('applied_at')
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC')
+            ->orderByDesc('applications.id')
             ->get()
-            ->map(fn (Application $application) => [
+            ->map(fn ($application) => [
                 'id' => $application->id,
                 'status' => $application->status,
                 'stage' => $application->stage,
-                'applied_at' => $application->applied_at?->toIso8601String()
-                    ?? $application->created_at?->toIso8601String(),
+                'applied_at' => $application->applied_at,
                 'candidate' => [
-                    'id' => $application->candidate?->id,
-                    'name' => $application->candidate?->name,
-                    'email' => $application->candidate?->email,
-                    'phone' => $application->candidate?->phone,
+                    'id' => $application->candidate_id,
+                    'name' => $application->candidate_name,
+                    'email' => $application->candidate_email,
+                    'phone' => $application->candidate_phone,
                 ],
                 'job' => [
-                    'id' => $application->job?->id,
-                    'title' => $application->job?->title,
-                    'location' => $application->job?->location,
+                    'id' => $application->job_id,
+                    'title' => $application->job_title,
+                    'location' => $application->job_location,
                 ],
                 'recruiter' => [
-                    'id' => $application->job?->recruiter?->id,
-                    'name' => $application->job?->recruiter?->name,
-                    'company_name' => $application->job?->recruiter?->company_name,
-                    'email' => $application->job?->recruiter?->email,
+                    'id' => $application->recruiter_id,
+                    'name' => $application->recruiter_name,
+                    'company_name' => $application->recruiter_company_name,
+                    'email' => $application->recruiter_email,
                 ],
             ])
             ->values()
@@ -245,17 +406,17 @@ class AdminService
             'growth' => $growth,
             'candidate_table' => $candidateTable,
             'recruiter_table' => $recruiterTable,
-            'recruiter_options' => User::query()
-                ->where('role', User::ROLE_RECRUITER)
-                ->where('account_status', User::STATUS_ACTIVE)
-                ->orderBy('company_name')
-                ->orderBy('name')
-                ->get(['id', 'name', 'company_name', 'email'])
-                ->map(fn (User $recruiter) => [
-                    'id' => $recruiter->id,
-                    'name' => $recruiter->name,
-                    'company_name' => $recruiter->company_name,
-                    'email' => $recruiter->email,
+            'recruiter_options' => collect($recruiterTable)
+                ->filter(fn (array $recruiter) => ($recruiter['account_status'] ?? null) === User::STATUS_ACTIVE)
+                ->sortBy([
+                    ['company_name', 'asc'],
+                    ['name', 'asc'],
+                ])
+                ->map(fn (array $recruiter) => [
+                    'id' => $recruiter['id'],
+                    'name' => $recruiter['name'],
+                    'company_name' => $recruiter['company_name'],
+                    'email' => $recruiter['email'],
                 ])
                 ->values()
                 ->all(),
