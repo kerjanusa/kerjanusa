@@ -2,7 +2,10 @@
 
 return [
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // This backend is deployed as a dedicated API project on Vercel. The
+    // runtime catch-all function forwards requests without the public `/api`
+    // prefix, so CORS must apply to every path the app can see internally.
+    'paths' => ['*'],
 
     'allowed_methods' => ['*'],
 

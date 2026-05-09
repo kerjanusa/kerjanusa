@@ -48,17 +48,10 @@ if [[ -n "$VERCEL_SCOPE" ]]; then
   VERCEL_ARGS+=(--scope "$VERCEL_SCOPE")
 fi
 
-if vercel whoami >/dev/null 2>&1; then
-  echo "Akun Vercel aktif: $(vercel whoami)"
-else
-  echo "Vercel CLI belum login. Deployment tetap bisa jalan lewat GitHub integration."
-  exit 0
-fi
-
 if ! vercel project inspect "$VERCEL_PROJECT_NAME" "${VERCEL_ARGS[@]}" >/dev/null 2>&1; then
-  echo "Project Vercel '$VERCEL_PROJECT_NAME' tidak bisa diakses dari scope aktif CLI."
+  echo "Project Vercel '$VERCEL_PROJECT_NAME' tidak bisa diakses dari Vercel CLI saat ini."
   echo "Deployment tetap akan berjalan otomatis lewat GitHub integration."
-  echo "Jika ingin cek dari CLI, login/switch ke workspace Vercel yang benar lalu jalankan ulang script ini."
+  echo "Jika ingin cek dari CLI, pastikan CLI terhubung ke workspace Vercel yang benar lalu jalankan ulang script ini."
   exit 0
 fi
 

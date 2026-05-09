@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import AuthService from '../services/authService';
 
+const getErrorMessage = (error, fallback) =>
+  typeof error === 'string' ? error : error?.message || fallback;
+
 const useAuthStore = create((set) => ({
   user: AuthService.getStoredUser(),
   token: AuthService.getToken(),
@@ -20,7 +23,7 @@ const useAuthStore = create((set) => ({
       return data;
     } catch (error) {
       set({
-        error: error.message || 'Login failed',
+        error: getErrorMessage(error, 'Login failed'),
         isLoading: false,
       });
       throw error;
@@ -40,7 +43,7 @@ const useAuthStore = create((set) => ({
       return data;
     } catch (error) {
       set({
-        error: error.message || 'Registration failed',
+        error: getErrorMessage(error, 'Registration failed'),
         isLoading: false,
       });
       throw error;
@@ -59,7 +62,7 @@ const useAuthStore = create((set) => ({
       });
     } catch (error) {
       set({
-        error: error.message || 'Logout failed',
+        error: getErrorMessage(error, 'Logout failed'),
         isLoading: false,
       });
     }
@@ -77,7 +80,7 @@ const useAuthStore = create((set) => ({
       return response;
     } catch (error) {
       set({
-        error: error.message || 'Update failed',
+        error: getErrorMessage(error, 'Update failed'),
         isLoading: false,
       });
       throw error;
@@ -96,7 +99,7 @@ const useAuthStore = create((set) => ({
       return user;
     } catch (error) {
       set({
-        error: error.message || 'Failed to fetch user',
+        error: getErrorMessage(error, 'Failed to fetch user'),
         isLoading: false,
       });
     }
