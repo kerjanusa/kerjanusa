@@ -24,6 +24,20 @@ const isPublicAuthRequest = (url = '') => {
   );
 };
 
+const clearSessionAndRedirectToLogin = () => {
+  let userRole = null;
+
+  try {
+    userRole = JSON.parse(localStorage.getItem('user') || 'null')?.role || null;
+  } catch {
+    userRole = null;
+  }
+
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user');
+  window.location.replace(getLoginRouteForRole(userRole));
+};
+
 // Add token to requests
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
@@ -44,17 +58,11 @@ apiClient.interceptors.response.use(
       Boolean(error.config?.headers?.Authorization || localStorage.getItem('auth_token'));
 
     if (shouldRedirectToLogin) {
-      let userRole = null;
+      clearSessionAndRedirectToLogin();
+    }
 
-      try {
-        userRole = JSON.parse(localStorage.getItem('user') || 'null')?.role || null;
-      } catch {
-        userRole = null;
-      }
-
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      window.location.replace(getLoginRouteForRole(userRole));
+    if (error.response?.status === 403 && error.response?.data?.reason === 'account_suspended') {
+      clearSessionAndRedirectToLogin();
     }
     return Promise.reject(error);
   }

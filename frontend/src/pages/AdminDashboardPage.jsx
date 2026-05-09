@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import AdminService from '../services/adminService.js';
@@ -74,12 +74,52 @@ const formatApplicationStatus = (status) => {
   }
 };
 
-const formatJobStatus = (status) => {
+const formatApplicationStage = (stage) => {
+  switch (stage) {
+    case 'applied':
+      return 'Pelamar masuk';
+    case 'screening':
+      return 'Screening';
+    case 'shortlisted':
+      return 'Shortlist';
+    case 'interview':
+      return 'Interview';
+    case 'offering':
+      return 'Offering';
+    case 'hired':
+      return 'Hired';
+    case 'rejected':
+      return 'Tidak lanjut';
+    case 'withdrawn':
+      return 'Dibatalkan kandidat';
+    default:
+      return stage || '-';
+  }
+};
+
+const formatJobStatus = (job) => {
+  switch (job?.workflow_status || job?.status) {
+    case 'active':
+      return 'Aktif';
+    case 'draft':
+      return 'Draft';
+    case 'paused':
+      return 'Dijeda';
+    case 'closed':
+      return 'Ditutup';
+    case 'filled':
+      return 'Hiring selesai';
+    default:
+      return job?.status === 'inactive' ? 'Nonaktif' : job?.workflow_status || job?.status || '-';
+  }
+};
+
+const formatAccountStatus = (status) => {
   switch (status) {
     case 'active':
       return 'Aktif';
-    case 'inactive':
-      return 'Nonaktif';
+    case 'suspended':
+      return 'Dinonaktifkan';
     default:
       return status || '-';
   }
@@ -93,6 +133,45 @@ const getProgressValue = (numerator, denominator) => {
   return Math.max(0, Math.min(100, Math.round((numerator / denominator) * 100)));
 };
 
+const getToneClass = (tone) => `workspace-status-pill workspace-status-pill-${tone}`;
+
+const getAccountStatusTone = (status) => (status === 'active' ? 'success' : 'danger');
+const getProfileTone = (isReady) => (isReady ? 'success' : 'warning');
+
+const getJobTone = (job) => {
+  switch (job?.workflow_status || job?.status) {
+    case 'active':
+      return 'success';
+    case 'draft':
+      return 'muted';
+    case 'paused':
+      return 'warning';
+    case 'closed':
+    case 'filled':
+      return 'danger';
+    default:
+      return 'muted';
+  }
+};
+
+const getApplicationTone = (application) => {
+  switch (application?.stage || application?.status) {
+    case 'hired':
+      return 'success';
+    case 'interview':
+    case 'offering':
+    case 'shortlisted':
+      return 'primary';
+    case 'screening':
+      return 'warning';
+    case 'rejected':
+    case 'withdrawn':
+      return 'danger';
+    default:
+      return 'muted';
+  }
+};
+
 const AdminDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -101,53 +180,65 @@ const AdminDashboardPage = () => {
   const [dashboard, setDashboard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [userStatusActionInFlightId, setUserStatusActionInFlightId] = useState(null);
+  const [userResetActionInFlightId, setUserResetActionInFlightId] = useState(null);
+  const [jobActionInFlightId, setJobActionInFlightId] = useState(null);
+  const [jobReassignments, setJobReassignments] = useState({});
 
   useEffect(() => {
     setActiveSection(resolveAdminSectionFromHash(location.hash));
   }, [location.hash]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadDashboard = async () => {
+  const loadDashboard = useCallback(async (showLoading = true) => {
+    if (showLoading) {
       setIsLoading(true);
-      setError('');
+    }
+    setError('');
 
-      try {
-        const response = await AdminService.getDashboard();
+    try {
+      const response = await AdminService.getDashboard();
+      setDashboard(response);
+      setJobReassignments((current) => {
+        const next = { ...current };
 
-        if (!isMounted) {
-          return;
-        }
+        (response.jobs || []).forEach((job) => {
+          const key = String(job.id);
 
-        setDashboard(response);
-      } catch (loadError) {
-        if (!isMounted) {
-          return;
-        }
+          if (!next[key]) {
+            next[key] = job.recruiter?.id ? String(job.recruiter.id) : '';
+          }
+        });
 
-        setError(loadError?.message || 'Gagal memuat dashboard superadmin.');
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        return next;
+      });
+    } catch (loadError) {
+      setError(loadError?.message || 'Gagal memuat dashboard superadmin.');
+    } finally {
+      if (showLoading) {
+        setIsLoading(false);
       }
-    };
-
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
+    }
   }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const totals = dashboard?.totals ?? {};
   const growth = dashboard?.growth ?? {};
   const candidateTable = dashboard?.candidate_table ?? [];
   const recruiterTable = dashboard?.recruiter_table ?? [];
+  const recruiterOptions = dashboard?.recruiter_options ?? [];
   const jobs = dashboard?.jobs ?? [];
   const applications = dashboard?.applications ?? [];
+  const suspendedCandidates = candidateTable.filter(
+    (candidate) => candidate.account_status === 'suspended'
+  ).length;
+  const suspendedRecruiters = recruiterTable.filter(
+    (recruiter) => recruiter.account_status === 'suspended'
+  ).length;
 
   const overviewCards = useMemo(
     () => [
@@ -159,12 +250,12 @@ const AdminDashboardPage = () => {
       {
         label: 'Recruiter Aktif',
         value: totals.recruiters ?? 0,
-        detail: `+${growth.new_recruiters_last_7_days ?? 0} recruiter baru dalam 7 hari`,
+        detail: `${suspendedRecruiters} recruiter sedang dinonaktifkan`,
       },
       {
         label: 'Lowongan Aktif',
         value: totals.active_jobs ?? 0,
-        detail: `${totals.inactive_jobs ?? 0} lowongan sedang nonaktif`,
+        detail: `${totals.inactive_jobs ?? 0} lowongan publik sedang nonaktif`,
       },
       {
         label: 'Lamaran Masuk',
@@ -172,7 +263,7 @@ const AdminDashboardPage = () => {
         detail: `${totals.pending_applications ?? 0} masih menunggu review`,
       },
     ],
-    [growth, totals]
+    [growth, suspendedRecruiters, totals]
   );
 
   const performanceBars = useMemo(
@@ -205,10 +296,10 @@ const AdminDashboardPage = () => {
   const activityAlerts = useMemo(
     () => [
       `${totals.pending_applications ?? 0} lamaran masih menunggu review recruiter.`,
-      `${totals.inactive_jobs ?? 0} lowongan nonaktif dapat ditinjau untuk reaktivasi atau moderasi.`,
+      `${suspendedCandidates} pelamar dan ${suspendedRecruiters} recruiter sedang dinonaktifkan.`,
       `${growth.new_jobs_last_7_days ?? 0} lowongan baru dibuat dalam 7 hari terakhir.`,
     ],
-    [growth, totals]
+    [growth, suspendedCandidates, suspendedRecruiters, totals]
   );
 
   const analyticsCards = useMemo(() => {
@@ -231,24 +322,34 @@ const AdminDashboardPage = () => {
         value: `${getProgressValue(rejectedApplications, totalApplications)}%`,
       },
       {
-        label: 'Pertumbuhan lowongan 7 hari',
-        value: numberFormatter.format(growth.new_jobs_last_7_days ?? 0),
+        label: 'Pelamar dinonaktifkan',
+        value: numberFormatter.format(suspendedCandidates),
       },
       {
-        label: 'Pertumbuhan lamaran 7 hari',
-        value: numberFormatter.format(growth.new_applications_last_7_days ?? 0),
+        label: 'Recruiter dinonaktifkan',
+        value: numberFormatter.format(suspendedRecruiters),
       },
       {
         label: 'Akun superadmin',
         value: numberFormatter.format(totals.superadmins ?? 0),
       },
     ];
-  }, [growth, totals]);
+  }, [suspendedCandidates, suspendedRecruiters, totals]);
 
   const moderationItems = useMemo(
     () =>
-      jobs.filter((job) => job.status !== 'active' || job.applications_count === 0).slice(0, 6),
+      jobs.filter(
+        (job) =>
+          job.workflow_status !== 'active' ||
+          job.status !== 'active' ||
+          Number(job.applications_count) === 0
+      ),
     [jobs]
+  );
+
+  const pendingApplications = useMemo(
+    () => applications.filter((application) => application.status === 'pending'),
+    [applications]
   );
 
   const handleSectionChange = (section) => {
@@ -261,6 +362,108 @@ const AdminDashboardPage = () => {
     await logout();
     navigate(APP_ROUTES.landing, { replace: true });
   };
+
+  const handleUserStatusToggle = async (account) => {
+    const targetStatus = account.account_status === 'active' ? 'suspended' : 'active';
+
+    setUserStatusActionInFlightId(account.id);
+
+    try {
+      await AdminService.updateUser(account.id, {
+        account_status: targetStatus,
+        account_status_reason:
+          targetStatus === 'suspended'
+            ? 'Akun dinonaktifkan sementara oleh superadmin KerjaNusa.'
+            : '',
+      });
+      await loadDashboard(false);
+      setFeedback({
+        type: 'success',
+        message: `${account.name} sekarang berstatus ${formatAccountStatus(targetStatus).toLowerCase()}.`,
+      });
+    } catch (actionError) {
+      setFeedback({
+        type: 'error',
+        message: actionError?.message || 'Status akun belum berhasil diperbarui.',
+      });
+    } finally {
+      setUserStatusActionInFlightId(null);
+    }
+  };
+
+  const handleSendResetLink = async (account) => {
+    setUserResetActionInFlightId(account.id);
+
+    try {
+      await AdminService.sendResetLink(account.id);
+      setFeedback({
+        type: 'success',
+        message: `Link reset password berhasil dikirim ke ${account.email}.`,
+      });
+    } catch (actionError) {
+      setFeedback({
+        type: 'error',
+        message: actionError?.message || 'Link reset password belum berhasil dikirim.',
+      });
+    } finally {
+      setUserResetActionInFlightId(null);
+    }
+  };
+
+  const handleReassignJob = async (job) => {
+    const selectedRecruiterId = jobReassignments[String(job.id)] || '';
+
+    if (!selectedRecruiterId) {
+      setFeedback({
+        type: 'error',
+        message: 'Pilih recruiter tujuan terlebih dahulu.',
+      });
+      return;
+    }
+
+    setJobActionInFlightId(job.id);
+
+    try {
+      await AdminService.reassignJob(job.id, Number(selectedRecruiterId));
+      await loadDashboard(false);
+      setFeedback({
+        type: 'success',
+        message: `${job.title} berhasil dipindahkan ke recruiter baru.`,
+      });
+    } catch (actionError) {
+      setFeedback({
+        type: 'error',
+        message: actionError?.message || 'Lowongan belum berhasil dipindahkan.',
+      });
+    } finally {
+      setJobActionInFlightId(null);
+    }
+  };
+
+  const renderUserActions = (account) => (
+    <div className="workspace-action-row">
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => handleUserStatusToggle(account)}
+        disabled={userStatusActionInFlightId === account.id}
+      >
+        {userStatusActionInFlightId === account.id
+          ? 'Memproses...'
+          : account.account_status === 'active'
+            ? 'Suspend'
+            : 'Aktifkan'}
+      </button>
+      <button
+        type="button"
+        className="btn btn-outline"
+        onClick={() => handleSendResetLink(account)}
+        disabled={userResetActionInFlightId === account.id}
+      >
+        {userResetActionInFlightId === account.id ? 'Mengirim...' : 'Kirim Reset Password'}
+      </button>
+    </div>
+  );
 
   const renderLoadingState = () => (
     <article className="workspace-panel">
@@ -284,7 +487,7 @@ const AdminDashboardPage = () => {
       </div>
       <p>{error}</p>
       <div className="workspace-action-row">
-        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+        <button type="button" className="btn btn-primary" onClick={() => loadDashboard()}>
           Muat ulang
         </button>
       </div>
@@ -339,14 +542,14 @@ const AdminDashboardPage = () => {
         <section className="workspace-overview-grid" data-reveal>
           <article className="workspace-hero-card">
             <span className="workspace-kicker">Superadmin KerjaNusa</span>
-            <h1>Dashboard Monitoring Utama</h1>
+            <h1>Pusat kontrol candidate, recruiter, dan lowongan</h1>
             <p>
-              Pusat kontrol untuk memantau pelamar, recruiter, lowongan, dan kesehatan operasional
-              platform dari satu tampilan yang terhubung ke backend.
+              Panel ini sekarang bukan hanya monitoring. Superadmin bisa memantau, menonaktifkan
+              akun, mengirim reset password, dan memindahkan lowongan antar recruiter aktif.
             </p>
             <div className="workspace-action-row">
-              <button type="button" className="btn btn-primary" disabled>
-                Export Data Segera Hadir
+              <button type="button" className="btn btn-primary" onClick={() => loadDashboard(false)}>
+                Refresh Data
               </button>
               <Link to={APP_ROUTES.platform} className="btn btn-outline">
                 Lihat Profil KerjaNusa
@@ -365,6 +568,12 @@ const AdminDashboardPage = () => {
           </div>
         </section>
 
+        {feedback && (
+          <div className={`${feedback.type === 'error' ? 'error' : 'success'} workspace-feedback`}>
+            {feedback.message}
+          </div>
+        )}
+
         {isLoading && renderLoadingState()}
         {!isLoading && error && renderErrorState()}
 
@@ -377,8 +586,8 @@ const AdminDashboardPage = () => {
                   <h2>Recruiter, pelamar, lowongan, dan lamaran</h2>
                 </div>
                 <p>
-                  Semua angka di bawah ini diambil langsung dari data user, lowongan, dan lamaran
-                  yang sudah tersimpan di backend.
+                  Semua angka di bawah ini diambil langsung dari user, lowongan, dan lamaran yang
+                  tersimpan di backend.
                 </p>
               </div>
 
@@ -440,106 +649,59 @@ const AdminDashboardPage = () => {
 
         {!isLoading && !error && activeSection === 'pelamar' && (
           <section id="pelamar" className="workspace-section-stack">
-            <section className="workspace-two-column-grid">
-              <article className="workspace-panel" data-reveal>
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Database Pelamar</span>
-                    <h2>Pelamar terbaru dan status terakhir</h2>
-                  </div>
-                </div>
-
-                <div className="workspace-table">
-                  <div className="workspace-table-row workspace-table-row-head">
-                    <span>Nama</span>
-                    <span>Email</span>
-                    <span>Lamaran</span>
-                    <span>Status terakhir</span>
-                    <span>Lowongan terakhir</span>
-                  </div>
-                  {candidateTable.length === 0 ? (
-                    <div className="workspace-table-row">
-                      <span>Belum ada data pelamar.</span>
-                    </div>
-                  ) : (
-                    candidateTable.map((candidate) => (
-                      <div key={candidate.id} className="workspace-table-row">
-                        <span>{candidate.name}</span>
-                        <span>{candidate.email}</span>
-                        <span>{numberFormatter.format(candidate.applications_count ?? 0)}</span>
-                        <span>{formatApplicationStatus(candidate.latest_application_status)}</span>
-                        <span>{candidate.latest_job_title || '-'}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </article>
-
-              <article className="workspace-panel" data-reveal data-reveal-delay="70ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Lamaran Terbaru</span>
-                    <h2>Aktivitas kandidat paling baru</h2>
-                  </div>
-                </div>
-
-                <div className="workspace-card-list">
-                  {applications.length === 0 ? (
-                    <article className="workspace-subcard">
-                      <p>Belum ada lamaran terbaru.</p>
-                    </article>
-                  ) : (
-                    applications.map((application) => (
-                      <article key={application.id} className="workspace-subcard">
-                        <div className="workspace-subcard-heading">
-                          <strong>{application.candidate?.name || 'Kandidat'}</strong>
-                          <span>{formatApplicationStatus(application.status)}</span>
-                        </div>
-                        <p>
-                          Melamar ke <strong>{application.job?.title || '-'}</strong> milik{' '}
-                          <strong>{application.recruiter?.name || '-'}</strong>.
-                        </p>
-                        <small>{formatDateTime(application.applied_at)}</small>
-                      </article>
-                    ))
-                  )}
-                </div>
-              </article>
-            </section>
-          </section>
-        )}
-
-        {!isLoading && !error && activeSection === 'recruiter' && (
-          <section className="workspace-two-column-grid">
             <article className="workspace-panel" data-reveal>
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Recruiter & Company</span>
-                  <h2>Recruiter terbaru dan aktivitas lowongan</h2>
+                  <span className="workspace-section-label">Kontrol Pelamar</span>
+                  <h2>Profil, status akun, dan reset password</h2>
                 </div>
+                <p>
+                  Superadmin bisa melihat kesiapan profil kandidat, stage lamaran terakhir, lalu
+                  menonaktifkan atau memulihkan akun bila diperlukan.
+                </p>
               </div>
 
-              <div className="workspace-card-list">
-                {recruiterTable.length === 0 ? (
-                  <article className="workspace-subcard">
-                    <p>Belum ada recruiter yang terdaftar.</p>
-                  </article>
+              <div className="workspace-table">
+                <div className="workspace-table-row workspace-table-row-head">
+                  <span>Pelamar</span>
+                  <span>Profil</span>
+                  <span>Status akun</span>
+                  <span>Lamaran</span>
+                  <span>Stage terakhir</span>
+                  <span>Aksi</span>
+                </div>
+                {candidateTable.length === 0 ? (
+                  <div className="workspace-table-row">
+                    <span>Belum ada data pelamar.</span>
+                  </div>
                 ) : (
-                  recruiterTable.map((recruiter) => (
-                    <article key={recruiter.id} className="workspace-subcard">
-                      <div className="workspace-subcard-heading">
-                        <strong>{recruiter.name}</strong>
-                        <span>{recruiter.email}</span>
-                      </div>
-                      <p>
-                        {numberFormatter.format(recruiter.active_jobs_count ?? 0)} lowongan aktif dari{' '}
-                        {numberFormatter.format(recruiter.jobs_count ?? 0)} total lowongan.
-                      </p>
-                      <small>
-                        Lowongan terakhir: {recruiter.latest_job_title || '-'} pada{' '}
-                        {formatDateTime(recruiter.latest_job_created_at)}
-                      </small>
-                    </article>
+                  candidateTable.map((candidate) => (
+                    <div key={candidate.id} className="workspace-table-row">
+                      <span>
+                        <strong>{candidate.name}</strong>
+                        <br />
+                        {candidate.email}
+                      </span>
+                      <span>
+                        <span className={getToneClass(getProfileTone(candidate.profile_ready))}>
+                          {candidate.profile_ready ? 'Siap melamar' : 'Belum siap'}
+                        </span>
+                      </span>
+                      <span>
+                        <span className={getToneClass(getAccountStatusTone(candidate.account_status))}>
+                          {formatAccountStatus(candidate.account_status)}
+                        </span>
+                        {candidate.account_status_reason && (
+                          <>
+                            <br />
+                            <small>{candidate.account_status_reason}</small>
+                          </>
+                        )}
+                      </span>
+                      <span>{numberFormatter.format(candidate.applications_count ?? 0)}</span>
+                      <span>{formatApplicationStage(candidate.latest_application_stage)}</span>
+                      <span>{renderUserActions(candidate)}</span>
+                    </div>
                   ))
                 )}
               </div>
@@ -548,19 +710,100 @@ const AdminDashboardPage = () => {
             <article className="workspace-panel" data-reveal data-reveal-delay="70ms">
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Kontrol Akses</span>
-                  <h2>Role yang aktif di sistem</h2>
+                  <span className="workspace-section-label">Lamaran Terbaru</span>
+                  <h2>Aktivitas kandidat paling baru</h2>
+                </div>
+              </div>
+
+              <div className="workspace-card-list">
+                {applications.length === 0 ? (
+                  <article className="workspace-subcard">
+                    <p>Belum ada lamaran terbaru.</p>
+                  </article>
+                ) : (
+                  applications.map((application) => (
+                    <article key={application.id} className="workspace-subcard">
+                      <div className="workspace-subcard-heading">
+                        <strong>{application.candidate?.name || 'Kandidat'}</strong>
+                        <span className={getToneClass(getApplicationTone(application))}>
+                          {formatApplicationStage(application.stage)}
+                        </span>
+                      </div>
+                      <p>
+                        Melamar ke <strong>{application.job?.title || '-'}</strong> milik{' '}
+                        <strong>{application.recruiter?.name || '-'}</strong>.
+                      </p>
+                      <small>
+                        {formatApplicationStatus(application.status)} • {formatDateTime(application.applied_at)}
+                      </small>
+                    </article>
+                  ))
+                )}
+              </div>
+            </article>
+          </section>
+        )}
+
+        {!isLoading && !error && activeSection === 'recruiter' && (
+          <section className="workspace-section-stack">
+            <article className="workspace-panel" data-reveal>
+              <div className="workspace-panel-heading">
+                <div>
+                  <span className="workspace-section-label">Kontrol Recruiter</span>
+                  <h2>Profil company, status akun, dan lowongan</h2>
                 </div>
                 <p>
-                  Model akses saat ini dipisahkan tegas antara candidate, recruiter, dan
-                  superadmin agar otorisasi tetap jelas.
+                  Area ini membantu superadmin memeriksa recruiter yang belum siap publish,
+                  menonaktifkan akun bermasalah, dan mengirim reset password tanpa keluar dari panel.
                 </p>
               </div>
 
-              <div className="workspace-chip-wrap">
-                <span className="workspace-chip">Candidate</span>
-                <span className="workspace-chip">Recruiter</span>
-                <span className="workspace-chip">Superadmin</span>
+              <div className="workspace-table">
+                <div className="workspace-table-row workspace-table-row-head">
+                  <span>Recruiter</span>
+                  <span>Company</span>
+                  <span>Profil</span>
+                  <span>Status akun</span>
+                  <span>Lowongan</span>
+                  <span>Aksi</span>
+                </div>
+                {recruiterTable.length === 0 ? (
+                  <div className="workspace-table-row">
+                    <span>Belum ada recruiter yang terdaftar.</span>
+                  </div>
+                ) : (
+                  recruiterTable.map((recruiter) => (
+                    <div key={recruiter.id} className="workspace-table-row">
+                      <span>
+                        <strong>{recruiter.name}</strong>
+                        <br />
+                        {recruiter.email}
+                      </span>
+                      <span>{recruiter.company_name || '-'}</span>
+                      <span>
+                        <span className={getToneClass(getProfileTone(recruiter.profile_ready))}>
+                          {recruiter.profile_ready ? 'Siap publish' : 'Belum siap'}
+                        </span>
+                      </span>
+                      <span>
+                        <span className={getToneClass(getAccountStatusTone(recruiter.account_status))}>
+                          {formatAccountStatus(recruiter.account_status)}
+                        </span>
+                        {recruiter.account_status_reason && (
+                          <>
+                            <br />
+                            <small>{recruiter.account_status_reason}</small>
+                          </>
+                        )}
+                      </span>
+                      <span>
+                        {numberFormatter.format(recruiter.active_jobs_count ?? 0)} aktif dari{' '}
+                        {numberFormatter.format(recruiter.jobs_count ?? 0)}
+                      </span>
+                      <span>{renderUserActions(recruiter)}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </article>
           </section>
@@ -571,58 +814,84 @@ const AdminDashboardPage = () => {
             <article className="workspace-panel" data-reveal>
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Lowongan Terbaru</span>
-                  <h2>Status lowongan dan performa lamaran</h2>
+                  <span className="workspace-section-label">Kontrol Lowongan</span>
+                  <h2>Status workflow dan pemindahan recruiter</h2>
                 </div>
+                <p>
+                  Lowongan yang sudah tayang bisa dipantau statusnya, lalu dialihkan ke recruiter
+                  aktif lain bila recruiter asal sedang dinonaktifkan atau berpindah tugas.
+                </p>
               </div>
 
-              <div className="workspace-kpi-grid">
-                <article className="workspace-kpi-card">
-                  <span>Total lowongan</span>
-                  <strong>{numberFormatter.format(totals.total_jobs ?? 0)}</strong>
-                  <small>Seluruh lowongan yang tersimpan di sistem</small>
-                </article>
-                <article className="workspace-kpi-card">
-                  <span>Lowongan aktif</span>
-                  <strong>{numberFormatter.format(totals.active_jobs ?? 0)}</strong>
-                  <small>Lowongan yang tampil untuk kandidat</small>
-                </article>
-                <article className="workspace-kpi-card">
-                  <span>Lowongan nonaktif</span>
-                  <strong>{numberFormatter.format(totals.inactive_jobs ?? 0)}</strong>
-                  <small>Dapat dimoderasi atau diaktifkan kembali</small>
-                </article>
-                <article className="workspace-kpi-card">
-                  <span>Total lamaran</span>
-                  <strong>{numberFormatter.format(totals.total_applications ?? 0)}</strong>
-                  <small>Akumulasi seluruh job application</small>
-                </article>
-              </div>
-            </article>
-
-            <article className="workspace-panel" data-reveal data-reveal-delay="60ms">
               <div className="workspace-table">
                 <div className="workspace-table-row workspace-table-row-head">
                   <span>Judul</span>
-                  <span>Recruiter</span>
-                  <span>Lokasi</span>
+                  <span>Recruiter sekarang</span>
                   <span>Status</span>
                   <span>Lamaran</span>
+                  <span>Alihkan ke</span>
+                  <span>Aksi</span>
                 </div>
                 {jobs.length === 0 ? (
                   <div className="workspace-table-row">
                     <span>Belum ada lowongan.</span>
                   </div>
                 ) : (
-                  jobs.map((job) => (
-                    <div key={job.id} className="workspace-table-row">
-                      <span>{job.title}</span>
-                      <span>{job.recruiter?.name || '-'}</span>
-                      <span>{job.location || '-'}</span>
-                      <span>{formatJobStatus(job.status)}</span>
-                      <span>{numberFormatter.format(job.applications_count ?? 0)}</span>
-                    </div>
-                  ))
+                  jobs.map((job) => {
+                    const selectedRecruiterId = jobReassignments[String(job.id)] || '';
+                    const hasSelectedRecruiter = recruiterOptions.some(
+                      (recruiter) => String(recruiter.id) === selectedRecruiterId
+                    );
+
+                    return (
+                      <div key={job.id} className="workspace-table-row">
+                        <span>
+                          <strong>{job.title}</strong>
+                          <br />
+                          {job.location || '-'}
+                        </span>
+                        <span>{job.recruiter?.name || '-'}</span>
+                        <span>
+                          <span className={getToneClass(getJobTone(job))}>{formatJobStatus(job)}</span>
+                        </span>
+                        <span>{numberFormatter.format(job.applications_count ?? 0)}</span>
+                        <span>
+                          <select
+                            className="recruiter-flow-select"
+                            value={selectedRecruiterId}
+                            onChange={(event) =>
+                              setJobReassignments((current) => ({
+                                ...current,
+                                [String(job.id)]: event.target.value,
+                              }))
+                            }
+                          >
+                            {!hasSelectedRecruiter && job.recruiter?.id && (
+                              <option value={String(job.recruiter.id)}>
+                                {job.recruiter?.name || 'Recruiter saat ini'}
+                              </option>
+                            )}
+                            <option value="">Pilih recruiter aktif</option>
+                            {recruiterOptions.map((recruiter) => (
+                              <option key={recruiter.id} value={String(recruiter.id)}>
+                                {recruiter.company_name || recruiter.name} ({recruiter.email})
+                              </option>
+                            ))}
+                          </select>
+                        </span>
+                        <span>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => handleReassignJob(job)}
+                            disabled={jobActionInFlightId === job.id}
+                          >
+                            {jobActionInFlightId === job.id ? 'Memindahkan...' : 'Alihkan'}
+                          </button>
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </article>
@@ -634,11 +903,11 @@ const AdminDashboardPage = () => {
             <div className="workspace-panel-heading">
               <div>
                 <span className="workspace-section-label">Analytics Ringkas</span>
-                <h2>Rasio yang paling relevan untuk superadmin</h2>
+                <h2>Rasio paling relevan untuk superadmin</h2>
               </div>
               <p>
-                Fokus awal dashboard analytics adalah volume user, volume lowongan, dan outcome
-                lamaran yang benar-benar ada di database saat ini.
+                Fokus awal analytics tetap ke volume user, lowongan, dan outcome lamaran yang
+                benar-benar ada di database saat ini.
               </p>
             </div>
 
@@ -658,12 +927,12 @@ const AdminDashboardPage = () => {
             <article className="workspace-panel" data-reveal>
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Moderasi Lowongan</span>
-                  <h2>Lowongan yang perlu perhatian</h2>
+                  <span className="workspace-section-label">Lowongan Perlu Perhatian</span>
+                  <h2>Draft, nonaktif, atau belum ada pelamar</h2>
                 </div>
                 <p>
-                  Prioritas awal moderasi difokuskan pada lowongan nonaktif atau lowongan yang
-                  belum menerima lamaran sama sekali.
+                  Area ini membantu superadmin menemukan lowongan yang macet, belum tersentuh, atau
+                  perlu segera dialihkan ke recruiter lain.
                 </p>
               </div>
 
@@ -677,7 +946,7 @@ const AdminDashboardPage = () => {
                     <article key={job.id} className="workspace-subcard">
                       <div className="workspace-subcard-heading">
                         <strong>{job.title}</strong>
-                        <span>{formatJobStatus(job.status)}</span>
+                        <span className={getToneClass(getJobTone(job))}>{formatJobStatus(job)}</span>
                       </div>
                       <p>
                         Recruiter: <strong>{job.recruiter?.name || '-'}</strong> | Lokasi:{' '}
@@ -695,31 +964,32 @@ const AdminDashboardPage = () => {
             <article className="workspace-panel" data-reveal data-reveal-delay="70ms">
               <div className="workspace-panel-heading">
                 <div>
-                  <span className="workspace-section-label">Review Lamaran</span>
-                  <h2>Lamaran yang masih pending</h2>
+                  <span className="workspace-section-label">Lamaran Pending</span>
+                  <h2>Yang belum disentuh recruiter</h2>
                 </div>
               </div>
 
               <div className="workspace-card-list">
-                {applications.filter((application) => application.status === 'pending').length === 0 ? (
+                {pendingApplications.length === 0 ? (
                   <article className="workspace-subcard">
                     <p>Tidak ada lamaran pending untuk dimonitor saat ini.</p>
                   </article>
                 ) : (
-                  applications
-                    .filter((application) => application.status === 'pending')
-                    .map((application) => (
-                      <article key={application.id} className="workspace-subcard">
-                        <div className="workspace-subcard-heading">
-                          <strong>{application.candidate?.name || 'Kandidat'}</strong>
-                          <span>{application.job?.title || '-'}</span>
-                        </div>
-                        <p>
-                          Recruiter tujuan: <strong>{application.recruiter?.name || '-'}</strong>
-                        </p>
-                        <small>{formatDateTime(application.applied_at)}</small>
-                      </article>
-                    ))
+                  pendingApplications.map((application) => (
+                    <article key={application.id} className="workspace-subcard">
+                      <div className="workspace-subcard-heading">
+                        <strong>{application.candidate?.name || 'Kandidat'}</strong>
+                        <span className={getToneClass(getApplicationTone(application))}>
+                          {formatApplicationStage(application.stage)}
+                        </span>
+                      </div>
+                      <p>
+                        <strong>{application.job?.title || '-'}</strong> • recruiter{' '}
+                        <strong>{application.recruiter?.name || '-'}</strong>
+                      </p>
+                      <small>{formatDateTime(application.applied_at)}</small>
+                    </article>
+                  ))
                 )}
               </div>
             </article>

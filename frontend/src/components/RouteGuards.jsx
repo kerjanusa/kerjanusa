@@ -1,11 +1,22 @@
 import { Navigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
-import { getDefaultRouteForRole, getLoginRouteForRole } from '../utils/routeHelpers.js';
+import { readCandidateApplyIntent } from '../utils/candidateApplyIntent.js';
+import {
+  APP_ROUTES,
+  getDefaultRouteForRole,
+  getLoginRouteForRole,
+  normalizeUserRole,
+} from '../utils/routeHelpers.js';
 
 const GuestRoute = ({ children }) => {
   const { user } = useAuth();
+  const pendingApplyIntent = readCandidateApplyIntent();
 
   if (user) {
+    if (pendingApplyIntent && normalizeUserRole(user.role) === 'candidate') {
+      return <Navigate to={APP_ROUTES.jobs} replace />;
+    }
+
     return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
   }
 

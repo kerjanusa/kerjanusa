@@ -10,6 +10,26 @@ use Illuminate\Database\Eloquent\Builder;
 class JobService
 {
     /**
+     * Keep the public active/inactive status in sync with the richer recruiter workflow status.
+     */
+    public function mapWorkflowToStatus(string $workflowStatus): string
+    {
+        return $workflowStatus === Job::WORKFLOW_ACTIVE
+            ? Job::STATUS_ACTIVE
+            : Job::STATUS_INACTIVE;
+    }
+
+    /**
+     * Derive a sensible workflow label when only the old status is available.
+     */
+    public function mapStatusToWorkflow(string $status): string
+    {
+        return $status === Job::STATUS_ACTIVE
+            ? Job::WORKFLOW_ACTIVE
+            : Job::WORKFLOW_DRAFT;
+    }
+
+    /**
      * Mengambil daftar lowongan aktif lalu menerapkan seluruh filter pencarian dari frontend.
      */
     public function getAllJobs(array $filters = [], int $perPage = 15): LengthAwarePaginator
@@ -36,7 +56,14 @@ class JobService
     public function createJob(int $recruiterId, array $data): Job
     {
         $data['recruiter_id'] = $recruiterId;
+        $data['workflow_status'] = $data['workflow_status'] ?? $this->mapStatusToWorkflow(
+            $data['status'] ?? Job::STATUS_ACTIVE
+        );
         $data['status'] = $data['status'] ?? Job::STATUS_ACTIVE;
+
+        if (array_key_exists('workflow_status', $data)) {
+            $data['status'] = $this->mapWorkflowToStatus($data['workflow_status']);
+        }
 
         return Job::create($data);
     }
@@ -52,7 +79,29 @@ class JobService
             return false;
         }
 
+        if (array_key_exists('workflow_status', $data)) {
+            $data['status'] = $this->mapWorkflowToStatus($data['workflow_status']);
+        } elseif (array_key_exists('status', $data)) {
+            $data['workflow_status'] = $this->mapStatusToWorkflow($data['status']);
+        }
+
         return $job->update($data);
+    }
+
+    /**
+     * Reassign a job to another recruiter while preserving its current workflow.
+     */
+    public function reassignJob(int $jobId, int $recruiterId): bool
+    {
+        $job = Job::find($jobId);
+
+        if (!$job) {
+            return false;
+        }
+
+        return $job->update([
+            'recruiter_id' => $recruiterId,
+        ]);
     }
 
     /**

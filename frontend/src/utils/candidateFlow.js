@@ -86,29 +86,34 @@ export const mergeCandidateProfile = (user, savedProfile) => {
 export const getCandidateProfileStorageKey = (userId) =>
   `${CANDIDATE_PROFILE_STORAGE_PREFIX}:${userId || 'guest'}`;
 
-export const readCandidateProfile = (user) => {
+const getCandidateProfileSource = (user) => {
+  const backendProfile =
+    user?.candidate_profile && typeof user.candidate_profile === 'object'
+      ? user.candidate_profile
+      : null;
+
   if (typeof window === 'undefined') {
-    return createCandidateProfile(user);
+    return mergeCandidateProfile(user, backendProfile);
   }
 
   try {
     const storedProfile = localStorage.getItem(getCandidateProfileStorageKey(user?.id));
+    const parsedStoredProfile = storedProfile ? JSON.parse(storedProfile) : null;
 
-    if (!storedProfile) {
-      return createCandidateProfile(user);
-    }
-
-    return mergeCandidateProfile(user, JSON.parse(storedProfile));
+    return mergeCandidateProfile(user, {
+      ...(backendProfile || {}),
+      ...(parsedStoredProfile && typeof parsedStoredProfile === 'object' ? parsedStoredProfile : {}),
+    });
   } catch {
-    return createCandidateProfile(user);
+    return mergeCandidateProfile(user, backendProfile);
   }
 };
 
-export const saveCandidateProfile = (user, profile) => {
-  if (typeof window === 'undefined') {
-    return mergeCandidateProfile(user, profile);
-  }
+export const readCandidateProfile = (user) => {
+  return getCandidateProfileSource(user);
+};
 
+export const saveCandidateProfile = (user, profile) => {
   const normalizedProfile = mergeCandidateProfile(user, {
     ...profile,
     fullName: profile?.fullName?.trim?.() || '',
@@ -117,6 +122,10 @@ export const saveCandidateProfile = (user, profile) => {
     currentAddress: profile?.currentAddress?.trim?.() || '',
     profileSummary: profile?.profileSummary?.trim?.() || '',
   });
+
+  if (typeof window === 'undefined') {
+    return normalizedProfile;
+  }
 
   localStorage.setItem(
     getCandidateProfileStorageKey(user?.id),

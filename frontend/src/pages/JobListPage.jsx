@@ -9,6 +9,11 @@ import useJobs from '../hooks/useJobs';
 import ApplicationService from '../services/applicationService.js';
 import JobService from '../services/jobService.js';
 import {
+  clearCandidateApplyIntent,
+  readCandidateApplyIntent,
+  saveCandidateApplyIntent,
+} from '../utils/candidateApplyIntent.js';
+import {
   getCandidateProfileCompletion,
   readCandidateProfile,
 } from '../utils/candidateFlow.js';
@@ -67,14 +72,18 @@ const JobListPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { applyForJob, isLoading: isApplying } = useApplications();
+  const initialApplyIntentRef = React.useRef(readCandidateApplyIntent());
+  const initialApplyIntent = initialApplyIntentRef.current;
   const candidateProfile = React.useMemo(() => readCandidateProfile(user), [user]);
   const candidateCompletion = React.useMemo(
     () => getCandidateProfileCompletion(candidateProfile),
     [candidateProfile]
   );
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [filters, setFilters] = React.useState({});
-  const [selectedLocation, setSelectedLocation] = React.useState('');
+  const [currentPage, setCurrentPage] = React.useState(() => initialApplyIntent?.page ?? 1);
+  const [filters, setFilters] = React.useState(() => initialApplyIntent?.filters ?? {});
+  const [selectedLocation, setSelectedLocation] = React.useState(
+    () => initialApplyIntent?.selectedLocation ?? ''
+  );
   const [availableLocations, setAvailableLocations] = React.useState([]);
   const [isDetectingLocation, setIsDetectingLocation] = React.useState(false);
   const [locationNotice, setLocationNotice] = React.useState('');
@@ -83,9 +92,11 @@ const JobListPage = () => {
   const [locationSearchQuery, setLocationSearchQuery] = React.useState('');
   const [selectedJob, setSelectedJob] = React.useState(null);
   const [appliedJobIds, setAppliedJobIds] = React.useState(new Set());
+  const [isLoadingAppliedJobs, setIsLoadingAppliedJobs] = React.useState(false);
   const [applicationCoverLetter, setApplicationCoverLetter] = React.useState('');
   const [applicationFeedback, setApplicationFeedback] = React.useState(null);
   const locationDropdownRef = React.useRef(null);
+  const hasRestoredApplyIntentRef = React.useRef(false);
 
   /**
    * Menyinkronkan daftar lowongan dengan kombinasi page dan filter yang sedang aktif.
@@ -117,8 +128,13 @@ const JobListPage = () => {
       if (user?.role !== 'candidate') {
         if (isMounted) {
           setAppliedJobIds(new Set());
+          setIsLoadingAppliedJobs(false);
         }
         return;
+      }
+
+      if (isMounted) {
+        setIsLoadingAppliedJobs(true);
       }
 
       try {
@@ -133,6 +149,10 @@ const JobListPage = () => {
         if (isMounted) {
           setAppliedJobIds(new Set());
         }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAppliedJobs(false);
+        }
       }
     };
 
@@ -142,6 +162,77 @@ const JobListPage = () => {
       isMounted = false;
     };
   }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    if (hasRestoredApplyIntentRef.current) {
+      return;
+    }
+
+    const pendingApplyIntent = readCandidateApplyIntent();
+
+    if (!pendingApplyIntent) {
+      hasRestoredApplyIntentRef.current = true;
+      return;
+    }
+
+    if (user && user.role !== 'candidate') {
+      hasRestoredApplyIntentRef.current = true;
+      clearCandidateApplyIntent();
+      return;
+    }
+
+    if (!user) {
+      return;
+    }
+
+    if (isLoading || isLoadingAppliedJobs) {
+      return;
+    }
+
+    const matchingJob = jobs.find((job) => Number(job.id) === pendingApplyIntent.jobId);
+
+    hasRestoredApplyIntentRef.current = true;
+
+    if (!matchingJob) {
+      clearCandidateApplyIntent();
+      return;
+    }
+
+    if (appliedJobIds.has(pendingApplyIntent.jobId)) {
+      clearCandidateApplyIntent();
+      navigate(`${APP_ROUTES.candidateDashboard}#applications`, {
+        state: {
+          candidateNotice: `Anda sudah pernah melamar ${matchingJob.title}. Cek status terbarunya di Lamaran Saya.`,
+        },
+      });
+      return;
+    }
+
+    if (!candidateCompletion.isReady) {
+      const missingPreview = candidateCompletion.missingRequiredItems.slice(0, 3).join(', ');
+
+      clearCandidateApplyIntent();
+      navigate(`${APP_ROUTES.candidateDashboard}#profile`, {
+        state: {
+          candidateNotice: `Lengkapi profil minimum terlebih dahulu sebelum melamar. Yang masih kurang: ${missingPreview}.`,
+        },
+      });
+      return;
+    }
+
+    clearCandidateApplyIntent();
+    setSelectedJob(matchingJob);
+    setApplicationCoverLetter('');
+    setApplicationFeedback(null);
+  }, [
+    appliedJobIds,
+    candidateCompletion,
+    isLoading,
+    isLoadingAppliedJobs,
+    jobs,
+    navigate,
+    user?.role,
+  ]);
 
   /**
    * Menutup dropdown lokasi saat user klik area di luar panel filter lokasi.
@@ -306,6 +397,15 @@ const JobListPage = () => {
   const handleApply = React.useCallback(
     (job) => {
       if (!user) {
+        saveCandidateApplyIntent({
+          jobId: job.id,
+          page: currentPage,
+          filters: {
+            ...filters,
+            location: selectedLocation || filters.location || '',
+          },
+          selectedLocation: selectedLocation || filters.location || '',
+        });
         navigate('/login?role=candidate');
         return;
       }
@@ -339,7 +439,7 @@ const JobListPage = () => {
       setApplicationCoverLetter('');
       setApplicationFeedback(null);
     },
-    [appliedJobIds, candidateCompletion, navigate, user]
+    [appliedJobIds, candidateCompletion, currentPage, filters, navigate, selectedLocation, user]
   );
 
   const handleApplySubmit = async (event) => {

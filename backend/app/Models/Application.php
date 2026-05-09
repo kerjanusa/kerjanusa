@@ -13,17 +13,36 @@ class Application extends Model
     public const STATUS_ACCEPTED = 'accepted';
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_WITHDRAWN = 'withdrawn';
+    public const STAGE_APPLIED = 'applied';
+    public const STAGE_SCREENING = 'screening';
+    public const STAGE_SHORTLISTED = 'shortlisted';
+    public const STAGE_INTERVIEW = 'interview';
+    public const STAGE_OFFERING = 'offering';
+    public const STAGE_HIRED = 'hired';
+    public const STAGE_REJECTED = 'rejected';
+    public const STAGE_WITHDRAWN = 'withdrawn';
     public const STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_ACCEPTED,
         self::STATUS_REJECTED,
         self::STATUS_WITHDRAWN,
     ];
+    public const STAGES = [
+        self::STAGE_APPLIED,
+        self::STAGE_SCREENING,
+        self::STAGE_SHORTLISTED,
+        self::STAGE_INTERVIEW,
+        self::STAGE_OFFERING,
+        self::STAGE_HIRED,
+        self::STAGE_REJECTED,
+        self::STAGE_WITHDRAWN,
+    ];
 
     protected $fillable = [
         'job_id',
         'candidate_id',
         'status',
+        'stage',
         'cover_letter',
         'applied_at',
     ];

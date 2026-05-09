@@ -100,6 +100,13 @@ class AuthController extends Controller
             ], 422);
         }
 
+        if (!$user->isActive()) {
+            return response()->json([
+                'message' => 'Akun Anda sedang dinonaktifkan. Hubungi superadmin KerjaNusa untuk bantuan lebih lanjut.',
+                'reason' => 'account_suspended',
+            ], 403);
+        }
+
         $token = $this->authService->createToken($user);
 
         return response()->json([
@@ -223,8 +230,11 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
+            'company_name' => 'nullable|string|max:255',
             'phone' => ['nullable', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($request->user()->id)],
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'candidate_profile' => 'nullable|array',
+            'recruiter_profile' => 'nullable|array',
         ], [
             'phone.unique' => 'Nomor telepon sudah digunakan. Gunakan nomor telepon lain.',
         ]);

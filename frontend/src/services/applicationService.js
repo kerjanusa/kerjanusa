@@ -11,6 +11,7 @@ const DEFAULT_MOCK_APPLICATIONS = [
     job_id: 8,
     candidate_id: 2,
     status: 'pending',
+    stage: 'applied',
     cover_letter:
       'Saya siap bekerja shift dan sudah terbiasa menangani pelanggan secara langsung maupun melalui chat.',
     applied_at: '2026-05-06T09:15:00.000Z',
@@ -20,6 +21,7 @@ const DEFAULT_MOCK_APPLICATIONS = [
     job_id: 4,
     candidate_id: 2,
     status: 'accepted',
+    stage: 'hired',
     cover_letter:
       'Saya tertarik pada peran administrasi operasional dan terbiasa bekerja rapi dengan dokumen harian.',
     applied_at: '2026-05-03T04:45:00.000Z',
@@ -29,6 +31,7 @@ const DEFAULT_MOCK_APPLICATIONS = [
     job_id: 12,
     candidate_id: 2,
     status: 'rejected',
+    stage: 'rejected',
     cover_letter:
       'Saya ingin mengembangkan pengalaman pembuatan konten pendek untuk promosi dan employer branding.',
     applied_at: '2026-04-28T08:10:00.000Z',
@@ -151,6 +154,7 @@ class ApplicationService {
         job_id: Number(jobId),
         candidate_id: Number(currentUser.id),
         status: 'pending',
+        stage: 'applied',
         cover_letter: coverLetter,
         applied_at: new Date().toISOString(),
       };
@@ -240,7 +244,7 @@ class ApplicationService {
   /**
    * Update application status
    */
-  static async updateApplicationStatus(applicationId, status) {
+  static async updateApplicationStatus(applicationId, status, stage = null) {
     if (shouldUseMockData) {
       let updatedApplication = null;
       const applications = getStoredMockApplications().map((application) => {
@@ -251,6 +255,7 @@ class ApplicationService {
         updatedApplication = {
           ...application,
           status,
+          stage: stage || application.stage || application.status,
         };
 
         return updatedApplication;
@@ -271,7 +276,53 @@ class ApplicationService {
     try {
       const response = await apiClient.put(`/applications/${applicationId}/status`, {
         status,
+        stage,
       });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+
+  /**
+   * Withdraw my own application (as candidate)
+   */
+  static async withdrawApplication(applicationId) {
+    if (shouldUseMockData) {
+      const currentUser = getCurrentMockUser();
+      let updatedApplication = null;
+
+      const applications = getStoredMockApplications().map((application) => {
+        if (
+          Number(application.id) !== Number(applicationId) ||
+          Number(application.candidate_id) !== Number(currentUser?.id)
+        ) {
+          return application;
+        }
+
+        updatedApplication = {
+          ...application,
+          status: 'withdrawn',
+          stage: 'withdrawn',
+        };
+
+        return updatedApplication;
+      });
+
+      if (!updatedApplication) {
+        throw { message: 'Lamaran demo tidak dapat dibatalkan.' };
+      }
+
+      saveMockApplications(applications);
+
+      return {
+        message: 'Lamaran demo berhasil dibatalkan.',
+        data: enrichMockApplication(updatedApplication),
+      };
+    }
+
+    try {
+      const response = await apiClient.put(`/applications/${applicationId}/withdraw`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

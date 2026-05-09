@@ -7,6 +7,17 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthService
 {
+    private function trimToNull(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmedValue = trim($value);
+
+        return $trimmedValue === '' ? null : $trimmedValue;
+    }
+
     /**
      * Register new user
      */
@@ -14,9 +25,11 @@ class AuthService
     {
         return User::create([
             'name' => $data['name'],
+            'company_name' => $this->trimToNull($data['company_name'] ?? null),
             'email' => User::normalizeEmail($data['email']),
             'password' => Hash::make($data['password']),
             'role' => $data['role'] ?? User::ROLE_CANDIDATE,
+            'account_status' => User::STATUS_ACTIVE,
             'phone' => User::normalizePhone($data['phone'] ?? null),
         ]);
     }
@@ -57,12 +70,42 @@ class AuthService
     public function updateProfile(int $userId, array $data): bool
     {
         $user = User::find($userId);
-        
+
         if (!$user) {
             return false;
         }
 
-        return $user->update($data);
+        $nextData = [];
+
+        if (array_key_exists('name', $data)) {
+            $nextData['name'] = $this->trimToNull($data['name']) ?? $user->name;
+        }
+
+        if (array_key_exists('phone', $data)) {
+            $nextData['phone'] = User::normalizePhone($data['phone']);
+        }
+
+        if (array_key_exists('company_name', $data)) {
+            $nextData['company_name'] = $this->trimToNull($data['company_name']);
+        }
+
+        if (array_key_exists('candidate_profile', $data)) {
+            $nextData['candidate_profile'] = is_array($data['candidate_profile'])
+                ? $data['candidate_profile']
+                : null;
+        }
+
+        if (array_key_exists('recruiter_profile', $data)) {
+            $nextData['recruiter_profile'] = is_array($data['recruiter_profile'])
+                ? $data['recruiter_profile']
+                : null;
+        }
+
+        if (array_key_exists('profile_picture', $data)) {
+            $nextData['profile_picture'] = $data['profile_picture'];
+        }
+
+        return $user->update($nextData);
     }
 
     /**

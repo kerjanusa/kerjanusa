@@ -12,6 +12,35 @@ class AdminService {
       throw error.response?.data || error.message;
     }
   }
+
+  static async updateUser(userId, payload) {
+    try {
+      const response = await apiClient.put(`/admin/users/${userId}`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+
+  static async sendResetLink(userId) {
+    try {
+      const response = await apiClient.post(`/admin/users/${userId}/send-reset-link`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+
+  static async reassignJob(jobId, recruiterId) {
+    try {
+      const response = await apiClient.put(`/admin/jobs/${jobId}/reassign`, {
+        recruiter_id: recruiterId,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
 }
 
 export default AdminService;

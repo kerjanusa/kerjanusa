@@ -129,7 +129,7 @@ Route::get('/job-locations', [JobController::class, 'locations']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
 
 // Protected routes
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -139,6 +139,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:candidate')->group(function () {
         Route::post('/apply', [ApplicationController::class, 'store']);
         Route::get('/my-applications', [ApplicationController::class, 'myCandidateApplications']);
+        Route::put('/applications/{applicationId}/withdraw', [ApplicationController::class, 'withdraw']);
     });
 
     Route::middleware('role:recruiter')->group(function () {
@@ -158,5 +159,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:superadmin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::put('/users/{userId}', [AdminController::class, 'updateUser']);
+        Route::post('/users/{userId}/send-reset-link', [AdminController::class, 'sendResetLink']);
+        Route::put('/jobs/{jobId}/reassign', [AdminController::class, 'reassignJob']);
     });
 });

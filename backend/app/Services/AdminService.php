@@ -5,9 +5,31 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\Job;
 use App\Models\User;
+use Illuminate\Support\Arr;
 
 class AdminService
 {
+    private function extractProfileReadiness(array $profile, array $requiredKeys): bool
+    {
+        foreach ($requiredKeys as $key) {
+            $value = Arr::get($profile, $key);
+
+            if (is_array($value)) {
+                if (collect($value)->filter(fn ($item) => filled(is_string($item) ? trim($item) : $item))->isEmpty()) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (!filled($value)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Build the live superadmin dashboard payload from current users, jobs, and applications.
      */
@@ -42,7 +64,6 @@ class AdminService
             ->where('role', User::ROLE_CANDIDATE)
             ->withCount('applications')
             ->latest()
-            ->limit(6)
             ->get()
             ->map(function (User $candidate) {
                 $latestApplication = $candidate->applications()
@@ -56,9 +77,21 @@ class AdminService
                     'name' => $candidate->name,
                     'email' => $candidate->email,
                     'phone' => $candidate->phone,
+                    'account_status' => $candidate->account_status,
+                    'account_status_reason' => $candidate->account_status_reason,
+                    'profile_ready' => $this->extractProfileReadiness($candidate->candidate_profile ?? [], [
+                        'currentAddress',
+                        'profileSummary',
+                        'preferredRoles',
+                        'preferredLocations',
+                        'skills',
+                        'resumeFiles',
+                    ]),
                     'applications_count' => $candidate->applications_count,
                     'latest_application_status' => $latestApplication?->status,
+                    'latest_application_stage' => $latestApplication?->stage,
                     'latest_job_title' => $latestApplication?->job?->title,
+                    'created_at' => $candidate->created_at?->toIso8601String(),
                     'latest_applied_at' => $latestApplication?->applied_at?->toIso8601String()
                         ?? $latestApplication?->created_at?->toIso8601String(),
                 ];
@@ -73,7 +106,6 @@ class AdminService
                 'jobs as active_jobs_count' => fn ($query) => $query->where('status', Job::STATUS_ACTIVE),
             ])
             ->latest()
-            ->limit(6)
             ->get()
             ->map(function (User $recruiter) {
                 $latestJob = $recruiter->jobs()->latest()->first();
@@ -81,11 +113,22 @@ class AdminService
                 return [
                     'id' => $recruiter->id,
                     'name' => $recruiter->name,
+                    'company_name' => $recruiter->company_name,
                     'email' => $recruiter->email,
                     'phone' => $recruiter->phone,
+                    'account_status' => $recruiter->account_status,
+                    'account_status_reason' => $recruiter->account_status_reason,
+                    'profile_ready' => $this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
+                        'companyName',
+                        'contactRole',
+                        'companyLocation',
+                        'companyDescription',
+                        'hiringFocus',
+                    ]),
                     'jobs_count' => $recruiter->jobs_count,
                     'active_jobs_count' => $recruiter->active_jobs_count,
                     'latest_job_title' => $latestJob?->title,
+                    'created_at' => $recruiter->created_at?->toIso8601String(),
                     'latest_job_created_at' => $latestJob?->created_at?->toIso8601String(),
                 ];
             })
@@ -96,7 +139,6 @@ class AdminService
             ->with('recruiter:id,name,email')
             ->withCount('applications')
             ->latest()
-            ->limit(8)
             ->get()
             ->map(fn (Job $job) => [
                 'id' => $job->id,
@@ -104,6 +146,7 @@ class AdminService
                 'category' => $job->category,
                 'location' => $job->location,
                 'status' => $job->status,
+                'workflow_status' => $job->workflow_status,
                 'job_type' => $job->job_type,
                 'experience_level' => $job->experience_level,
                 'applications_count' => $job->applications_count,
@@ -125,11 +168,11 @@ class AdminService
             ])
             ->orderByDesc('applied_at')
             ->orderByDesc('created_at')
-            ->limit(8)
             ->get()
             ->map(fn (Application $application) => [
                 'id' => $application->id,
                 'status' => $application->status,
+                'stage' => $application->stage,
                 'applied_at' => $application->applied_at?->toIso8601String()
                     ?? $application->created_at?->toIso8601String(),
                 'candidate' => [
@@ -157,6 +200,20 @@ class AdminService
             'growth' => $growth,
             'candidate_table' => $candidateTable,
             'recruiter_table' => $recruiterTable,
+            'recruiter_options' => User::query()
+                ->where('role', User::ROLE_RECRUITER)
+                ->where('account_status', User::STATUS_ACTIVE)
+                ->orderBy('company_name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'company_name', 'email'])
+                ->map(fn (User $recruiter) => [
+                    'id' => $recruiter->id,
+                    'name' => $recruiter->name,
+                    'company_name' => $recruiter->company_name,
+                    'email' => $recruiter->email,
+                ])
+                ->values()
+                ->all(),
             'jobs' => $jobs,
             'applications' => $applications,
         ];

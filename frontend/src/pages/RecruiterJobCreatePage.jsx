@@ -1444,6 +1444,7 @@ const RecruiterJobCreatePage = () => {
         interview_type: formData.interview_type,
         interview_note: formData.interview_note.trim(),
         video_screening_requirement: formData.video_screening_requirement,
+        workflow_status: publishMode === 'publish' ? 'active' : 'draft',
         status: publishMode === 'publish' ? 'active' : 'inactive',
       });
 

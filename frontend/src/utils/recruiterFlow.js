@@ -87,7 +87,12 @@ export const getRecruiterCompanyProfileStorageKey = (userId) =>
 export const readRecruiterCompanyProfile = (user) =>
   mergeRecruiterCompanyProfile(
     user,
-    readStoredJson(getRecruiterCompanyProfileStorageKey(user?.id), null)
+    {
+      ...(user?.recruiter_profile && typeof user.recruiter_profile === 'object'
+        ? user.recruiter_profile
+        : {}),
+      ...(readStoredJson(getRecruiterCompanyProfileStorageKey(user?.id), null) || {}),
+    }
   );
 
 export const saveRecruiterCompanyProfile = (user, profile) => {
@@ -182,6 +187,10 @@ export const getJobWorkflowLabel = (status) =>
   RECRUITER_JOB_WORKFLOW_OPTIONS.find((option) => option.value === status)?.label || status;
 
 export const getJobWorkflowStatus = (job) => {
+  if (job?.workflow_status) {
+    return job.workflow_status;
+  }
+
   const workflowMap = readJobWorkflowMap();
   const storedStatus = workflowMap[String(job?.id)];
 
@@ -235,6 +244,10 @@ export const mapApplicationStatusToStage = (status) => {
 };
 
 export const getApplicationStage = (application) => {
+  if (application?.stage) {
+    return application.stage;
+  }
+
   const stageMap = readApplicationStageMap();
   const storedStage = stageMap[String(application?.id)]?.stage;
 

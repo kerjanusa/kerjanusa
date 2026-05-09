@@ -11,9 +11,21 @@ class Job extends Model
 
     public const STATUS_ACTIVE = 'active';
     public const STATUS_INACTIVE = 'inactive';
+    public const WORKFLOW_DRAFT = 'draft';
+    public const WORKFLOW_ACTIVE = 'active';
+    public const WORKFLOW_PAUSED = 'paused';
+    public const WORKFLOW_CLOSED = 'closed';
+    public const WORKFLOW_FILLED = 'filled';
     public const STATUSES = [
         self::STATUS_ACTIVE,
         self::STATUS_INACTIVE,
+    ];
+    public const WORKFLOW_STATUSES = [
+        self::WORKFLOW_DRAFT,
+        self::WORKFLOW_ACTIVE,
+        self::WORKFLOW_PAUSED,
+        self::WORKFLOW_CLOSED,
+        self::WORKFLOW_FILLED,
     ];
 
     public const JOB_TYPE_FULL_TIME = 'full-time';
@@ -81,6 +93,7 @@ class Job extends Model
         'interview_note',
         'video_screening_requirement',
         'status',
+        'workflow_status',
     ];
 
     protected $casts = [

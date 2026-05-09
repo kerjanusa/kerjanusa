@@ -74,6 +74,7 @@ class JobController extends Controller
             'interview_note' => 'nullable|string',
             'video_screening_requirement' => ['nullable', Rule::in(Job::VIDEO_SCREENING_REQUIREMENTS)],
             'status' => ['nullable', Rule::in(Job::STATUSES)],
+            'workflow_status' => ['nullable', Rule::in(Job::WORKFLOW_STATUSES)],
         ]);
 
         $job = $this->jobService->createJob($request->user()->id, $validated);
@@ -104,6 +105,7 @@ class JobController extends Controller
             'interview_note' => 'nullable|string',
             'video_screening_requirement' => ['nullable', Rule::in(Job::VIDEO_SCREENING_REQUIREMENTS)],
             'status' => ['nullable', Rule::in(Job::STATUSES)],
+            'workflow_status' => ['nullable', Rule::in(Job::WORKFLOW_STATUSES)],
         ]);
 
         $job = Job::find($id);

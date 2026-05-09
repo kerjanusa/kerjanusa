@@ -24,7 +24,6 @@ import {
   saveJobWorkflowStatus,
   saveRecruiterCompanyProfile,
 } from '../utils/recruiterFlow.js';
-import { shouldUseMockData } from '../utils/mockMode.js';
 import { formatExperienceLevel, formatWorkMode } from '../utils/jobFormatters.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/workspace.css';
@@ -291,9 +290,9 @@ const RecruiterDashboardPage = () => {
       getRecruiterOverviewNextAction({
         companyCompletion,
         jobs: recruiterJobs,
-        activeApplicationsCount: recruiterApplicationVolume,
+        activeApplicationsCount,
       }),
-    [companyCompletion, recruiterApplicationVolume, recruiterJobs]
+    [activeApplicationsCount, companyCompletion, recruiterJobs]
   );
 
   const handleSectionChange = (section) => {
@@ -328,7 +327,8 @@ const RecruiterDashboardPage = () => {
       await updateProfile({
         name: savedProfile.recruiterName.trim(),
         phone: savedProfile.phone.trim(),
-        ...(shouldUseMockData ? { company_name: savedProfile.companyName.trim() } : {}),
+        company_name: savedProfile.companyName.trim(),
+        recruiter_profile: savedProfile,
       });
 
       setFeedback({
@@ -364,6 +364,7 @@ const RecruiterDashboardPage = () => {
 
     try {
       await updateJob(job.id, {
+        workflow_status: workflowStatus,
         status: mapJobWorkflowToBackendStatus(workflowStatus),
       });
       saveJobWorkflowStatus(job.id, workflowStatus);
@@ -406,7 +407,11 @@ const RecruiterDashboardPage = () => {
     setApplicationActionInFlightId(application.id);
 
     try {
-      await updateApplicationStatus(application.id, mapApplicationStageToBackendStatus(stage));
+      await updateApplicationStatus(
+        application.id,
+        mapApplicationStageToBackendStatus(stage),
+        stage
+      );
       saveApplicationStage(application.id, stage);
       await getJobApplications(selectedJobId, 1, 100);
       setFeedback({

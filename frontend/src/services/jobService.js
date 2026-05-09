@@ -9,6 +9,7 @@ const normalizeText = (value = '') => String(value).trim().toLowerCase();
 
 const normalizeMockJob = (job) => ({
   ...job,
+  workflow_status: job.workflow_status || (job.status === 'active' ? 'active' : 'draft'),
   work_mode: job.work_mode || 'wfo',
   openings_count: Number(job.openings_count) || 0,
   interview_type: job.interview_type || 'onsite',
@@ -215,6 +216,7 @@ class JobService {
         recruiter_id: currentUser?.id || 1,
         recruiter: { name: currentUser?.company_name || currentUser?.name || 'Recruiter Demo' },
         title: data.title,
+        workflow_status: data.workflow_status || (data.status === 'active' ? 'active' : 'draft'),
         description: data.description,
         category: data.category,
         salary_min: Number(data.salary_min) || 0,
@@ -257,7 +259,14 @@ class JobService {
           return job;
         }
 
-        updatedJob = { ...job, ...data };
+        updatedJob = {
+          ...job,
+          ...data,
+          workflow_status:
+            data.workflow_status ||
+            job.workflow_status ||
+            (data.status === 'active' ? 'active' : 'draft'),
+        };
         return updatedJob;
       });
 

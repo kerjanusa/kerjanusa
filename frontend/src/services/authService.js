@@ -1,5 +1,6 @@
 import apiClient from '../utils/apiClient';
 import { shouldUseMockData } from '../utils/mockMode';
+import { clearCandidateApplyIntent } from '../utils/candidateApplyIntent.js';
 import { normalizeUserRole } from '../utils/routeHelpers.js';
 
 const MOCK_USERS_STORAGE_KEY = 'mock_auth_users';
@@ -10,24 +11,29 @@ const defaultMockUsers = [
   {
     id: 1,
     name: 'Recruiter Demo',
+    account_status: 'active',
     email: 'recruiter@example.com',
     phone: '081234567890',
     role: 'recruiter',
     company_name: 'KerjaNusa Studio',
+    recruiter_profile: null,
     password: DEFAULT_DEMO_PASSWORD,
   },
   {
     id: 2,
     name: 'Candidate Demo',
+    account_status: 'active',
     email: 'candidate@example.com',
     phone: '089876543210',
     role: 'candidate',
     company_name: '',
+    candidate_profile: null,
     password: DEFAULT_DEMO_PASSWORD,
   },
   {
     id: 3,
     name: 'Superadmin KerjaNusa',
+    account_status: 'active',
     email: 'superadmin@kerjanusa.com',
     phone: '081122334455',
     role: 'superadmin',
@@ -191,6 +197,9 @@ class AuthService {
         phone,
         role: data.role || 'recruiter',
         company_name: data.company_name || '',
+        account_status: 'active',
+        candidate_profile: data.role === 'candidate' ? data.candidate_profile || null : null,
+        recruiter_profile: data.role === 'recruiter' ? data.recruiter_profile || null : null,
         password: data.password,
       };
 
@@ -246,6 +255,13 @@ class AuthService {
         };
       }
 
+      if (matchingUser.account_status === 'suspended') {
+        throw {
+          message:
+            'Akun Anda sedang dinonaktifkan. Hubungi superadmin KerjaNusa untuk bantuan lebih lanjut.',
+        };
+      }
+
       return {
         user: stripPassword(matchingUser),
         token: persistMockSession(matchingUser),
@@ -274,6 +290,7 @@ class AuthService {
     if (shouldUseMockData) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      clearCandidateApplyIntent();
       return;
     }
 
@@ -281,9 +298,11 @@ class AuthService {
       await apiClient.post('/logout');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      clearCandidateApplyIntent();
     } catch (error) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      clearCandidateApplyIntent();
       throw error.response?.data || error.message;
     }
   }

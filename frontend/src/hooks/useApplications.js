@@ -49,14 +49,32 @@ const useApplications = () => {
     }
   }, []);
 
-  const updateApplicationStatus = useCallback(async (applicationId, status) => {
+  const updateApplicationStatus = useCallback(async (applicationId, status, stage = null) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await ApplicationService.updateApplicationStatus(applicationId, status);
+      const response = await ApplicationService.updateApplicationStatus(
+        applicationId,
+        status,
+        stage
+      );
       return response;
     } catch (err) {
       setError(err.message || 'Failed to update application');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const withdrawApplication = useCallback(async (applicationId) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await ApplicationService.withdrawApplication(applicationId);
+      return response;
+    } catch (err) {
+      setError(err.message || 'Failed to withdraw application');
       throw err;
     } finally {
       setIsLoading(false);
@@ -72,6 +90,7 @@ const useApplications = () => {
     getMyApplications,
     getJobApplications,
     updateApplicationStatus,
+    withdrawApplication,
   };
 };
 

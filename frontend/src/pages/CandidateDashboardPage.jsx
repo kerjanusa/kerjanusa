@@ -83,6 +83,7 @@ const CandidateDashboardPage = () => {
     isLoading: isLoadingApplications,
     error: applicationsError,
     getMyApplications,
+    withdrawApplication,
   } = useApplications();
   const [activeSection, setActiveSection] = useState(resolveCandidateSectionFromHash(location.hash));
   const [profile, setProfile] = useState(() => readCandidateProfile(user));
@@ -90,6 +91,7 @@ const CandidateDashboardPage = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [applicationBucket, setApplicationBucket] = useState('active');
+  const [applicationActionInFlightId, setApplicationActionInFlightId] = useState(null);
 
   useEffect(() => {
     setActiveSection(resolveCandidateSectionFromHash(location.hash));
@@ -253,10 +255,12 @@ const CandidateDashboardPage = () => {
     setProfile(savedProfile);
 
     try {
-      await updateProfile({
+      const response = await updateProfile({
         name: savedProfile.fullName.trim(),
         phone: savedProfile.phone.trim(),
+        candidate_profile: savedProfile,
       });
+      setProfile(readCandidateProfile(response?.user || user));
 
       setFeedback({
         type: 'success',
@@ -273,6 +277,26 @@ const CandidateDashboardPage = () => {
       });
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleWithdrawApplication = async (application) => {
+    setApplicationActionInFlightId(application.id);
+
+    try {
+      await withdrawApplication(application.id);
+      await getMyApplications(1, 30);
+      setFeedback({
+        type: 'success',
+        message: `Lamaran untuk ${application.job?.title || 'lowongan ini'} berhasil dibatalkan.`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Lamaran belum berhasil dibatalkan.',
+      });
+    } finally {
+      setApplicationActionInFlightId(null);
     }
   };
 
@@ -1114,6 +1138,18 @@ const CandidateDashboardPage = () => {
                           >
                             Cari Lowongan Serupa
                           </button>
+                          {isCandidateApplicationActive(application.status, application) && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => handleWithdrawApplication(application)}
+                              disabled={applicationActionInFlightId === application.id}
+                            >
+                              {applicationActionInFlightId === application.id
+                                ? 'Membatalkan...'
+                                : 'Batalkan Lamaran'}
+                            </button>
+                          )}
                           <span className="workspace-muted-text">{statusMeta.nextAction}</span>
                         </div>
                       </article>

@@ -102,8 +102,15 @@ class ApplicationController extends Controller
     public function updateStatus(Request $request, int $applicationId): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['required', Rule::in(Application::STATUSES)],
+            'status' => ['nullable', Rule::in(Application::STATUSES)],
+            'stage' => ['nullable', Rule::in(Application::STAGES)],
         ]);
+
+        if (!filled($validated['status'] ?? null) && !filled($validated['stage'] ?? null)) {
+            return response()->json([
+                'message' => 'Status atau stage aplikasi wajib diisi.',
+            ], 422);
+        }
 
         $application = Application::with('job')->find($applicationId);
 
@@ -119,10 +126,9 @@ class ApplicationController extends Controller
             ], 403);
         }
 
-        $success = $this->applicationService->updateApplicationStatus(
-            $applicationId,
-            $validated['status']
-        );
+        $success = filled($validated['stage'] ?? null)
+            ? $this->applicationService->updateApplicationStage($applicationId, $validated['stage'])
+            : $this->applicationService->updateApplicationStatus($applicationId, $validated['status']);
 
         if (!$success) {
             return response()->json([
@@ -132,6 +138,27 @@ class ApplicationController extends Controller
 
         return response()->json([
             'message' => 'Application status updated successfully',
+        ]);
+    }
+
+    /**
+     * Allow a candidate to withdraw their own active application.
+     */
+    public function withdraw(Request $request, int $applicationId): JsonResponse
+    {
+        $success = $this->applicationService->withdrawCandidateApplication(
+            $applicationId,
+            $request->user()->id
+        );
+
+        if (!$success) {
+            return response()->json([
+                'message' => 'Lamaran tidak dapat dibatalkan.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Lamaran berhasil dibatalkan.',
         ]);
     }
 
