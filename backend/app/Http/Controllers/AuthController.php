@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -72,12 +73,24 @@ class AuthController extends Controller
             'password.required' => 'Password wajib diisi.',
         ]);
 
-        $user = $this->authService->login($validated['email'], $validated['password']);
+        $user = $this->authService->getUserByEmail($validated['email']);
 
         if (!$user) {
             return response()->json([
-                'message' => 'Email atau password salah.',
-            ], 401);
+                'message' => 'Email tidak terdaftar.',
+                'errors' => [
+                    'email' => ['Email tidak terdaftar.'],
+                ],
+            ], 422);
+        }
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Password salah. Periksa kembali password Anda.',
+                'errors' => [
+                    'password' => ['Password salah. Periksa kembali password Anda.'],
+                ],
+            ], 422);
         }
 
         $token = $this->authService->createToken($user);

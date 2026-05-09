@@ -202,11 +202,25 @@ class AuthService {
     if (shouldUseMockData) {
       const users = getMockUsers();
       const matchingUser = users.find(
-        (user) => user.email.toLowerCase() === email.trim().toLowerCase() && user.password === password
+        (user) => user.email.toLowerCase() === email.trim().toLowerCase()
       );
 
       if (!matchingUser) {
-        throw { message: 'Email atau password tidak cocok.' };
+        throw {
+          message: 'Email tidak terdaftar.',
+          errors: {
+            email: ['Email tidak terdaftar.'],
+          },
+        };
+      }
+
+      if (matchingUser.password !== password) {
+        throw {
+          message: 'Password salah. Periksa kembali password Anda.',
+          errors: {
+            password: ['Password salah. Periksa kembali password Anda.'],
+          },
+        };
       }
 
       return {
