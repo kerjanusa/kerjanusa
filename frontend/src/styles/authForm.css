@@ -31,6 +31,19 @@
   color: #a1afc5;
 }
 
+.auth-form .form-group.has-error input,
+.auth-form .form-group.has-error select {
+  border-color: rgba(194, 85, 108, 0.52);
+  box-shadow: 0 0 0 3px rgba(194, 85, 108, 0.08);
+}
+
+.auth-form .field-error {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #9d2945;
+}
+
 .auth-form .error-message {
   background: #fff4f4;
   border: 1px solid #ffd0d0;
@@ -160,6 +173,10 @@
   color: #9d2945;
 }
 
+.auth-form .field-error {
+  color: #9d2945;
+}
+
 .auth-form button[type="submit"] {
   background: linear-gradient(135deg, #f4dea4 0%, var(--secondary) 48%, #b88730 100%);
   color: var(--primary-dark);
@@ -197,6 +214,11 @@
     padding: 0.8rem 0.9rem;
     border-radius: 0.8rem;
     font-size: 0.85rem;
+  }
+
+  .auth-form .field-error {
+    margin-top: 0.35rem;
+    font-size: 0.74rem;
   }
 
   .auth-form-support {

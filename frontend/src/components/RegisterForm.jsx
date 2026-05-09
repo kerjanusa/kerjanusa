@@ -15,7 +15,7 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
     password_confirmation: '',
   });
 
-  const { register, isLoading, error } = useAuth();
+  const { register, isLoading, error, validationErrors, clearError } = useAuth();
 
   useEffect(() => {
     setFormData((currentData) => {
@@ -37,6 +37,10 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
       ...currentData,
       [name]: value,
     }));
+
+    if (error || Object.keys(validationErrors || {}).length > 0) {
+      clearError();
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -52,15 +56,17 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
 
   const formHeading =
     formData.role === 'candidate' ? 'Buat akun kandidat' : 'Buat akun recruiter';
+  const hasFieldErrors = Object.keys(validationErrors || {}).length > 0;
+  const getFieldError = (fieldName) => validationErrors?.[fieldName]?.[0] || '';
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
       <h2>{formHeading}</h2>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && !hasFieldErrors && <div className="error-message">{error}</div>}
 
       <div className="form-grid">
-        <div className="form-group">
+        <div className={`form-group${getFieldError('name') ? ' has-error' : ''}`}>
           <label htmlFor="name">Nama</label>
           <input
             id="name"
@@ -70,7 +76,9 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
             onChange={handleChange}
             required
             disabled={isLoading}
+            aria-invalid={Boolean(getFieldError('name'))}
           />
+          {getFieldError('name') && <p className="field-error">{getFieldError('name')}</p>}
         </div>
 
         <div className="form-group">
@@ -88,7 +96,7 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
         </div>
       </div>
 
-      <div className="form-group">
+      <div className={`form-group${getFieldError('email') ? ' has-error' : ''}`}>
         <label htmlFor="email">Email</label>
         <input
           id="email"
@@ -98,10 +106,12 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
           onChange={handleChange}
           required
           disabled={isLoading}
+          aria-invalid={Boolean(getFieldError('email'))}
         />
+        {getFieldError('email') && <p className="field-error">{getFieldError('email')}</p>}
       </div>
 
-      <div className="form-group">
+      <div className={`form-group${getFieldError('phone') ? ' has-error' : ''}`}>
         <label htmlFor="phone">Nomor Telepon</label>
         <input
           id="phone"
@@ -111,11 +121,13 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
           onChange={handleChange}
           required
           disabled={isLoading}
+          aria-invalid={Boolean(getFieldError('phone'))}
         />
+        {getFieldError('phone') && <p className="field-error">{getFieldError('phone')}</p>}
       </div>
 
       <div className="form-grid">
-        <div className="form-group">
+        <div className={`form-group${getFieldError('password') ? ' has-error' : ''}`}>
           <label htmlFor="password">Password</label>
           <input
             id="password"
@@ -125,10 +137,12 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
             onChange={handleChange}
             required
             disabled={isLoading}
+            aria-invalid={Boolean(getFieldError('password'))}
           />
+          {getFieldError('password') && <p className="field-error">{getFieldError('password')}</p>}
         </div>
 
-        <div className="form-group">
+        <div className={`form-group${getFieldError('password_confirmation') ? ' has-error' : ''}`}>
           <label htmlFor="password_confirmation">Konfirmasi Password</label>
           <input
             id="password_confirmation"
@@ -138,7 +152,11 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
             onChange={handleChange}
             required
             disabled={isLoading}
+            aria-invalid={Boolean(getFieldError('password_confirmation'))}
           />
+          {getFieldError('password_confirmation') && (
+            <p className="field-error">{getFieldError('password_confirmation')}</p>
+          )}
         </div>
       </div>
 

@@ -33,7 +33,13 @@ class AuthController extends Controller
             'role' => ['required', Rule::in(User::PUBLIC_REGISTRATION_ROLES)],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')],
         ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan. Gunakan email lain.',
+            'password.required' => 'Password wajib diisi.',
+            'password_confirmation.required' => 'Konfirmasi password wajib diisi.',
+            'password_confirmation.same' => 'Konfirmasi password harus sama dengan password.',
             'phone.required' => 'Nomor telepon wajib diisi.',
             'phone.unique' => 'Nomor telepon sudah digunakan. Gunakan nomor telepon lain.',
         ]);
