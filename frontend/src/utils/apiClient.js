@@ -11,10 +11,19 @@ const apiClient = axios.create({
   },
 });
 
+const isPublicAuthRequest = (url = '') => {
+  if (typeof url !== 'string') {
+    return false;
+  }
+
+  return url.endsWith('/login') || url.endsWith('/register');
+};
+
 // Add token to requests
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
-  if (token) {
+
+  if (token && !isPublicAuthRequest(config.url)) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -24,7 +33,12 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const shouldRedirectToLogin =
+      error.response?.status === 401 &&
+      !isPublicAuthRequest(error.config?.url) &&
+      Boolean(error.config?.headers?.Authorization || localStorage.getItem('auth_token'));
+
+    if (shouldRedirectToLogin) {
       let userRole = null;
 
       try {
