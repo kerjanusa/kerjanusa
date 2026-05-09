@@ -5,22 +5,22 @@ import useAuth from '../hooks/useAuth';
 import useJobs from '../hooks/useJobs';
 import JobService from '../services/jobService';
 import {
+  RECRUITER_SECTION_OPTIONS,
+  getRecruiterCompanyCompletion,
+  readRecruiterCompanyProfile,
+  saveJobWorkflowStatus,
+} from '../utils/recruiterFlow.js';
+import {
   formatExperienceLevel,
   formatInterviewType,
   formatVideoScreeningRequirement,
   formatWorkMode,
 } from '../utils/jobFormatters.js';
+import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/recruiterDashboard.css';
 import '../styles/recruiterJobCreate.css';
 
 const RECRUITER_DASHBOARD_STORAGE_KEY = 'recruiter_dashboard_ui_state';
-
-const RECRUITER_SECTION_OPTIONS = [
-  { value: 'jobs', label: 'Lowongan' },
-  { value: 'candidates', label: 'Kandidat' },
-  { value: 'chat', label: 'Chat' },
-  { value: 'talent-search', label: 'Talent Search' },
-];
 
 const FORM_STEP_OPTIONS = [
   { number: 1, label: 'Informasi Dasar' },
@@ -662,6 +662,7 @@ const RecruiterJobCreatePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { createJob, isLoading } = useJobs();
+  const [companyProfile, setCompanyProfile] = useState(() => readRecruiterCompanyProfile(user));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [activeQuizQuestionId, setActiveQuizQuestionId] = useState(QUIZ_SCREENING_QUESTIONS[0].id);
@@ -684,6 +685,10 @@ const RecruiterJobCreatePage = () => {
   useEffect(() => {
     persistRecruiterDashboardState({ activeSection: 'jobs' });
   }, []);
+
+  useEffect(() => {
+    setCompanyProfile(readRecruiterCompanyProfile(user));
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -862,6 +867,7 @@ const RecruiterJobCreatePage = () => {
     selectedScreeningQuestionIds.includes(question.id)
   );
   const customSkillReferences = splitCustomSkillReferences(formData.candidate_custom_skill);
+  const companyCompletion = getRecruiterCompanyCompletion(companyProfile);
   const occupiedCustomSkillReferenceKeys = new Set([
     ...formData.candidate_skills.map((skill) => normalizeReferenceKey(skill)),
     ...customSkillReferences.map((reference) => normalizeReferenceKey(reference)),
@@ -907,12 +913,11 @@ const RecruiterJobCreatePage = () => {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
-    navigate('/', { replace: true });
+    navigate(APP_ROUTES.landing, { replace: true });
   };
 
   const handleTopbarSectionNavigate = (section) => {
-    persistRecruiterDashboardState({ activeSection: section });
-    navigate('/recruiter');
+    navigate(section === 'overview' ? '/recruiter' : `/recruiter#${section}`);
   };
 
   const clearSubmitFeedback = () => {
@@ -1394,14 +1399,7 @@ const RecruiterJobCreatePage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (currentStep < FORM_STEP_OPTIONS.length) {
-      handleNextStep();
-      return;
-    }
-
+  const validateAllSteps = () => {
     const nextErrors = {
       ...validateBasicInfoStep(),
       ...validateQualificationStep(),
@@ -1409,13 +1407,30 @@ const RecruiterJobCreatePage = () => {
 
     if (Object.keys(nextErrors).length > 0) {
       showValidationFeedback(nextErrors, { goToFirstInvalidStep: true });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleJobSubmission = async (publishMode) => {
+    if (!validateAllSteps()) {
+      return;
+    }
+
+    if (publishMode === 'publish' && !companyCompletion.isReady) {
+      setSubmitError(
+        `Profil company belum siap untuk publish lowongan. Lengkapi dulu: ${companyCompletion.missingRequiredItems.join(', ')}.`
+      );
+      setSubmitErrorDetails([]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     clearSubmitFeedback();
 
     try {
-      await createJob({
+      const response = await createJob({
         title: formData.title.trim(),
         experience_level: formData.experience_level,
         category: formData.category,
@@ -1429,15 +1444,37 @@ const RecruiterJobCreatePage = () => {
         interview_type: formData.interview_type,
         interview_note: formData.interview_note.trim(),
         video_screening_requirement: formData.video_screening_requirement,
+        status: publishMode === 'publish' ? 'active' : 'inactive',
       });
 
-      persistRecruiterDashboardState({ activeSection: 'jobs' });
-      navigate('/recruiter');
+      if (response?.data?.id) {
+        saveJobWorkflowStatus(response.data.id, publishMode === 'publish' ? 'active' : 'draft');
+      }
+
+      navigate('/recruiter#jobs', {
+        state: {
+          recruiterNotice:
+            publishMode === 'publish'
+              ? 'Lowongan berhasil dipublikasikan dan siap menerima kandidat.'
+              : 'Lowongan berhasil disimpan sebagai draft.',
+        },
+      });
     } catch (error) {
       setSubmitError(getCreateJobErrorMessage(error));
       setSubmitErrorDetails([]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (currentStep < FORM_STEP_OPTIONS.length) {
+      handleNextStep();
+      return;
+    }
+
+    await handleJobSubmission('publish');
   };
 
   return (
@@ -1450,6 +1487,7 @@ const RecruiterJobCreatePage = () => {
         onLogout={handleLogout}
         isLoggingOut={isLoggingOut}
         user={user}
+        companyProfile={companyProfile}
       />
 
       <main className="recruiter-dashboard-shell recruiter-job-create-shell">
@@ -1492,6 +1530,16 @@ const RecruiterJobCreatePage = () => {
           <span aria-hidden="true">ⓘ</span>
           <p>{currentStepNote}</p>
         </div>
+
+        {!companyCompletion.isReady && (
+          <div className="recruiter-job-create-note recruiter-job-create-note-warning" role="status">
+            <span aria-hidden="true">!</span>
+            <p>
+              Profil company belum lengkap untuk publish lowongan. Anda masih bisa menyimpan draft
+              sekarang, lalu lengkapi profil company di dashboard recruiter sebelum mempublikasikan.
+            </p>
+          </div>
+        )}
 
         <section className="recruiter-job-create-layout">
           <button type="button" className="recruiter-service-rail">
@@ -2497,9 +2545,24 @@ const RecruiterJobCreatePage = () => {
                   >
                     Kembali
                   </button>
-                  <button type="submit" className="recruiter-create-job-button" disabled={isLoading}>
-                    {isLoading ? 'Memasang...' : '+ Pasang Loker'}
-                  </button>
+                  <div className="recruiter-job-create-final-actions">
+                    <button
+                      type="button"
+                      className="recruiter-job-create-secondary"
+                      onClick={() => handleJobSubmission('draft')}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Menyimpan...' : 'Simpan Draft'}
+                    </button>
+                    <button
+                      type="button"
+                      className="recruiter-create-job-button"
+                      onClick={() => handleJobSubmission('publish')}
+                      disabled={isLoading || !companyCompletion.isReady}
+                    >
+                      {isLoading ? 'Memasang...' : 'Publikasikan Lowongan'}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

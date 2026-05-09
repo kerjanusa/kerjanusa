@@ -15,7 +15,7 @@ class ApplicationService
     {
         // Check if job exists
         $job = Job::find($jobId);
-        if (!$job) {
+        if (!$job || $job->status !== 'active') {
             return false;
         }
 
@@ -42,9 +42,10 @@ class ApplicationService
      */
     public function getCandidateApplications(int $candidateId, int $perPage = 15): LengthAwarePaginator
     {
-        return Application::with('job')
+        return Application::with(['job.recruiter'])
             ->where('candidate_id', $candidateId)
-            ->latest()
+            ->orderByDesc('applied_at')
+            ->orderByDesc('created_at')
             ->paginate($perPage);
     }
 
@@ -78,6 +79,6 @@ class ApplicationService
      */
     public function getApplicationById(int $applicationId): ?Application
     {
-        return Application::with(['job', 'candidate'])->find($applicationId);
+        return Application::with(['job.recruiter', 'candidate'])->find($applicationId);
     }
 }

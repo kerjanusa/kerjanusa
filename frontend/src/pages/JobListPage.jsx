@@ -6,8 +6,13 @@ import { getLocationCoordinates, normalizeLocationKey } from '../data/locationCo
 import useApplications from '../hooks/useApplications.js';
 import useAuth from '../hooks/useAuth.js';
 import useJobs from '../hooks/useJobs';
+import ApplicationService from '../services/applicationService.js';
 import JobService from '../services/jobService.js';
-import { getDefaultRouteForRole } from '../utils/routeHelpers.js';
+import {
+  getCandidateProfileCompletion,
+  readCandidateProfile,
+} from '../utils/candidateFlow.js';
+import { APP_ROUTES, getDefaultRouteForRole } from '../utils/routeHelpers.js';
 import {
   formatExperienceLevel,
   formatVideoScreeningRequirement,
@@ -62,6 +67,11 @@ const JobListPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { applyForJob, isLoading: isApplying } = useApplications();
+  const candidateProfile = React.useMemo(() => readCandidateProfile(user), [user]);
+  const candidateCompletion = React.useMemo(
+    () => getCandidateProfileCompletion(candidateProfile),
+    [candidateProfile]
+  );
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filters, setFilters] = React.useState({});
   const [selectedLocation, setSelectedLocation] = React.useState('');
@@ -72,8 +82,7 @@ const JobListPage = () => {
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = React.useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = React.useState('');
   const [selectedJob, setSelectedJob] = React.useState(null);
-  const [applicationCvFileName, setApplicationCvFileName] = React.useState('');
-  const [applicationSupportingFiles, setApplicationSupportingFiles] = React.useState([]);
+  const [appliedJobIds, setAppliedJobIds] = React.useState(new Set());
   const [applicationCoverLetter, setApplicationCoverLetter] = React.useState('');
   const [applicationFeedback, setApplicationFeedback] = React.useState(null);
   const locationDropdownRef = React.useRef(null);
@@ -100,6 +109,39 @@ const JobListPage = () => {
 
     loadAvailableLocations();
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAppliedJobs = async () => {
+      if (user?.role !== 'candidate') {
+        if (isMounted) {
+          setAppliedJobIds(new Set());
+        }
+        return;
+      }
+
+      try {
+        const response = await ApplicationService.getMyApplications(1, 100);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAppliedJobIds(new Set(response.data.map((application) => Number(application.job_id))));
+      } catch {
+        if (isMounted) {
+          setAppliedJobIds(new Set());
+        }
+      }
+    };
+
+    loadAppliedJobs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, user?.role]);
 
   /**
    * Menutup dropdown lokasi saat user klik area di luar panel filter lokasi.
@@ -255,13 +297,8 @@ const JobListPage = () => {
     );
   }, [availableLocations, handleNearbyLocationPick]);
 
-  /**
-   * Placeholder apply action. Saat ini masih logging karena flow apply belum dibuat.
-   */
   const closeApplyModal = React.useCallback(() => {
     setSelectedJob(null);
-    setApplicationCvFileName('');
-    setApplicationSupportingFiles([]);
     setApplicationCoverLetter('');
     setApplicationFeedback(null);
   }, []);
@@ -278,13 +315,31 @@ const JobListPage = () => {
         return;
       }
 
+      if (appliedJobIds.has(Number(job.id))) {
+        navigate(`${APP_ROUTES.candidateDashboard}#applications`, {
+          state: {
+            candidateNotice: `Anda sudah pernah melamar ${job.title}. Cek status terbarunya di Lamaran Saya.`,
+          },
+        });
+        return;
+      }
+
+      if (!candidateCompletion.isReady) {
+        const missingPreview = candidateCompletion.missingRequiredItems.slice(0, 3).join(', ');
+
+        navigate(`${APP_ROUTES.candidateDashboard}#profile`, {
+          state: {
+            candidateNotice: `Lengkapi profil minimum terlebih dahulu sebelum melamar. Yang masih kurang: ${missingPreview}.`,
+          },
+        });
+        return;
+      }
+
       setSelectedJob(job);
-      setApplicationCvFileName('');
-      setApplicationSupportingFiles([]);
       setApplicationCoverLetter('');
       setApplicationFeedback(null);
     },
-    [navigate, user]
+    [appliedJobIds, candidateCompletion, navigate, user]
   );
 
   const handleApplySubmit = async (event) => {
@@ -294,19 +349,22 @@ const JobListPage = () => {
       return;
     }
 
-    if (!applicationCvFileName) {
+    if (!candidateCompletion.isReady) {
       setApplicationFeedback({
         type: 'error',
-        message: 'Unggah CV terlebih dahulu sebelum mengirim lamaran.',
+        message: 'Profil minimum belum siap. Lengkapi profil kandidat Anda terlebih dahulu.',
       });
       return;
     }
 
     try {
       await applyForJob(selectedJob.id, applicationCoverLetter.trim());
-      setApplicationFeedback({
-        type: 'success',
-        message: 'Lamaran berhasil dikirim.',
+      setAppliedJobIds((currentIds) => new Set([...currentIds, Number(selectedJob.id)]));
+      closeApplyModal();
+      navigate(`${APP_ROUTES.candidateDashboard}#applications`, {
+        state: {
+          candidateNotice: `Lamaran untuk ${selectedJob.title} berhasil dikirim.`,
+        },
       });
     } catch (applyError) {
       setApplicationFeedback({
@@ -360,6 +418,9 @@ const JobListPage = () => {
   const activeVideoScreeningLabel = formatVideoScreeningRequirement(
     selectedJob?.video_screening_requirement
   );
+  const profileReadyMessage = candidateCompletion.isReady
+    ? 'Profil Anda sudah siap dipakai untuk apply instan.'
+    : `Lengkapi ${candidateCompletion.missingRequiredItems.length} komponen inti agar bisa melamar.`;
   const hasActiveFilters = Boolean(
     filters.search || filters.job_type || filters.experience_level || selectedLocation
   );
@@ -368,6 +429,24 @@ const JobListPage = () => {
     <div className="job-list-page">
       <div className="filter-section" data-reveal data-reveal-delay="40ms">
         <h2>Filter Lowongan</h2>
+
+        {user?.role === 'candidate' && (
+          <div
+            className={`candidate-readiness-banner${
+              candidateCompletion.isReady ? ' is-ready' : ' is-incomplete'
+            }`}
+          >
+            <strong>{candidateCompletion.isReady ? 'Siap melamar' : 'Profil belum siap'}</strong>
+            <p>{profileReadyMessage}</p>
+            <button
+              type="button"
+              className="candidate-readiness-link"
+              onClick={() => navigate(`${APP_ROUTES.candidateDashboard}#profile`)}
+            >
+              Buka profil kandidat
+            </button>
+          </div>
+        )}
 
         <div className="filter-group">
           <input
@@ -546,7 +625,16 @@ const JobListPage = () => {
 
         <div className="jobs-grid">
           {jobs.map((job, index) => (
-            <JobCard key={job.id} job={job} index={index} onApply={handleApply} />
+            <JobCard
+              key={job.id}
+              job={job}
+              index={index}
+              onApply={handleApply}
+              actionLabel={
+                appliedJobIds.has(Number(job.id)) ? 'Lihat Status Lamaran' : 'Lamar Sekarang'
+              }
+              actionVariant={appliedJobIds.has(Number(job.id)) ? 'outline' : 'primary'}
+            />
           ))}
         </div>
 
@@ -587,35 +675,22 @@ const JobListPage = () => {
             </div>
 
             <form className="job-apply-form" onSubmit={handleApplySubmit}>
-              <label className="job-apply-field">
-                <span>Taruh CV</span>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(event) =>
-                    setApplicationCvFileName(event.target.files?.[0]?.name || '')
-                  }
-                />
-                <small>{applicationCvFileName || 'Format yang disarankan: PDF, DOC, atau DOCX.'}</small>
-              </label>
-
-              <label className="job-apply-field">
-                <span>Berkas lainnya</span>
-                <input
-                  type="file"
-                  multiple
-                  onChange={(event) =>
-                    setApplicationSupportingFiles(
-                      Array.from(event.target.files || []).map((file) => file.name)
-                    )
-                  }
-                />
-                <small>
-                  {applicationSupportingFiles.length > 0
-                    ? applicationSupportingFiles.join(', ')
-                    : 'Tambahkan berkas pendukung bila diperlukan.'}
-                </small>
-              </label>
+              <div className="job-apply-profile-summary">
+                <strong>Lamaran akan memakai profil kandidat yang sudah disimpan</strong>
+                <div className="job-apply-profile-grid">
+                  <span>Nama: {candidateProfile.fullName || user?.name || '-'}</span>
+                  <span>Telepon: {candidateProfile.phone || user?.phone || '-'}</span>
+                  <span>
+                    Posisi incaran: {candidateProfile.preferredRoles.find((item) => item.trim()) || '-'}
+                  </span>
+                  <span>
+                    Lokasi minat:{' '}
+                    {candidateProfile.preferredLocations.find((item) => item.trim()) || '-'}
+                  </span>
+                  <span>CV tersimpan: {candidateProfile.resumeFiles[0] || 'Belum ada'}</span>
+                  <span>Skill utama: {candidateProfile.skills.find((item) => item.trim()) || '-'}</span>
+                </div>
+              </div>
 
               {activeVideoScreeningLabel && (
                 <p className="job-apply-video-screening-note">{activeVideoScreeningLabel}</p>

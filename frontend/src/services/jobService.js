@@ -3,6 +3,7 @@ import mockJobs from '../data/mockJobs';
 import { shouldUseMockData } from '../utils/mockMode';
 
 const MOCK_JOBS_STORAGE_KEY = 'mock_jobs';
+const MOCK_USERS_STORAGE_KEY = 'mock_auth_users';
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase();
 
@@ -15,22 +16,55 @@ const normalizeMockJob = (job) => ({
   video_screening_requirement: job.video_screening_requirement || 'optional',
 });
 
+const getStoredMockUsers = () => {
+  const storedUsers = localStorage.getItem(MOCK_USERS_STORAGE_KEY);
+
+  if (!storedUsers) {
+    return [];
+  }
+
+  try {
+    const parsedUsers = JSON.parse(storedUsers);
+    return Array.isArray(parsedUsers) ? parsedUsers : [];
+  } catch {
+    return [];
+  }
+};
+
+const hydrateMockRecruiter = (job, users = []) => {
+  const recruiterUser = users.find((user) => Number(user.id) === Number(job.recruiter_id));
+  const recruiterName =
+    recruiterUser?.company_name?.trim() || recruiterUser?.name || job.recruiter?.name || 'Recruiter Demo';
+
+  return {
+    ...job,
+    recruiter: {
+      ...(job.recruiter || {}),
+      name: recruiterName,
+    },
+  };
+};
+
 const getStoredMockJobs = () => {
+  const users = getStoredMockUsers();
   const storedJobs = localStorage.getItem(MOCK_JOBS_STORAGE_KEY);
 
   if (storedJobs) {
     try {
       const parsedJobs = JSON.parse(storedJobs);
       if (Array.isArray(parsedJobs)) {
-        return parsedJobs.map(normalizeMockJob);
+        return parsedJobs.map((job) => hydrateMockRecruiter(normalizeMockJob(job), users));
       }
     } catch (error) {
       // Fall back to the seeded mock jobs.
     }
   }
 
-  localStorage.setItem(MOCK_JOBS_STORAGE_KEY, JSON.stringify(mockJobs.map(normalizeMockJob)));
-  return mockJobs.map(normalizeMockJob);
+  localStorage.setItem(
+    MOCK_JOBS_STORAGE_KEY,
+    JSON.stringify(mockJobs.map((job) => hydrateMockRecruiter(normalizeMockJob(job), users)))
+  );
+  return mockJobs.map((job) => hydrateMockRecruiter(normalizeMockJob(job), users));
 };
 
 const saveMockJobs = (jobs) => {
@@ -44,6 +78,10 @@ const filterMockJobs = (jobs, filters = {}) => {
   const experienceLevelTerm = normalizeText(filters.experience_level);
 
   return jobs.filter((job) => {
+    if (normalizeText(job.status) !== 'active') {
+      return false;
+    }
+
     const matchesSearch =
       !searchTerm ||
       [
@@ -127,7 +165,14 @@ class JobService {
    */
   static async getAvailableLocations() {
     if (shouldUseMockData) {
-      return [...new Set(getStoredMockJobs().map((job) => job.location).filter(Boolean))].sort();
+      return [
+        ...new Set(
+          getStoredMockJobs()
+            .filter((job) => normalizeText(job.status) === 'active')
+            .map((job) => job.location)
+            .filter(Boolean)
+        ),
+      ].sort();
     }
 
     try {
@@ -168,7 +213,7 @@ class JobService {
       const newJob = {
         id: getNextJobId(jobs),
         recruiter_id: currentUser?.id || 1,
-        recruiter: { name: currentUser?.name || 'Recruiter Demo' },
+        recruiter: { name: currentUser?.company_name || currentUser?.name || 'Recruiter Demo' },
         title: data.title,
         description: data.description,
         category: data.category,

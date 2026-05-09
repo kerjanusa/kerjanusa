@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Recruiter Demo',
                 'password' => Hash::make($demoPassword),
-                'role' => 'recruiter',
+                'role' => User::ROLE_RECRUITER,
                 'phone' => '081234567890',
             ]
         );
@@ -32,8 +32,18 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Candidate Demo',
                 'password' => Hash::make($demoPassword),
-                'role' => 'candidate',
+                'role' => User::ROLE_CANDIDATE,
                 'phone' => '089876543210',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'superadmin@kerjanusa.com'],
+            [
+                'name' => 'Superadmin KerjaNusa',
+                'password' => Hash::make($demoPassword),
+                'role' => User::ROLE_SUPERADMIN,
+                'phone' => '081122334455',
             ]
         );
 

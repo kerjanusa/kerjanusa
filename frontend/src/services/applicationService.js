@@ -1,13 +1,99 @@
 import apiClient from '../utils/apiClient';
+import mockJobs from '../data/mockJobs.js';
 import { shouldUseMockData } from '../utils/mockMode';
 
 const MOCK_APPLICATIONS_STORAGE_KEY = 'mock_job_applications';
+const MOCK_JOBS_STORAGE_KEY = 'mock_jobs';
+const MOCK_USERS_STORAGE_KEY = 'mock_auth_users';
+const DEFAULT_MOCK_APPLICATIONS = [
+  {
+    id: 1,
+    job_id: 8,
+    candidate_id: 2,
+    status: 'pending',
+    cover_letter:
+      'Saya siap bekerja shift dan sudah terbiasa menangani pelanggan secara langsung maupun melalui chat.',
+    applied_at: '2026-05-06T09:15:00.000Z',
+  },
+  {
+    id: 2,
+    job_id: 4,
+    candidate_id: 2,
+    status: 'accepted',
+    cover_letter:
+      'Saya tertarik pada peran administrasi operasional dan terbiasa bekerja rapi dengan dokumen harian.',
+    applied_at: '2026-05-03T04:45:00.000Z',
+  },
+  {
+    id: 3,
+    job_id: 12,
+    candidate_id: 2,
+    status: 'rejected',
+    cover_letter:
+      'Saya ingin mengembangkan pengalaman pembuatan konten pendek untuk promosi dan employer branding.',
+    applied_at: '2026-04-28T08:10:00.000Z',
+  },
+];
+
+const sortApplicationsByAppliedAt = (applications) =>
+  [...applications].sort(
+    (firstApplication, secondApplication) =>
+      new Date(secondApplication.applied_at || secondApplication.created_at || 0).getTime() -
+      new Date(firstApplication.applied_at || firstApplication.created_at || 0).getTime()
+  );
+
+const getStoredMockJobs = () => {
+  const storedJobs = localStorage.getItem(MOCK_JOBS_STORAGE_KEY);
+
+  if (!storedJobs) {
+    return mockJobs;
+  }
+
+  try {
+    const parsedJobs = JSON.parse(storedJobs);
+    return Array.isArray(parsedJobs) ? parsedJobs : mockJobs;
+  } catch {
+    return mockJobs;
+  }
+};
+
+const getStoredMockUsers = () => {
+  const storedUsers = localStorage.getItem(MOCK_USERS_STORAGE_KEY);
+
+  if (!storedUsers) {
+    return [];
+  }
+
+  try {
+    const parsedUsers = JSON.parse(storedUsers);
+    return Array.isArray(parsedUsers) ? parsedUsers : [];
+  } catch {
+    return [];
+  }
+};
+
+const enrichMockApplication = (application) => {
+  const jobs = getStoredMockJobs();
+  const users = getStoredMockUsers();
+  const currentUser = getCurrentMockUser();
+  const job = jobs.find((item) => Number(item.id) === Number(application.job_id)) || null;
+  const candidate =
+    users.find((item) => Number(item.id) === Number(application.candidate_id)) ||
+    (Number(currentUser?.id) === Number(application.candidate_id) ? currentUser : null);
+
+  return {
+    ...application,
+    job,
+    candidate,
+  };
+};
 
 const getStoredMockApplications = () => {
   const storedApplications = localStorage.getItem(MOCK_APPLICATIONS_STORAGE_KEY);
 
   if (!storedApplications) {
-    return [];
+    localStorage.setItem(MOCK_APPLICATIONS_STORAGE_KEY, JSON.stringify(DEFAULT_MOCK_APPLICATIONS));
+    return DEFAULT_MOCK_APPLICATIONS;
   }
 
   try {
@@ -44,6 +130,12 @@ class ApplicationService {
       }
 
       const applications = getStoredMockApplications();
+      const job = getStoredMockJobs().find((item) => Number(item.id) === Number(jobId));
+
+      if (!job || job.status === 'inactive') {
+        throw { message: 'Lowongan ini tidak tersedia untuk dilamar.' };
+      }
+
       const alreadyApplied = applications.some(
         (application) =>
           Number(application.job_id) === Number(jobId) &&
@@ -67,7 +159,7 @@ class ApplicationService {
 
       return {
         message: 'Lamaran demo berhasil dikirim.',
-        data: nextApplication,
+        data: enrichMockApplication(nextApplication),
       };
     }
 
@@ -88,9 +180,11 @@ class ApplicationService {
   static async getMyApplications(page = 1, perPage = 15) {
     if (shouldUseMockData) {
       const currentUser = getCurrentMockUser();
-      const applications = getStoredMockApplications().filter(
+      const applications = sortApplicationsByAppliedAt(
+        getStoredMockApplications().filter(
         (application) => Number(application.candidate_id) === Number(currentUser?.id)
-      );
+        )
+      ).map(enrichMockApplication);
 
       return {
         data: applications,
@@ -117,9 +211,11 @@ class ApplicationService {
    */
   static async getJobApplications(jobId, page = 1, perPage = 15) {
     if (shouldUseMockData) {
-      const applications = getStoredMockApplications().filter(
+      const applications = sortApplicationsByAppliedAt(
+        getStoredMockApplications().filter(
         (application) => Number(application.job_id) === Number(jobId)
-      );
+        )
+      ).map(enrichMockApplication);
 
       return {
         data: applications,
@@ -168,7 +264,7 @@ class ApplicationService {
 
       return {
         message: 'Status lamaran demo berhasil diperbarui.',
-        data: updatedApplication,
+        data: enrichMockApplication(updatedApplication),
       };
     }
 
@@ -195,7 +291,7 @@ class ApplicationService {
         throw { message: 'Lamaran demo tidak ditemukan.' };
       }
 
-      return application;
+      return enrichMockApplication(application);
     }
 
     try {

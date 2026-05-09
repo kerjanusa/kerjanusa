@@ -46,12 +46,12 @@ const LOGIN_ENTRY_COPY = {
     registerCta: 'Daftar di sini',
     emailPlaceholder: 'Email pelamar',
   },
-  internal: {
-    heading: 'Login KerjaNusa',
+  superadmin: {
+    heading: 'Login Superadmin',
     description:
-      'Masuk untuk membuka dashboard admin internal dan memantau pelamar, recruiter, serta lowongan.',
-    helper: 'Akun internal dikelola langsung oleh tim KerjaNusa.',
-    emailPlaceholder: 'Email tim KerjaNusa',
+      'Masuk untuk membuka dashboard superadmin dan memantau pelamar, recruiter, lowongan, serta data platform.',
+    helper: 'Akun superadmin dikelola langsung oleh tim inti KerjaNusa.',
+    emailPlaceholder: 'Email superadmin KerjaNusa',
   },
 };
 
@@ -60,9 +60,11 @@ const LoginPage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const requestedRole = searchParams.get('role');
   const loginEntryKey =
-    requestedRole === 'candidate' || requestedRole === 'internal' || requestedRole === 'recruiter'
+    requestedRole === 'candidate' || requestedRole === 'recruiter'
       ? requestedRole
-      : 'default';
+      : requestedRole === 'superadmin' || requestedRole === 'internal'
+        ? 'superadmin'
+        : 'default';
   const loginCopy = LOGIN_ENTRY_COPY[loginEntryKey];
   const forgotPasswordTo =
     loginEntryKey === 'default'
@@ -167,7 +169,7 @@ const LoginPage = () => {
                 </p>
               ) : (
                 <p className="auth-link auth-link-muted">
-                  Jika Anda membutuhkan akses internal, hubungi administrator KerjaNusa.
+                  Jika Anda membutuhkan akses superadmin, hubungi administrator utama KerjaNusa.
                 </p>
               )}
             </div>

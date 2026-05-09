@@ -22,10 +22,10 @@ const Navbar = () => {
           { to: '/candidate', label: 'Info Data Diri' },
           { to: '/jobs', label: 'Cari Pekerjaan' },
         ]
-      : user?.role === 'internal'
+      : user?.role === 'superadmin'
         ? [
-            { to: '/admin', label: 'Dashboard Admin' },
-            { to: '/platform', label: 'Tentang Kami' },
+          { to: '/admin', label: 'Dashboard Admin' },
+          { to: '/platform', label: 'Tentang Kami' },
           ]
         : [
             { to: '/recruiter', label: 'Dashboard Company' },

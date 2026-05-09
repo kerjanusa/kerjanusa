@@ -14,7 +14,13 @@ const formatDisplayLabel = (value) => {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 };
 
-const JobCard = ({ job, index = 0, onApply }) => {
+const JobCard = ({
+  job,
+  index = 0,
+  onApply,
+  actionLabel = 'Lamar Sekarang',
+  actionVariant = 'primary',
+}) => {
   const videoScreeningLabel = formatVideoScreeningRequirement(job.video_screening_requirement);
 
   return (
@@ -56,8 +62,8 @@ const JobCard = ({ job, index = 0, onApply }) => {
       <p className="job-description">{job.description?.substring(0, 150)}...</p>
 
       <div className="job-actions">
-        <button className="btn btn-primary" onClick={() => onApply?.(job)}>
-          Lamar Sekarang
+        <button className={`btn btn-${actionVariant}`} onClick={() => onApply?.(job)}>
+          {actionLabel}
         </button>
       </div>
     </div>

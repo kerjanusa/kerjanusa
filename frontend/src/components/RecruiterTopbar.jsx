@@ -10,6 +10,7 @@ const RecruiterTopbar = ({
   onLogout,
   isLoggingOut,
   user,
+  companyProfile,
 }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -119,8 +120,8 @@ const RecruiterTopbar = ({
                   {user?.name?.charAt(0)?.toUpperCase() || 'R'}
                 </span>
                 <div className="recruiter-profile-copy">
-                  <strong>{user?.name || 'Recruiter'}</strong>
-                  <span>{user?.company_name || 'Recruiter'}</span>
+                  <strong>{companyProfile?.recruiterName || user?.name || 'Recruiter'}</strong>
+                  <span>{companyProfile?.companyName || user?.company_name || 'Recruiter'}</span>
                 </div>
               </div>
               <button

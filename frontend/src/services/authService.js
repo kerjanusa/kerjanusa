@@ -1,5 +1,6 @@
 import apiClient from '../utils/apiClient';
 import { shouldUseMockData } from '../utils/mockMode';
+import { normalizeUserRole } from '../utils/routeHelpers.js';
 
 const MOCK_USERS_STORAGE_KEY = 'mock_auth_users';
 const DEFAULT_DEMO_PASSWORD = 'password123';
@@ -25,34 +26,47 @@ const defaultMockUsers = [
   },
   {
     id: 3,
-    name: 'Admin KerjaNusa',
-    email: 'admin@kerjanusa.com',
+    name: 'Superadmin KerjaNusa',
+    email: 'superadmin@kerjanusa.com',
     phone: '081122334455',
-    role: 'internal',
-    company_name: 'KerjaNusa Internal',
+    role: 'superadmin',
+    company_name: 'KerjaNusa Superadmin',
     password: DEFAULT_DEMO_PASSWORD,
   },
 ];
 
-const stripPassword = ({ password, ...user }) => user;
-
-const syncDemoUserPassword = (user) => {
+const normalizeAuthUser = (user) => {
   if (!user || typeof user !== 'object') {
-    return user;
-  }
-
-  const normalizedEmail = user.email?.trim().toLowerCase();
-  const isDemoUser =
-    normalizedEmail === 'recruiter@example.com' ||
-    normalizedEmail === 'candidate@example.com' ||
-    normalizedEmail === 'admin@kerjanusa.com';
-
-  if (!isDemoUser || user.password === DEFAULT_DEMO_PASSWORD) {
     return user;
   }
 
   return {
     ...user,
+    role: normalizeUserRole(user.role),
+  };
+};
+
+const stripPassword = ({ password, ...user }) => normalizeAuthUser(user);
+
+const syncDemoUserPassword = (user) => {
+  const normalizedUser = normalizeAuthUser(user);
+
+  if (!normalizedUser || typeof normalizedUser !== 'object') {
+    return normalizedUser;
+  }
+
+  const normalizedEmail = normalizedUser.email?.trim().toLowerCase();
+  const isDemoUser =
+    normalizedEmail === 'recruiter@example.com' ||
+    normalizedEmail === 'candidate@example.com' ||
+    normalizedEmail === 'superadmin@kerjanusa.com';
+
+  if (!isDemoUser || normalizedUser.password === DEFAULT_DEMO_PASSWORD) {
+    return normalizedUser;
+  }
+
+  return {
+    ...normalizedUser,
     password: DEFAULT_DEMO_PASSWORD,
   };
 };
@@ -92,15 +106,33 @@ const getMockUsers = () => {
 };
 
 const saveMockUsers = (users) => {
-  localStorage.setItem(MOCK_USERS_STORAGE_KEY, JSON.stringify(users));
+  localStorage.setItem(
+    MOCK_USERS_STORAGE_KEY,
+    JSON.stringify(users.map((user) => normalizeAuthUser(user)))
+  );
 };
 
 const persistMockSession = (user) => {
   const sessionToken = `mock-token-${user.id}`;
+  const normalizedUser = stripPassword(user);
   localStorage.setItem('auth_token', sessionToken);
-  localStorage.setItem('user', JSON.stringify(stripPassword(user)));
+  localStorage.setItem('user', JSON.stringify(normalizedUser));
 
   return sessionToken;
+};
+
+const persistApiSession = (user, token) => {
+  const normalizedUser = normalizeAuthUser(user);
+
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  }
+
+  if (normalizedUser) {
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
+  }
+
+  return normalizedUser;
 };
 
 class AuthService {
@@ -142,8 +174,11 @@ class AuthService {
     try {
       const response = await apiClient.post('/register', data);
       if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        const normalizedUser = persistApiSession(response.data.user, response.data.token);
+        return {
+          ...response.data,
+          user: normalizedUser,
+        };
       }
       return response.data;
     } catch (error) {
@@ -174,8 +209,11 @@ class AuthService {
     try {
       const response = await apiClient.post('/login', { email, password });
       if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        const normalizedUser = persistApiSession(response.data.user, response.data.token);
+        return {
+          ...response.data,
+          user: normalizedUser,
+        };
       }
       return response.data;
     } catch (error) {
@@ -220,7 +258,7 @@ class AuthService {
 
     try {
       const response = await apiClient.get('/me');
-      return response.data.user;
+      return persistApiSession(response.data.user);
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -237,9 +275,9 @@ class AuthService {
         throw { message: 'Anda belum login.' };
       }
 
-      const updatedUser = { ...currentUser, ...data };
+      const updatedUser = normalizeAuthUser({ ...currentUser, ...data });
       const users = getMockUsers().map((user) =>
-        user.id === currentUser.id ? { ...user, ...data } : user
+        user.id === currentUser.id ? normalizeAuthUser({ ...user, ...data }) : user
       );
 
       saveMockUsers(users);
@@ -250,8 +288,11 @@ class AuthService {
 
     try {
       const response = await apiClient.put('/profile', data);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      return response.data;
+      const normalizedUser = persistApiSession(response.data.user);
+      return {
+        ...response.data,
+        user: normalizedUser,
+      };
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -309,7 +350,23 @@ class AuthService {
    */
   static getStoredUser() {
     const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+
+    if (!user) {
+      return null;
+    }
+
+    try {
+      const parsedUser = JSON.parse(user);
+      const normalizedUser = normalizeAuthUser(parsedUser);
+
+      if (normalizedUser?.role !== parsedUser?.role) {
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+      }
+
+      return normalizedUser;
+    } catch {
+      return null;
+    }
   }
 
   /**

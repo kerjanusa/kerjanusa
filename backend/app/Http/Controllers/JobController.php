@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Job;
+use App\Models\User;
 use App\Services\JobService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +72,7 @@ class JobController extends Controller
             'interview_type' => 'nullable|in:onsite,online,phone,hybrid',
             'interview_note' => 'nullable|string',
             'video_screening_requirement' => 'nullable|in:required,optional',
+            'status' => 'nullable|in:active,inactive',
         ]);
 
         $job = $this->jobService->createJob($request->user()->id, $validated);
@@ -102,6 +105,20 @@ class JobController extends Controller
             'status' => 'nullable|in:active,inactive',
         ]);
 
+        $job = Job::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'message' => 'Job not found',
+            ], 404);
+        }
+
+        if (!$this->canManageJob($request->user(), $job)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
         $success = $this->jobService->updateJob($id, $validated);
 
         if (!$success) {
@@ -118,8 +135,22 @@ class JobController extends Controller
     /**
      * Menghapus lowongan dan mengembalikan 404 bila data tidak ditemukan.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
+        $job = Job::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'message' => 'Job not found',
+            ], 404);
+        }
+
+        if (!$this->canManageJob($request->user(), $job)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
         $success = $this->jobService->deleteJob($id);
 
         if (!$success) {
@@ -165,18 +196,32 @@ class JobController extends Controller
     /**
      * Mengembalikan ringkasan statistik lamaran untuk lowongan tertentu.
      */
-    public function statistics(int $id): JsonResponse
+    public function statistics(Request $request, int $id): JsonResponse
     {
-        $stats = $this->jobService->getJobStatistics($id);
+        $job = Job::find($id);
 
-        if (empty($stats)) {
+        if (!$job) {
             return response()->json([
                 'message' => 'Job not found',
             ], 404);
         }
 
+        if (!$this->canManageJob($request->user(), $job)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
+        $stats = $this->jobService->getJobStatistics($id);
+
         return response()->json([
             'data' => $stats,
         ]);
+    }
+
+    private function canManageJob(User $user, Job $job): bool
+    {
+        return $user->hasRole(User::ROLE_SUPERADMIN)
+            || ($user->hasRole(User::ROLE_RECRUITER) && $job->recruiter_id === $user->id);
     }
 }

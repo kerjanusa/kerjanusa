@@ -184,7 +184,7 @@ function AppLayout() {
           <Route
             path={APP_ROUTES.adminDashboard}
             element={
-              <ProtectedRoute allowedRoles={['internal']} loginRole="internal">
+              <ProtectedRoute allowedRoles={['superadmin']} loginRole="superadmin">
                 <AdminDashboardPage />
               </ProtectedRoute>
             }

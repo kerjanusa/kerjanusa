@@ -133,10 +133,10 @@ const entryPortalCards = [
     action: 'Masuk sebagai Pelamar',
   },
   {
-    title: 'Login Admin KerjaNusa',
-    description: 'Akses admin internal sementara tetap memakai halaman login utama yang sama.',
-    to: '/login?role=internal',
-    action: 'Masuk sebagai Admin',
+    title: 'Login Superadmin KerjaNusa',
+    description: 'Akses superadmin untuk memantau recruiter, pelamar, lowongan, dan data platform.',
+    to: '/login?role=superadmin',
+    action: 'Masuk sebagai Superadmin',
   },
 ];
 
@@ -196,7 +196,7 @@ const HomePage = () => {
               </p>
               <ul className="hero-feature-list">
                 <li>
-                  <strong>Login</strong> untuk Rekruter, Pelamar, dan Admin KerjaNusa.
+                  <strong>Login</strong> untuk Rekruter, Pelamar, dan Superadmin KerjaNusa.
                 </li>
                 <li>
                   <strong>Daftar Sekarang</strong> untuk Rekruter dan Pelamar.
@@ -234,7 +234,7 @@ const HomePage = () => {
                     <div className="hero-concept-grid">
                       <article className="hero-concept-card">
                         <strong>Login</strong>
-                        <span>Rekruter, Pelamar, Admin KerjaNusa</span>
+                        <span>Rekruter, Pelamar, Superadmin KerjaNusa</span>
                       </article>
                       <article className="hero-concept-card">
                         <strong>Daftar Sekarang</strong>
@@ -256,7 +256,7 @@ const HomePage = () => {
               <div className="hero-visual-note">
                 <strong>Alur masuk dibuat lebih jelas</strong>
                 <span>
-                  Recruiter, pelamar, dan admin KerjaNusa sekarang punya jalur akses yang lebih
+                  Recruiter, pelamar, dan superadmin KerjaNusa sekarang punya jalur akses yang lebih
                   mudah dipahami dari beranda awal.
                 </span>
               </div>

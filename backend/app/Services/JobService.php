@@ -35,7 +35,7 @@ class JobService
     public function createJob(int $recruiterId, array $data): Job
     {
         $data['recruiter_id'] = $recruiterId;
-        $data['status'] = 'active';
+        $data['status'] = $data['status'] ?? 'active';
 
         return Job::create($data);
     }

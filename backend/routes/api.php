@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\JobController;
@@ -33,7 +34,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/job-locations', [JobController::class, 'locations']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
-Route::get('/jobs/{id}/statistics', [JobController::class, 'statistics']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -43,16 +43,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::put('/change-password', [AuthController::class, 'changePassword']);
 
-    // Job routes (CRUD for recruiter)
-    Route::post('/jobs', [JobController::class, 'store']);
-    Route::put('/jobs/{id}', [JobController::class, 'update']);
-    Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
-    Route::get('/my-jobs', [JobController::class, 'myJobs']);
+    Route::middleware('role:candidate')->group(function () {
+        Route::post('/apply', [ApplicationController::class, 'store']);
+        Route::get('/my-applications', [ApplicationController::class, 'myCandidateApplications']);
+    });
 
-    // Application routes
-    Route::post('/apply', [ApplicationController::class, 'store']);
-    Route::get('/my-applications', [ApplicationController::class, 'myCandidateApplications']);
-    Route::get('/jobs/{jobId}/applications', [ApplicationController::class, 'jobApplications']);
-    Route::put('/applications/{applicationId}/status', [ApplicationController::class, 'updateStatus']);
+    Route::middleware('role:recruiter')->group(function () {
+        Route::post('/jobs', [JobController::class, 'store']);
+        Route::get('/my-jobs', [JobController::class, 'myJobs']);
+    });
+
+    Route::middleware('role:recruiter,superadmin')->group(function () {
+        Route::put('/jobs/{id}', [JobController::class, 'update']);
+        Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
+        Route::get('/jobs/{id}/statistics', [JobController::class, 'statistics']);
+        Route::get('/jobs/{jobId}/applications', [ApplicationController::class, 'jobApplications']);
+        Route::put('/applications/{applicationId}/status', [ApplicationController::class, 'updateStatus']);
+    });
+
     Route::get('/applications/{applicationId}', [ApplicationController::class, 'show']);
+
+    Route::middleware('role:superadmin')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    });
 });

@@ -33,14 +33,14 @@ const FORGOT_PASSWORD_COPY = {
     loginLabel: 'Kembali ke login pelamar',
     helper: 'Instruksi reset akan dikirim ke email yang terkait dengan akun pelamar.',
   },
-  internal: {
-    heading: 'Reset Password Admin',
+  superadmin: {
+    heading: 'Reset Password Superadmin',
     description:
-      'Masukkan email tim KerjaNusa yang terdaftar untuk menerima instruksi pemulihan akses admin internal.',
-    emailPlaceholder: 'Email tim KerjaNusa',
-    loginTo: getLoginRouteForRole('internal'),
-    loginLabel: 'Kembali ke login admin',
-    helper: 'Untuk akun internal, gunakan email resmi yang sudah didaftarkan oleh administrator.',
+      'Masukkan email superadmin KerjaNusa yang terdaftar untuk menerima instruksi pemulihan akses dashboard utama.',
+    emailPlaceholder: 'Email superadmin KerjaNusa',
+    loginTo: getLoginRouteForRole('superadmin'),
+    loginLabel: 'Kembali ke login superadmin',
+    helper: 'Untuk akun superadmin, gunakan email resmi yang sudah didaftarkan oleh administrator utama.',
   },
 };
 
@@ -65,9 +65,11 @@ const ForgotPasswordPage = () => {
   const [submittedEmail, setSubmittedEmail] = useState('');
   const requestedRole = searchParams.get('role');
   const entryKey =
-    requestedRole === 'candidate' || requestedRole === 'internal' || requestedRole === 'recruiter'
+    requestedRole === 'candidate' || requestedRole === 'recruiter'
       ? requestedRole
-      : 'default';
+      : requestedRole === 'superadmin' || requestedRole === 'internal'
+        ? 'superadmin'
+        : 'default';
   const forgotPasswordCopy = FORGOT_PASSWORD_COPY[entryKey];
 
   const handleSubmit = (event) => {

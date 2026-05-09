@@ -11,6 +11,10 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
 
+    public const ROLE_CANDIDATE = 'candidate';
+    public const ROLE_RECRUITER = 'recruiter';
+    public const ROLE_SUPERADMIN = 'superadmin';
+
     protected $fillable = [
         'name',
         'email',
@@ -38,5 +42,15 @@ class User extends Authenticatable
     public function applications()
     {
         return $this->hasMany(Application::class, 'candidate_id');
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return in_array($this->role, $roles, true);
     }
 }

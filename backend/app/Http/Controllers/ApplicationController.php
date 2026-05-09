@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Application;
+use App\Models\Job;
+use App\Models\User;
 use App\Services\ApplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,6 +67,20 @@ class ApplicationController extends Controller
      */
     public function jobApplications(Request $request, int $jobId): JsonResponse
     {
+        $job = Job::find($jobId);
+
+        if (!$job) {
+            return response()->json([
+                'message' => 'Job not found',
+            ], 404);
+        }
+
+        if (!$this->canManageJobApplications($request->user(), $job)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
         $perPage = (int)$request->query('per_page', 15);
         $applications = $this->applicationService->getJobApplications($jobId, $perPage);
 
@@ -87,6 +104,20 @@ class ApplicationController extends Controller
             'status' => 'required|in:pending,accepted,rejected,withdrawn',
         ]);
 
+        $application = Application::with('job')->find($applicationId);
+
+        if (!$application) {
+            return response()->json([
+                'message' => 'Application not found',
+            ], 404);
+        }
+
+        if (!$this->canManageJobApplications($request->user(), $application->job)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
         $success = $this->applicationService->updateApplicationStatus(
             $applicationId,
             $validated['status']
@@ -106,7 +137,7 @@ class ApplicationController extends Controller
     /**
      * Get application detail
      */
-    public function show(int $applicationId): JsonResponse
+    public function show(Request $request, int $applicationId): JsonResponse
     {
         $application = $this->applicationService->getApplicationById($applicationId);
 
@@ -116,8 +147,38 @@ class ApplicationController extends Controller
             ], 404);
         }
 
+        if (!$this->canViewApplication($request->user(), $application)) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
         return response()->json([
             'data' => $application,
         ]);
+    }
+
+    private function canManageJobApplications(User $user, ?Job $job): bool
+    {
+        if (!$job) {
+            return false;
+        }
+
+        return $user->hasRole(User::ROLE_SUPERADMIN)
+            || ($user->hasRole(User::ROLE_RECRUITER) && $job->recruiter_id === $user->id);
+    }
+
+    private function canViewApplication(User $user, Application $application): bool
+    {
+        if ($user->hasRole(User::ROLE_SUPERADMIN)) {
+            return true;
+        }
+
+        if ($user->hasRole(User::ROLE_CANDIDATE)) {
+            return $application->candidate_id === $user->id;
+        }
+
+        return $user->hasRole(User::ROLE_RECRUITER)
+            && $application->job?->recruiter_id === $user->id;
     }
 }
