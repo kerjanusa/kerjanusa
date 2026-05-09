@@ -4,12 +4,22 @@
     "api/index.php": {
       "runtime": "vercel-php@0.7.4",
       "maxDuration": 30
+    },
+    "api/[...route].php": {
+      "runtime": "vercel-php@0.7.4",
+      "maxDuration": 30
+    },
+    "api/admin/[...route].php": {
+      "runtime": "vercel-php@0.7.4",
+      "maxDuration": 30
+    },
+    "api/jobs/[...route].php": {
+      "runtime": "vercel-php@0.7.4",
+      "maxDuration": 30
+    },
+    "api/applications/[...route].php": {
+      "runtime": "vercel-php@0.7.4",
+      "maxDuration": 30
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.php"
-    }
-  ]
+  }
 }
