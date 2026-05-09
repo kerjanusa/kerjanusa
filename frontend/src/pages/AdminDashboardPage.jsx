@@ -227,6 +227,30 @@ const formatJobStatus = (job) => {
   return 'Review';
 };
 
+const getCandidateAdminStatus = (candidate) => {
+  if (candidate.account_status === 'suspended') {
+    return {
+      key: 'blocked',
+      label: 'Diblokir',
+      tone: 'blocked',
+    };
+  }
+
+  if (!candidate.profile_ready) {
+    return {
+      key: 'review',
+      label: 'Menunggu',
+      tone: 'review',
+    };
+  }
+
+  return {
+    key: 'active',
+    label: 'Aktif',
+    tone: 'active-soft',
+  };
+};
+
 const AdminIcon = ({ name, className = '' }) => {
   const props = {
     viewBox: '0 0 24 24',
@@ -413,15 +437,22 @@ const SectionMetrics = ({ cards }) => (
         key={card.label}
         className={`superadmin-metric-card${
           card.dark ? ' is-dark' : ''
-        }${card.alert ? ' is-alert' : ''}`}
+        }${card.alert ? ' is-alert' : ''}${card.compact ? ' is-compact' : ''}`}
       >
         <div className="superadmin-metric-head">
           <span className="superadmin-metric-label">{card.label}</span>
-          {card.badge && (
-            <span className={`superadmin-inline-badge is-${card.badge.tone}`}>
-              {card.badge.label}
-            </span>
-          )}
+          <div className="superadmin-metric-headside">
+            {card.badge && (
+              <span className={`superadmin-inline-badge is-${card.badge.tone}`}>
+                {card.badge.label}
+              </span>
+            )}
+            {card.icon && (
+              <span className={`superadmin-metric-icon${card.iconTone ? ` is-${card.iconTone}` : ''}`}>
+                <AdminIcon name={card.icon} />
+              </span>
+            )}
+          </div>
         </div>
         <strong className="superadmin-metric-value">{card.value}</strong>
         {card.progress ? (
@@ -588,7 +619,8 @@ const AdminDashboardPage = () => {
         ...candidate,
         initials: getInitials(candidate.name),
         position: candidate.latest_job_title || 'Belum ada posisi dilamar',
-        dateLabel: formatDateTime(candidate.created_at),
+        dateLabel: formatDateShort(candidate.created_at),
+        adminStatus: getCandidateAdminStatus(candidate),
       })),
     [candidateTable]
   );
@@ -635,11 +667,19 @@ const AdminDashboardPage = () => {
           .includes(normalizedQuery);
 
       const matchesStatus =
-        candidateStatusFilter === 'all' || candidate.account_status === candidateStatusFilter;
+        candidateStatusFilter === 'all' ||
+        (candidateStatusFilter === 'suspended' && candidate.account_status === 'suspended') ||
+        (candidateStatusFilter === 'active' && candidate.adminStatus.key === 'active') ||
+        (candidateStatusFilter === 'review' && candidate.adminStatus.key === 'review');
 
       return matchesQuery && matchesStatus;
     });
   }, [candidateRows, candidateSearchQuery, candidateStatusFilter]);
+
+  const visibleCandidateRows = useMemo(
+    () => filteredCandidateRows.slice(0, 5),
+    [filteredCandidateRows]
+  );
 
   const filteredRecruiterRows = useMemo(() => {
     const normalizedQuery = normalizeText(recruiterSearchQuery);
@@ -1192,26 +1232,38 @@ const AdminDashboardPage = () => {
     {
       label: 'Total Pelamar',
       value: numberFormatter.format(totals.candidates ?? 0),
-      detail: `↗ +${Math.max(growth.new_candidates_last_7_days ?? 0, 0)} akun dalam 7 hari`,
+      detail: `↗ +${Math.max(growth.new_candidates_last_7_days ?? 0, 0)} bln ini`,
       detailTone: 'accent',
+      icon: 'candidate',
+      iconTone: 'default',
+      compact: true,
     },
     {
       label: 'Pelamar Aktif',
       value: numberFormatter.format(activeCandidatesCount),
-      detail: `${getProgressValue(activeCandidatesCount, totals.candidates ?? 0)}% dari total`,
+      detail: 'Stabil bln ini',
+      icon: 'check',
+      iconTone: 'success',
+      compact: true,
     },
     {
       label: 'Lamaran Baru',
       value: numberFormatter.format(growth.new_applications_last_7_days ?? 0),
-      detail: 'Butuh review',
+      detail: `↗ +${Math.max(growth.new_applications_last_7_days ?? 0, 0)} bln ini`,
       detailTone: 'warning',
+      icon: 'spark',
+      iconTone: 'warning',
+      compact: true,
     },
     {
-      label: 'Akun Dinonaktifkan',
+      label: 'Dinonaktifkan',
       value: numberFormatter.format(suspendedCandidatesCount),
-      detail: 'Pelanggaran syarat',
+      detail: `↘ -${Math.max(suspendedCandidatesCount, 0)} bln ini`,
       alert: true,
       detailTone: 'danger',
+      icon: 'ban',
+      iconTone: 'danger',
+      compact: true,
     },
   ];
 
@@ -1704,22 +1756,15 @@ const AdminDashboardPage = () => {
 
   const renderCandidateManagement = () => (
     <section className="superadmin-section-block">
-      <SectionOverview
-        eyebrow=""
-        title="Manajemen pelamar yang lebih tenang dan cepat dipindai."
-        description=""
-        stats={candidateOverviewStats}
-      />
-
       <SectionMetrics cards={pelamarCards} />
 
-      <article className="superadmin-panel superadmin-table-panel">
-        <div className="superadmin-toolbar">
+      <article className="superadmin-panel superadmin-table-panel is-candidate">
+        <div className="superadmin-toolbar superadmin-toolbar-compact">
           <label className="superadmin-search-input">
             <AdminIcon name="search" />
             <input
               type="search"
-              placeholder="Cari nama pelamar atau posisi..."
+              placeholder="Cari nama pelamar..."
               value={candidateSearchQuery}
               onChange={(event) => setCandidateSearchQuery(event.target.value)}
             />
@@ -1731,8 +1776,9 @@ const AdminDashboardPage = () => {
               value={candidateStatusFilter}
               onChange={(event) => setCandidateStatusFilter(event.target.value)}
             >
-              <option value="all">Filter Status</option>
+              <option value="all">Semua Status</option>
               <option value="active">Aktif</option>
+              <option value="review">Menunggu</option>
               <option value="suspended">Nonaktif</option>
             </select>
             <button
@@ -1747,25 +1793,25 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="superadmin-table-wrap">
-          <table className="superadmin-table">
+          <table className="superadmin-table superadmin-table-candidate">
             <thead>
               <tr>
-                <th>Nama</th>
-                <th>Posisi Dilamar</th>
+                <th>Pelamar</th>
+                <th>Posisi Terakhir</th>
                 <th>Status</th>
                 <th>Tanggal Daftar</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filteredCandidateRows.length === 0 ? (
+              {visibleCandidateRows.length === 0 ? (
                 <tr>
                   <td colSpan="5">
                     <div className="superadmin-table-empty">Belum ada data pelamar yang cocok.</div>
                   </td>
                 </tr>
               ) : (
-                filteredCandidateRows.map((candidate) => (
+                visibleCandidateRows.map((candidate) => (
                   <tr key={candidate.id}>
                     <td>
                       <div className="superadmin-person-cell">
@@ -1778,17 +1824,26 @@ const AdminDashboardPage = () => {
                     </td>
                     <td>{candidate.position}</td>
                     <td>
-                      <span
-                        className={`superadmin-status-tag is-${
-                          candidate.account_status === 'active' ? 'success' : 'muted'
-                        }`}
-                      >
-                        {formatAccountStatus(candidate.account_status)}
+                      <span className={`superadmin-status-tag is-${candidate.adminStatus.tone}`}>
+                        {candidate.adminStatus.label}
                       </span>
                     </td>
-                    <td>{candidate.dateLabel}</td>
+                    <td className="superadmin-cell-date">{candidate.dateLabel}</td>
                     <td>
                       <div className="superadmin-icon-actions">
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title="Lihat ringkasan kandidat"
+                          onClick={() =>
+                            setFeedback({
+                              type: 'success',
+                              message: `${candidate.name} • ${candidate.position} • ${candidate.email}`,
+                            })
+                          }
+                        >
+                          <AdminIcon name="eye" />
+                        </button>
                         <button
                           type="button"
                           className="superadmin-icon-button"
@@ -1823,77 +1878,11 @@ const AdminDashboardPage = () => {
         </div>
 
         <Pagination
-          label={`Menampilkan 1-${Math.min(filteredCandidateRows.length, 10)} dari ${numberFormatter.format(
+          label={`Menampilkan 1 - ${visibleCandidateRows.length} dari ${numberFormatter.format(
             totals.candidates ?? 0
           )} pelamar`}
         />
       </article>
-
-      <div className="superadmin-two-column">
-        <article className="superadmin-panel superadmin-support-panel">
-          <div className="superadmin-panel-head">
-            <div>
-              <h3>Pelamar Prioritas Review</h3>
-            </div>
-          </div>
-          <div className="superadmin-list-stack">
-            {candidateReviewQueue.length === 0 ? (
-              <div className="superadmin-empty-state is-panel">
-                <div className="superadmin-empty-icon">⌁</div>
-                <p>Tidak ada pelamar prioritas review saat ini.</p>
-              </div>
-            ) : (
-              candidateReviewQueue.map((candidate) => (
-                <article key={candidate.id} className="superadmin-list-item">
-                  <div className={`superadmin-list-icon is-${candidate.account_status === 'suspended' ? 'danger' : 'success'}`}>
-                    <AdminIcon name={candidate.account_status === 'suspended' ? 'ban' : 'candidate'} />
-                  </div>
-                  <div>
-                    <strong>{candidate.name}</strong>
-                    <p>{candidate.position}</p>
-                    <small>
-                      {candidate.account_status === 'suspended'
-                        ? candidate.account_status_reason || 'Akun sedang dibatasi sementara.'
-                        : 'Profil belum lengkap untuk masuk ke proses berikutnya.'}
-                    </small>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </article>
-
-        <article className="superadmin-panel superadmin-support-panel">
-          <div className="superadmin-panel-head">
-            <div>
-              <h3>Checklist Admin</h3>
-            </div>
-          </div>
-          <div className="superadmin-monitoring-priority-list">
-            <article className="superadmin-monitoring-priority-item is-warning">
-              <div>
-                <span className="superadmin-monitoring-priority-label">Lengkapi profil</span>
-                <p>Filter kandidat yang profilnya belum lengkap sebelum mengirim reset atau follow-up.</p>
-              </div>
-              <strong>{numberFormatter.format(candidateReviewCount)}</strong>
-            </article>
-            <article className="superadmin-monitoring-priority-item is-success">
-              <div>
-                <span className="superadmin-monitoring-priority-label">Baru masuk</span>
-                <p>Pantau lonjakan akun baru dalam 7 hari terakhir untuk melihat beban review.</p>
-              </div>
-              <strong>{numberFormatter.format(growth.new_candidates_last_7_days ?? 0)}</strong>
-            </article>
-            <article className="superadmin-monitoring-priority-item is-danger">
-              <div>
-                <span className="superadmin-monitoring-priority-label">Suspend aktif</span>
-                <p>Pastikan akun yang dibatasi memang sudah punya alasan yang jelas dan terdokumentasi.</p>
-              </div>
-              <strong>{numberFormatter.format(suspendedCandidatesCount)}</strong>
-            </article>
-          </div>
-        </article>
-      </div>
     </section>
   );
 

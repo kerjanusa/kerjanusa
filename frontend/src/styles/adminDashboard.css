@@ -959,6 +959,13 @@
   gap: 0.7rem;
 }
 
+.superadmin-metric-headside {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .superadmin-metric-label {
   color: #1f2538;
   font-size: 0.72rem;
@@ -968,6 +975,31 @@
 
 .superadmin-metric-card.is-dark .superadmin-metric-label {
   color: rgba(255, 255, 255, 0.76);
+}
+
+.superadmin-metric-card.is-compact {
+  min-height: 102px;
+}
+
+.superadmin-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: #645a66;
+}
+
+.superadmin-metric-icon.is-success {
+  color: #17803d;
+}
+
+.superadmin-metric-icon.is-warning {
+  color: #a15c00;
+}
+
+.superadmin-metric-icon.is-danger {
+  color: #cb2323;
 }
 
 .superadmin-metric-value {
@@ -1068,6 +1100,10 @@
   padding: 0.2rem 0 1rem;
 }
 
+.superadmin-toolbar-compact {
+  padding-bottom: 0.8rem;
+}
+
 .superadmin-toolbar-left,
 .superadmin-toolbar-right,
 .superadmin-toolbar-actions {
@@ -1145,6 +1181,20 @@
   background: #fff6f4;
 }
 
+.superadmin-table-panel.is-candidate {
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.superadmin-table-candidate thead th {
+  padding: 0.95rem 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.015em;
+}
+
+.superadmin-table-candidate tbody td {
+  padding: 1rem;
+}
+
 .superadmin-table-empty {
   padding: 2rem 1rem;
   text-align: center;
@@ -1188,6 +1238,32 @@
   color: #fff1c9;
 }
 
+.superadmin-table-candidate .superadmin-person-cell {
+  gap: 0.72rem;
+}
+
+.superadmin-table-candidate .superadmin-person-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #162334, #56687c);
+  color: #fff2cb;
+  font-size: 0.74rem;
+  box-shadow: 0 6px 14px rgba(15, 24, 48, 0.12);
+}
+
+.superadmin-table-candidate .superadmin-person-cell strong {
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.superadmin-table-candidate .superadmin-person-cell span {
+  display: block;
+  margin-top: 0.12rem;
+  color: #7a7580;
+  font-size: 0.74rem;
+}
+
 .superadmin-status-tag {
   display: inline-flex;
   align-items: center;
@@ -1221,6 +1297,21 @@
   color: #cb2323;
 }
 
+.superadmin-status-tag.is-active-soft {
+  background: #fde8a6;
+  color: #94610a;
+}
+
+.superadmin-status-tag.is-review {
+  background: #efedf2;
+  color: #666071;
+}
+
+.superadmin-status-tag.is-blocked {
+  background: #ffdedd;
+  color: #cc2a2a;
+}
+
 .superadmin-icon-actions,
 .superadmin-job-actions {
   display: flex;
@@ -1230,16 +1321,29 @@
   flex-wrap: wrap;
 }
 
+.superadmin-table-candidate .superadmin-icon-actions {
+  gap: 0.25rem;
+}
+
 .superadmin-icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border: 0;
   background: transparent;
   color: #656b7f;
   cursor: pointer;
+}
+
+.superadmin-icon-button:hover {
+  color: #101830;
+}
+
+.superadmin-cell-date {
+  color: #666f7f;
+  font-size: 0.82rem;
 }
 
 .superadmin-icon-button:disabled,
