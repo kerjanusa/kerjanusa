@@ -50,6 +50,8 @@ class AdminController extends Controller
             'company_name' => 'nullable|string|max:255',
             'account_status' => ['nullable', Rule::in(User::ACCOUNT_STATUSES)],
             'account_status_reason' => 'nullable|string|max:1000',
+            'verification_status' => ['nullable', Rule::in(['pending', 'verified'])],
+            'verification_notes' => 'nullable|string|max:1000',
         ]);
 
         $nextAccountStatus = $validated['account_status'] ?? $user->account_status;
@@ -71,6 +73,29 @@ class AdminController extends Controller
             'account_status' => $nextAccountStatus,
             'account_status_reason' => $nextAccountStatusReason,
         ]);
+
+        if ($user->hasRole(User::ROLE_RECRUITER) && (
+            array_key_exists('verification_status', $validated) ||
+            array_key_exists('verification_notes', $validated)
+        )) {
+            $recruiterProfile = is_array($user->recruiter_profile) ? $user->recruiter_profile : [];
+
+            if (array_key_exists('verification_status', $validated)) {
+                $recruiterProfile['verificationStatus'] = $validated['verification_status'];
+                $recruiterProfile['verifiedAt'] = $validated['verification_status'] === 'verified'
+                    ? now()->toIso8601String()
+                    : null;
+            }
+
+            if (array_key_exists('verification_notes', $validated)) {
+                $recruiterProfile['verificationNotes'] = filled($validated['verification_notes'])
+                    ? trim($validated['verification_notes'])
+                    : null;
+            }
+
+            $user->recruiter_profile = $recruiterProfile;
+        }
+
         $user->save();
 
         return response()->json([

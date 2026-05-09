@@ -146,6 +146,16 @@ class AdminService
                     'jobs_count' => $recruiter->jobs_count,
                     'active_jobs_count' => $recruiter->active_jobs_count,
                     'latest_job_title' => $latestJob?->title,
+                    'verification_status' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationStatus')
+                        ?? ($this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
+                            'companyName',
+                            'contactRole',
+                            'companyLocation',
+                            'companyDescription',
+                            'hiringFocus',
+                        ]) ? 'verified' : 'pending'),
+                    'verification_notes' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationNotes'),
+                    'verified_at' => Arr::get($recruiter->recruiter_profile ?? [], 'verifiedAt'),
                     'contact_role' => Arr::get($recruiter->recruiter_profile ?? [], 'contactRole')
                         ?? Arr::get($recruiter->recruiter_profile ?? [], 'contact_role'),
                     'company_description' => Arr::get($recruiter->recruiter_profile ?? [], 'companyDescription')

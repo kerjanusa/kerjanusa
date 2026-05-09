@@ -1006,6 +1006,22 @@
   font-weight: 620;
 }
 
+.superadmin-monitoring-healthcopy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.superadmin-monitoring-healthcopy strong {
+  color: #202535;
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.superadmin-monitoring-healthcopy small {
+  color: #70778a;
+  font-size: 0.76rem;
+}
+
 .superadmin-monitoring-loghead {
   margin-left: auto;
 }
@@ -1037,15 +1053,28 @@
 }
 
 .superadmin-monitoring-control-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
+  display: grid;
+  gap: 0.14rem;
+}
+
+.superadmin-monitoring-control-copy small {
+  color: #8b91a2;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .superadmin-monitoring-control-copy strong {
   color: #23293b;
   font-size: 0.88rem;
   font-weight: 620;
+}
+
+.superadmin-monitoring-control-copy p {
+  color: #70778a;
+  font-size: 0.77rem;
+  line-height: 1.45;
 }
 
 .superadmin-monitoring-control-arrow {
@@ -1055,8 +1084,16 @@
 }
 
 .superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-copy,
+.superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-copy strong,
+.superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-copy p,
 .superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-arrow {
   color: #c53030;
+}
+
+.superadmin-monitoring-control-item.is-warning .superadmin-monitoring-control-copy strong,
+.superadmin-monitoring-control-item.is-warning .superadmin-monitoring-control-copy p,
+.superadmin-monitoring-control-item.is-warning .superadmin-monitoring-control-arrow {
+  color: #9a6200;
 }
 
 .superadmin-sync-icon,
@@ -1726,6 +1763,13 @@
   cursor: pointer;
 }
 
+.superadmin-page-arrow:disabled,
+.superadmin-page-button:disabled,
+.superadmin-page-more:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .superadmin-page-button.is-active {
   border-color: #101830;
   background: #101830;
@@ -1783,9 +1827,20 @@
   color: #15803d;
 }
 
+.superadmin-list-icon.is-neutral {
+  background: #f3f0f6;
+  color: #7b5a12;
+}
+
 .superadmin-list-icon.is-danger {
   background: #fff0f0;
   color: #b91c1c;
+}
+
+.superadmin-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .superadmin-dark-help,
@@ -1957,6 +2012,69 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+}
+
+.superadmin-growth-series {
+  display: grid;
+  gap: 0.95rem;
+  padding-top: 0.95rem;
+}
+
+.superadmin-growth-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(0, 1.8fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.superadmin-growth-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.superadmin-growth-copy strong {
+  color: #202535;
+  font-size: 0.94rem;
+}
+
+.superadmin-growth-copy small {
+  color: #70778a;
+  font-size: 0.78rem;
+}
+
+.superadmin-growth-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #efedf2;
+  overflow: hidden;
+}
+
+.superadmin-growth-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.superadmin-growth-bar-track .is-navy {
+  background: #0f1733;
+}
+
+.superadmin-growth-bar-track .is-orange {
+  background: #d7a53d;
+}
+
+.superadmin-growth-bar-track .is-forest {
+  background: #2f855a;
+}
+
+.superadmin-growth-bar-track .is-stone {
+  background: #8d6e63;
+}
+
+.superadmin-growth-value strong {
+  color: #202535;
+  font-size: 1rem;
+  font-weight: 650;
 }
 
 .superadmin-chart-legend i {
@@ -2501,7 +2619,8 @@
 
   .superadmin-demographic-wrap,
   .superadmin-kpi-target-panel,
-  .superadmin-detail-grid {
+  .superadmin-detail-grid,
+  .superadmin-growth-row {
     grid-template-columns: 1fr;
     justify-items: start;
   }

@@ -19,8 +19,7 @@ const MODERATION_TABS = [
   { value: 'job', label: 'Lowongan' },
   { value: 'account', label: 'Akun' },
 ];
-
-const ANALYTICS_MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP'];
+const PAGE_SIZE = 5;
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
 
@@ -122,42 +121,6 @@ const downloadCsv = (filename, rows) => {
 
 const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
 
-const createTrendPoints = (baseValue, monthlyGain, stepOffset = 0) => {
-  const safeBase = Math.max(20, Number(baseValue || 0));
-  const normalizedGain = Math.max(2, Number(monthlyGain || 0));
-  const startingValue = safeBase * 0.52;
-
-  return ANALYTICS_MONTH_LABELS.map((_, index) =>
-    Math.max(
-      10,
-      Math.round(
-        startingValue +
-          index * normalizedGain * 1.7 +
-          Math.sin((index + stepOffset) / 1.2) * normalizedGain * 0.8
-      )
-    )
-  );
-};
-
-const createLinePath = (points, width = 640, height = 260, padding = 18) => {
-  if (!points.length) {
-    return '';
-  }
-
-  const maxValue = Math.max(...points, 1);
-  const minValue = Math.min(...points, 0);
-  const xStep = (width - padding * 2) / Math.max(points.length - 1, 1);
-  const yScale = (height - padding * 2) / Math.max(maxValue - minValue || 1, 1);
-
-  return points
-    .map((point, index) => {
-      const x = padding + index * xStep;
-      const y = height - padding - (point - minValue) * yScale;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
-};
-
 const getGrowthBadge = (value, positivePrefix = '+') => {
   const numericValue = Number(value || 0);
   const isPositive = numericValue >= 0;
@@ -176,6 +139,25 @@ const getProgressValue = (value = 0, total = 0) => {
   }
 
   return Math.max(0, Math.min(100, Number(((Number(value || 0) / safeTotal) * 100).toFixed(1))));
+};
+
+const getTotalPages = (totalItems, pageSize = PAGE_SIZE) =>
+  Math.max(1, Math.ceil(Number(totalItems || 0) / pageSize));
+
+const buildPaginationItems = (page, totalPages) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (page <= 3) {
+    return [1, 2, 3, 'ellipsis', totalPages];
+  }
+
+  if (page >= totalPages - 2) {
+    return [1, 'ellipsis', totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, 'ellipsis', page - 1, page, page + 1, 'ellipsis-right', totalPages];
 };
 
 const getAgeInDays = (value) => {
@@ -229,12 +211,16 @@ const formatJobStatus = (job) => {
     return 'Aktif';
   }
 
-  if (job?.workflow_status === 'closed' || job?.status === 'inactive') {
+  if (job?.workflow_status === 'filled') {
     return 'Closed (Filled)';
   }
 
-  if (job?.workflow_status === 'flagged') {
-    return 'Closed (Flagged)';
+  if (job?.workflow_status === 'closed') {
+    return 'Closed';
+  }
+
+  if (job?.workflow_status === 'paused' || job?.status === 'inactive') {
+    return 'Pause';
   }
 
   return 'Review';
@@ -273,7 +259,7 @@ const getRecruiterAdminStatus = (recruiter) => {
     };
   }
 
-  if (!recruiter.profile_ready) {
+  if ((recruiter.verification_status || 'pending') !== 'verified') {
     return {
       key: 'review',
       label: 'Menunggu',
@@ -552,34 +538,50 @@ const SectionMetrics = ({ cards }) => (
   </div>
 );
 
-const Pagination = ({ label }) => (
-  <div className="superadmin-pagination-row">
-    <span>{label}</span>
-    <div className="superadmin-pagination">
-      <button type="button" className="superadmin-page-arrow">
-        ‹
-      </button>
-      <button type="button" className="superadmin-page-button is-active">
-        1
-      </button>
-      <button type="button" className="superadmin-page-button">
-        2
-      </button>
-      <button type="button" className="superadmin-page-button">
-        3
-      </button>
-      <button type="button" className="superadmin-page-more">
-        ...
-      </button>
-      <button type="button" className="superadmin-page-button superadmin-page-button-wide">
-        245
-      </button>
-      <button type="button" className="superadmin-page-arrow">
-        ›
-      </button>
+const Pagination = ({ label, page, totalItems, pageSize = PAGE_SIZE, onPageChange }) => {
+  const totalPages = getTotalPages(totalItems, pageSize);
+  const items = buildPaginationItems(page, totalPages);
+
+  return (
+    <div className="superadmin-pagination-row">
+      <span>{label}</span>
+      <div className="superadmin-pagination">
+        <button
+          type="button"
+          className="superadmin-page-arrow"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+        >
+          ‹
+        </button>
+        {items.map((item, index) =>
+          typeof item === 'number' ? (
+            <button
+              key={item}
+              type="button"
+              className={`superadmin-page-button${item === page ? ' is-active' : ''}`}
+              onClick={() => onPageChange(item)}
+            >
+              {item}
+            </button>
+          ) : (
+            <button key={`${item}-${index}`} type="button" className="superadmin-page-more" disabled>
+              ...
+            </button>
+          )
+        )}
+        <button
+          type="button"
+          className="superadmin-page-arrow"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+        >
+          ›
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const SectionOverview = ({ eyebrow, title, description, stats }) => (
   <article className="superadmin-panel superadmin-section-overview">
@@ -619,15 +621,19 @@ const AdminDashboardPage = () => {
   const [jobReassignments, setJobReassignments] = useState({});
   const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
   const [candidateStatusFilter, setCandidateStatusFilter] = useState('all');
+  const [candidatePage, setCandidatePage] = useState(1);
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
   const [recruiterSearchQuery, setRecruiterSearchQuery] = useState('');
   const [recruiterStatusFilter, setRecruiterStatusFilter] = useState('all');
+  const [recruiterPage, setRecruiterPage] = useState(1);
   const [selectedRecruiterId, setSelectedRecruiterId] = useState(null);
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [jobStatusFilter, setJobStatusFilter] = useState('all');
   const [jobSortOrder, setJobSortOrder] = useState('latest');
+  const [jobPage, setJobPage] = useState(1);
   const [moderationSearchQuery, setModerationSearchQuery] = useState('');
   const [moderationTab, setModerationTab] = useState('all');
+  const [moderationPage, setModerationPage] = useState(1);
   const [dismissedModerationKeys, setDismissedModerationKeys] = useState([]);
   const [selectedOptimizationJobId, setSelectedOptimizationJobId] = useState(null);
 
@@ -669,6 +675,22 @@ const AdminDashboardPage = () => {
     loadDashboard();
   }, [loadDashboard]);
 
+  useEffect(() => {
+    setCandidatePage(1);
+  }, [candidateSearchQuery, candidateStatusFilter]);
+
+  useEffect(() => {
+    setRecruiterPage(1);
+  }, [recruiterSearchQuery, recruiterStatusFilter]);
+
+  useEffect(() => {
+    setJobPage(1);
+  }, [jobSearchQuery, jobStatusFilter, jobSortOrder]);
+
+  useEffect(() => {
+    setModerationPage(1);
+  }, [moderationSearchQuery, moderationTab]);
+
   const totals = dashboard?.totals ?? {};
   const growth = dashboard?.growth ?? {};
   const candidateTable = dashboard?.candidate_table ?? [];
@@ -691,9 +713,6 @@ const AdminDashboardPage = () => {
   ).length;
   const candidateReviewCount = candidateTable.filter(
     (candidate) => !candidate.profile_ready || candidate.account_status === 'suspended'
-  ).length;
-  const recruiterReviewCount = recruiterTable.filter(
-    (recruiter) => !recruiter.profile_ready || recruiter.account_status === 'suspended'
   ).length;
 
   const candidateRows = useMemo(
@@ -725,6 +744,10 @@ const AdminDashboardPage = () => {
       })),
     [recruiterTable]
   );
+
+  const recruiterReviewCount = recruiterRows.filter(
+    (recruiter) => recruiter.adminStatus.key === 'review' || recruiter.adminStatus.key === 'blocked'
+  ).length;
 
   const jobRows = useMemo(
     () =>
@@ -783,10 +806,16 @@ const AdminDashboardPage = () => {
     });
   }, [candidateRows, candidateSearchQuery, candidateStatusFilter]);
 
-  const visibleCandidateRows = useMemo(
-    () => filteredCandidateRows.slice(0, 5),
-    [filteredCandidateRows]
-  );
+  const candidateTotalPages = getTotalPages(filteredCandidateRows.length);
+
+  useEffect(() => {
+    setCandidatePage((currentPage) => Math.min(currentPage, candidateTotalPages));
+  }, [candidateTotalPages]);
+
+  const visibleCandidateRows = useMemo(() => {
+    const startIndex = (candidatePage - 1) * PAGE_SIZE;
+    return filteredCandidateRows.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredCandidateRows, candidatePage]);
 
   const selectedCandidate =
     candidateRows.find((candidate) => Number(candidate.id) === Number(selectedCandidateId)) ||
@@ -822,10 +851,16 @@ const AdminDashboardPage = () => {
     });
   }, [recruiterRows, recruiterSearchQuery, recruiterStatusFilter]);
 
-  const visibleRecruiterRows = useMemo(
-    () => filteredRecruiterRows.slice(0, 5),
-    [filteredRecruiterRows]
-  );
+  const recruiterTotalPages = getTotalPages(filteredRecruiterRows.length);
+
+  useEffect(() => {
+    setRecruiterPage((currentPage) => Math.min(currentPage, recruiterTotalPages));
+  }, [recruiterTotalPages]);
+
+  const visibleRecruiterRows = useMemo(() => {
+    const startIndex = (recruiterPage - 1) * PAGE_SIZE;
+    return filteredRecruiterRows.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredRecruiterRows, recruiterPage]);
 
   const selectedRecruiter =
     recruiterRows.find((recruiter) => Number(recruiter.id) === Number(selectedRecruiterId)) ||
@@ -876,7 +911,16 @@ const AdminDashboardPage = () => {
     return nextJobs;
   }, [jobRows, jobSearchQuery, jobSortOrder, jobStatusFilter]);
 
-  const visibleJobRows = useMemo(() => sortedJobRows.slice(0, 5), [sortedJobRows]);
+  const jobTotalPages = getTotalPages(sortedJobRows.length);
+
+  useEffect(() => {
+    setJobPage((currentPage) => Math.min(currentPage, jobTotalPages));
+  }, [jobTotalPages]);
+
+  const visibleJobRows = useMemo(() => {
+    const startIndex = (jobPage - 1) * PAGE_SIZE;
+    return sortedJobRows.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [sortedJobRows, jobPage]);
 
   const moderationReports = useMemo(() => {
     const flaggedJobReports = jobRows
@@ -980,10 +1024,16 @@ const AdminDashboardPage = () => {
     });
   }, [moderationReports, moderationSearchQuery, moderationTab, dismissedModerationKeys]);
 
-  const visibleModerationReports = useMemo(
-    () => filteredModerationReports.slice(0, 5),
-    [filteredModerationReports]
-  );
+  const moderationTotalPages = getTotalPages(filteredModerationReports.length);
+
+  useEffect(() => {
+    setModerationPage((currentPage) => Math.min(currentPage, moderationTotalPages));
+  }, [moderationTotalPages]);
+
+  const visibleModerationReports = useMemo(() => {
+    const startIndex = (moderationPage - 1) * PAGE_SIZE;
+    return filteredModerationReports.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredModerationReports, moderationPage]);
 
   const selectedOptimizationJob =
     jobRows.find((job) => Number(job.id) === Number(selectedOptimizationJobId)) ||
@@ -1047,15 +1097,24 @@ const AdminDashboardPage = () => {
         .map((recruiter) => ({
           key: recruiter.id,
           title:
-            recruiter.account_status === 'active'
+            recruiter.adminStatus.key === 'verified'
               ? `Superadmin memverifikasi ${recruiter.company_name || recruiter.name}`
-              : `Superadmin menonaktifkan akun ${recruiter.company_name || recruiter.name}`,
+              : recruiter.adminStatus.key === 'review'
+                ? `${recruiter.company_name || recruiter.name} kembali ke antrian review`
+                : `Superadmin menonaktifkan akun ${recruiter.company_name || recruiter.name}`,
           detail:
-            recruiter.account_status === 'active'
+            recruiter.adminStatus.key === 'verified'
               ? 'Dokumen recruiter lengkap dan lowongan siap dipublikasikan.'
-              : recruiter.account_status_reason || 'Akun dinonaktifkan sementara untuk peninjauan.',
+              : recruiter.adminStatus.key === 'review'
+                ? recruiter.verification_notes || 'Profil company belum lengkap untuk dinyatakan verified.'
+                : recruiter.account_status_reason || 'Akun dinonaktifkan sementara untuk peninjauan.',
           timestamp: formatDateTime(recruiter.created_at),
-          tone: recruiter.account_status === 'active' ? 'success' : 'danger',
+          tone:
+            recruiter.adminStatus.key === 'verified'
+              ? 'success'
+              : recruiter.adminStatus.key === 'review'
+                ? 'neutral'
+                : 'danger',
         })),
     [recruiterRows]
   );
@@ -1070,7 +1129,7 @@ const AdminDashboardPage = () => {
             : `Lowongan ${job.title} dipindahkan ke recruiter lain`,
         detail:
           job.isFlagged
-            ? `Perusahaan ${job.companyLabel} • status ${formatJobStatus(job)}`
+            ? `Perusahaan ${job.companyLabel} • status ${job.adminStatus.label}`
             : `Sistem AI mendeteksi potensi optimisasi untuk ${job.companyLabel}`,
         timestamp: formatDateTime(job.created_at),
         tone: job.isFlagged ? 'danger' : 'neutral',
@@ -1092,7 +1151,7 @@ const AdminDashboardPage = () => {
           key: `job-${job.id}`,
           icon: 'job',
           title: `${job.title} dipublikasikan / dipantau`,
-          detail: `${job.companyLabel} • ${formatJobStatus(job)}`,
+          detail: `${job.companyLabel} • ${job.adminStatus.label}`,
           timestamp: job.created_at || null,
         })),
       ]
@@ -1172,17 +1231,41 @@ const AdminDashboardPage = () => {
     ];
   }, [jobRows]);
 
-  const candidateTrend = useMemo(
-    () => createTrendPoints(totals.candidates || 120, growth.new_candidates_last_7_days || 8, 0),
-    [growth.new_candidates_last_7_days, totals.candidates]
-  );
-  const recruiterTrend = useMemo(
-    () => createTrendPoints(totals.recruiters || 64, growth.new_recruiters_last_7_days || 4, 2),
-    [growth.new_recruiters_last_7_days, totals.recruiters]
-  );
+  const liveGrowthSeries = useMemo(() => {
+    const items = [
+      {
+        label: 'Pelamar Baru',
+        value: Number(growth.new_candidates_last_7_days ?? 0),
+        totalLabel: `${numberFormatter.format(totals.candidates ?? 0)} total akun`,
+        tone: 'navy',
+      },
+      {
+        label: 'Recruiter Baru',
+        value: Number(growth.new_recruiters_last_7_days ?? 0),
+        totalLabel: `${numberFormatter.format(totals.recruiters ?? 0)} total recruiter`,
+        tone: 'orange',
+      },
+      {
+        label: 'Lowongan Baru',
+        value: Number(growth.new_jobs_last_7_days ?? 0),
+        totalLabel: `${numberFormatter.format(totals.total_jobs ?? 0)} total lowongan`,
+        tone: 'forest',
+      },
+      {
+        label: 'Lamaran Baru',
+        value: Number(growth.new_applications_last_7_days ?? 0),
+        totalLabel: `${numberFormatter.format(totals.total_applications ?? 0)} total lamaran`,
+        tone: 'stone',
+      },
+    ];
 
-  const candidateTrendPath = useMemo(() => createLinePath(candidateTrend), [candidateTrend]);
-  const recruiterTrendPath = useMemo(() => createLinePath(recruiterTrend), [recruiterTrend]);
+    const maxValue = Math.max(...items.map((item) => item.value), 1);
+
+    return items.map((item) => ({
+      ...item,
+      progress: Math.max(8, Math.round((item.value / maxValue) * 100)),
+    }));
+  }, [growth, totals]);
 
   const applicationStageDistribution = useMemo(() => {
     const stageCounts = applications.reduce((accumulator, application) => {
@@ -1238,10 +1321,12 @@ const AdminDashboardPage = () => {
     totals.total_applications ?? 0
   );
 
-  const insightsSpecialText =
-    categoryDistribution[0]?.label === 'Teknologi Informasi'
-      ? 'Pencarian untuk “Artificial Intelligence” meningkat 300% dalam 2 bulan terakhir di sektor teknologi.'
-      : `Permintaan tertinggi saat ini berada di kategori ${categoryDistribution[0]?.label || 'utama'} dan perlu diprioritaskan pada distribusi lowongan baru.`;
+  const analyticsInsightText =
+    flaggedJobsCount > 0
+      ? `${numberFormatter.format(flaggedJobsCount)} lowongan perlu optimisasi distribusi atau peninjauan ulang status tayangnya.`
+      : `Distribusi terbesar saat ini ada di kategori ${categoryDistribution[0]?.label || 'utama'} dengan stage aplikasi dominan ${
+          applicationStageDistribution[0]?.label || 'Baru Masuk'
+        }.`;
 
   const monitoringCards = [
     {
@@ -1326,28 +1411,37 @@ const AdminDashboardPage = () => {
   const monitoringQuickActions = [
     {
       label: 'Pelamar',
-      title: 'Buka pelamar review',
+      title: 'Buka antrian pelamar',
       detail: `${numberFormatter.format(candidateReviewCount)} akun perlu pengecekan cepat`,
       tone: candidateReviewCount > 0 ? 'warning' : 'neutral',
-      action: () => handleSectionChange('pelamar'),
+      action: () => {
+        setCandidateStatusFilter('review');
+        handleSectionChange('pelamar');
+      },
     },
     {
       label: 'Recruiter',
       title: 'Cek verifikasi recruiter',
       detail: `${numberFormatter.format(recruiterReviewCount)} profil company belum final`,
       tone: recruiterReviewCount > 0 ? 'warning' : 'neutral',
-      action: () => handleSectionChange('recruiter'),
+      action: () => {
+        setRecruiterStatusFilter('review');
+        handleSectionChange('recruiter');
+      },
     },
     {
       label: 'Lowongan',
-      title: 'Lihat lowongan flagged',
+      title: 'Tinjau lowongan flagged',
       detail: `${numberFormatter.format(flaggedJobsCount)} lowongan perlu intervensi`,
       tone: flaggedJobsCount > 0 ? 'danger' : 'neutral',
-      action: () => handleSectionChange('lowongan'),
+      action: () => {
+        setJobStatusFilter('flagged');
+        handleSectionChange('lowongan');
+      },
     },
     {
-      label: 'Moderasi',
-      title: 'Masuk antrian moderasi',
+      label: 'Review',
+      title: 'Buka antrian review',
       detail: `${numberFormatter.format(filteredModerationReports.length)} item siap diproses`,
       tone: filteredModerationReports.length > 0 ? 'danger' : 'neutral',
       action: () => handleSectionChange('moderation'),
@@ -1408,40 +1502,6 @@ const AdminDashboardPage = () => {
               action: () => loadDashboard(false),
             };
 
-  const monitoringQuickControls = [
-    {
-      key: 'suspended-accounts',
-      icon: 'ban',
-      label: 'Akun Bekukan',
-      action: () => {
-        setCandidateStatusFilter('suspended');
-        handleSectionChange('pelamar');
-      },
-    },
-    {
-      key: 'reset-password',
-      icon: 'reset',
-      label: 'Reset Password',
-      action: () => {
-        setCandidateStatusFilter('review');
-        handleSectionChange('pelamar');
-      },
-    },
-    {
-      key: 'job-migration',
-      icon: 'switch',
-      label: 'Migrasi Lowongan',
-      action: () => handleSectionChange('lowongan'),
-    },
-    {
-      key: 'issue-queue',
-      icon: 'alert',
-      label: 'Laporkan Isu',
-      action: () => handleSectionChange('moderation'),
-      tone: 'danger',
-    },
-  ];
-
   const candidateOverviewStats = [
     {
       label: 'Profile ready',
@@ -1467,10 +1527,8 @@ const AdminDashboardPage = () => {
   const recruiterOverviewStats = [
     {
       label: 'Company ready',
-      value: numberFormatter.format(
-        recruiterRows.filter((recruiter) => recruiter.profile_ready && recruiter.account_status === 'active').length
-      ),
-      detail: 'recruiter sudah siap tayang lowongan',
+      value: numberFormatter.format(recruiterRows.filter((recruiter) => recruiter.adminStatus.key === 'verified').length),
+      detail: 'recruiter sudah diverifikasi admin',
     },
     {
       label: 'Pending verify',
@@ -1620,7 +1678,7 @@ const AdminDashboardPage = () => {
     {
       label: 'Pending Verifikasi',
       value: numberFormatter.format(
-        recruiterRows.filter((recruiter) => !recruiter.profile_ready).length
+        recruiterRows.filter((recruiter) => recruiter.adminStatus.key === 'review').length
       ),
       detail: 'Butuh tindakan segera',
       detailTone: 'warning',
@@ -1758,6 +1816,35 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleRecruiterVerificationUpdate = async (recruiter, nextStatus) => {
+    setUserStatusActionInFlightId(recruiter.id);
+
+    try {
+      await AdminService.updateUser(recruiter.id, {
+        verification_status: nextStatus,
+        verification_notes:
+          nextStatus === 'verified'
+            ? ''
+            : 'Recruiter dikembalikan ke antrian verifikasi oleh superadmin KerjaNusa.',
+      });
+      await loadDashboard(false);
+      setFeedback({
+        type: 'success',
+        message:
+          nextStatus === 'verified'
+            ? `${recruiter.company_name || recruiter.name} ditandai terverifikasi.`
+            : `${recruiter.company_name || recruiter.name} dikembalikan ke antrian review.`,
+      });
+    } catch (actionError) {
+      setFeedback({
+        type: 'error',
+        message: actionError?.message || 'Status verifikasi recruiter belum berhasil diperbarui.',
+      });
+    } finally {
+      setUserStatusActionInFlightId(null);
+    }
+  };
+
   const handleReassignJob = async (job) => {
     const selectedRecruiterId = jobReassignments[String(job.id)] || '';
 
@@ -1823,7 +1910,7 @@ const AdminDashboardPage = () => {
             candidate.name,
             candidate.email,
             candidate.position,
-            formatAccountStatus(candidate.account_status),
+            candidate.adminStatus.label,
             candidate.dateLabel,
           ]),
         ]);
@@ -1836,7 +1923,7 @@ const AdminDashboardPage = () => {
             recruiter.email,
             recruiter.locationLabel,
             recruiter.active_jobs_count ?? 0,
-            formatAccountStatus(recruiter.account_status),
+            recruiter.adminStatus.label,
           ]),
         ]);
         break;
@@ -1853,7 +1940,7 @@ const AdminDashboardPage = () => {
             job.title,
             job.companyLabel,
             job.applications_count ?? 0,
-            formatJobStatus(job),
+            job.adminStatus.label,
           ]),
         ]);
         break;
@@ -1867,7 +1954,7 @@ const AdminDashboardPage = () => {
       );
       setFeedback({
         type: 'success',
-        message: `${report.title} dikeluarkan dari antrian review saat ini.`,
+        message: `${report.title} disembunyikan untuk sesi admin saat ini.`,
       });
       return;
     }
@@ -2011,22 +2098,22 @@ const AdminDashboardPage = () => {
             </div>
 
             <div className="superadmin-monitoring-healthlist">
-              <article className="superadmin-monitoring-healthrow">
-                <div>
-                  <span className="superadmin-monitoring-healthrow-label">API Status</span>
-                </div>
-                <span className={`superadmin-inline-badge is-${syncTone === 'error' ? 'danger' : 'positive'}`}>
-                  {syncTone === 'error' ? 'Issue' : 'Healthy'}
-                </span>
-              </article>
-              <article className="superadmin-monitoring-healthrow">
-                <div>
-                  <span className="superadmin-monitoring-healthrow-label">Database</span>
-                </div>
-                <span className={`superadmin-inline-badge is-${dashboard ? 'positive' : 'warning'}`}>
-                  {dashboard ? 'Healthy' : 'Checking'}
-                </span>
-              </article>
+              {monitoringHealthCards.map((item) => (
+                <article key={item.label} className="superadmin-monitoring-healthrow">
+                  <div className="superadmin-monitoring-healthcopy">
+                    <span className="superadmin-monitoring-healthrow-label">{item.label}</span>
+                    <strong>{item.title}</strong>
+                    <small>{item.detail}</small>
+                  </div>
+                  <span className={`superadmin-inline-badge is-${item.status}`}>
+                    {item.status === 'danger'
+                      ? 'Issue'
+                      : item.status === 'warning'
+                        ? 'Review'
+                        : 'Healthy'}
+                  </span>
+                </article>
+              ))}
             </div>
           </article>
         </div>
@@ -2114,16 +2201,19 @@ const AdminDashboardPage = () => {
             </div>
 
             <div className="superadmin-monitoring-control-list">
-              {monitoringQuickControls.map((item) => (
+              {monitoringQuickActions.map((item) => (
                 <button
-                  key={item.key}
+                  key={item.label}
                   type="button"
                   className={`superadmin-monitoring-control-item${item.tone ? ` is-${item.tone}` : ''}`}
                   onClick={item.action}
                 >
                   <span className="superadmin-monitoring-control-copy">
-                    <AdminIcon name={item.icon} />
-                    <strong>{item.label}</strong>
+                    <div>
+                      <small>{item.label}</small>
+                      <strong>{item.title}</strong>
+                      <p>{item.detail}</p>
+                    </div>
                   </span>
                   <span className="superadmin-monitoring-control-arrow">›</span>
                 </button>
@@ -2257,9 +2347,14 @@ const AdminDashboardPage = () => {
         </div>
 
         <Pagination
-          label={`Menampilkan 1 - ${visibleCandidateRows.length} dari ${numberFormatter.format(
-            totals.candidates ?? 0
+          label={`Menampilkan ${
+            filteredCandidateRows.length === 0 ? 0 : (candidatePage - 1) * PAGE_SIZE + 1
+          }-${Math.min(candidatePage * PAGE_SIZE, filteredCandidateRows.length)} dari ${numberFormatter.format(
+            filteredCandidateRows.length
           )} pelamar`}
+          page={candidatePage}
+          totalItems={filteredCandidateRows.length}
+          onPageChange={setCandidatePage}
         />
       </article>
 
@@ -2458,11 +2553,22 @@ const AdminDashboardPage = () => {
                         <button
                           type="button"
                           className="superadmin-icon-button"
-                          title="Kirim reset password"
-                          onClick={() => handleSendResetLink(recruiter)}
-                          disabled={userResetActionInFlightId === recruiter.id}
+                          title={
+                            recruiter.adminStatus.key === 'verified'
+                              ? 'Kembalikan ke review'
+                              : 'Tandai terverifikasi'
+                          }
+                          onClick={() =>
+                            handleRecruiterVerificationUpdate(
+                              recruiter,
+                              recruiter.adminStatus.key === 'verified' ? 'pending' : 'verified'
+                            )
+                          }
+                          disabled={userStatusActionInFlightId === recruiter.id}
                         >
-                          <AdminIcon name="reset" />
+                          <AdminIcon
+                            name={recruiter.adminStatus.key === 'verified' ? 'clock' : 'check'}
+                          />
                         </button>
                         <button
                           type="button"
@@ -2489,9 +2595,14 @@ const AdminDashboardPage = () => {
         </div>
 
         <Pagination
-          label={`Menampilkan 1-${visibleRecruiterRows.length} dari ${numberFormatter.format(
-            totals.recruiters ?? 0
+          label={`Menampilkan ${
+            filteredRecruiterRows.length === 0 ? 0 : (recruiterPage - 1) * PAGE_SIZE + 1
+          }-${Math.min(recruiterPage * PAGE_SIZE, filteredRecruiterRows.length)} dari ${numberFormatter.format(
+            filteredRecruiterRows.length
           )} recruiter`}
+          page={recruiterPage}
+          totalItems={filteredRecruiterRows.length}
+          onPageChange={setRecruiterPage}
         />
       </article>
 
@@ -2546,6 +2657,44 @@ const AdminDashboardPage = () => {
                 <label>Deskripsi Company</label>
                 <p>{selectedRecruiter.company_description || 'Deskripsi company belum lengkap.'}</p>
               </div>
+
+              <div className="superadmin-detail-block">
+                <label>Catatan Verifikasi</label>
+                <p>
+                  {selectedRecruiter.verification_notes ||
+                    (selectedRecruiter.adminStatus.key === 'verified'
+                      ? selectedRecruiter.verified_at
+                        ? `Diverifikasi pada ${formatDateShort(selectedRecruiter.verified_at)}.`
+                        : 'Recruiter telah diverifikasi oleh admin.'
+                      : 'Belum ada catatan verifikasi khusus.')}
+                </p>
+              </div>
+
+              <div className="superadmin-detail-actions">
+                <button
+                  type="button"
+                  className="superadmin-primary-button"
+                  onClick={() =>
+                    handleRecruiterVerificationUpdate(
+                      selectedRecruiter,
+                      selectedRecruiter.adminStatus.key === 'verified' ? 'pending' : 'verified'
+                    )
+                  }
+                  disabled={userStatusActionInFlightId === selectedRecruiter.id}
+                >
+                  {selectedRecruiter.adminStatus.key === 'verified'
+                    ? 'Kembalikan ke Review'
+                    : 'Verifikasi Sekarang'}
+                </button>
+                <button
+                  type="button"
+                  className="superadmin-secondary-button"
+                  onClick={() => handleSendResetLink(selectedRecruiter)}
+                  disabled={userResetActionInFlightId === selectedRecruiter.id}
+                >
+                  Kirim Reset Password
+                </button>
+              </div>
             </div>
           ) : (
             <div className="superadmin-empty-state is-panel">
@@ -2568,7 +2717,11 @@ const AdminDashboardPage = () => {
             {recruiterVerificationActivities.map((item) => (
               <article key={item.key} className="superadmin-list-item">
                 <div className={`superadmin-list-icon is-${item.tone}`}>
-                  <AdminIcon name={item.tone === 'success' ? 'check' : 'ban'} />
+                  <AdminIcon
+                    name={
+                      item.tone === 'success' ? 'check' : item.tone === 'danger' ? 'ban' : 'clock'
+                    }
+                  />
                 </div>
                 <div>
                   <strong>{item.title}</strong>
@@ -2729,9 +2882,14 @@ const AdminDashboardPage = () => {
         </div>
 
         <Pagination
-          label={`Menampilkan 1-${visibleJobRows.length} dari ${numberFormatter.format(
-            totals.total_jobs ?? 0
+          label={`Menampilkan ${
+            sortedJobRows.length === 0 ? 0 : (jobPage - 1) * PAGE_SIZE + 1
+          }-${Math.min(jobPage * PAGE_SIZE, sortedJobRows.length)} dari ${numberFormatter.format(
+            sortedJobRows.length
           )} lowongan`}
+          page={jobPage}
+          totalItems={sortedJobRows.length}
+          onPageChange={setJobPage}
         />
       </article>
 
@@ -2832,38 +2990,28 @@ const AdminDashboardPage = () => {
         <article className="superadmin-panel superadmin-chart-panel">
           <div className="superadmin-panel-head">
             <div>
-              <h3>Pertumbuhan Pengguna</h3>
+              <h3>Aktivitas 7 Hari Terakhir</h3>
             </div>
             <div className="superadmin-chart-legend">
-              <span>
-                <i className="is-navy" /> Pelamar
-              </span>
-              <span>
-                <i className="is-orange" /> Recruiter
-              </span>
+              <span>Snapshot live dari pertumbuhan akun dan hiring.</span>
             </div>
           </div>
 
-          <div className="superadmin-line-chart">
-            <svg viewBox="0 0 640 260" aria-hidden="true">
-              {[0, 1, 2, 3].map((lineIndex) => (
-                <line
-                  key={lineIndex}
-                  x1="18"
-                  y1={50 + lineIndex * 48}
-                  x2="622"
-                  y2={50 + lineIndex * 48}
-                  className="superadmin-chart-gridline"
-                />
-              ))}
-              <path d={candidateTrendPath} className="superadmin-chart-line is-navy" />
-              <path d={recruiterTrendPath} className="superadmin-chart-line is-orange is-dashed" />
-            </svg>
-            <div className="superadmin-chart-months">
-              {ANALYTICS_MONTH_LABELS.map((month) => (
-                <span key={month}>{month}</span>
-              ))}
-            </div>
+          <div className="superadmin-growth-series">
+            {liveGrowthSeries.map((item) => (
+              <article key={item.label} className="superadmin-growth-row">
+                <div className="superadmin-growth-copy">
+                  <strong>{item.label}</strong>
+                  <small>{item.totalLabel}</small>
+                </div>
+                <div className="superadmin-growth-bar-track">
+                  <span className={`is-${item.tone}`} style={{ width: `${item.progress}%` }} />
+                </div>
+                <div className="superadmin-growth-value">
+                  <strong>{numberFormatter.format(item.value)}</strong>
+                </div>
+              </article>
+            ))}
           </div>
         </article>
 
@@ -2969,7 +3117,7 @@ const AdminDashboardPage = () => {
 
           <article className="superadmin-panel superadmin-dark-panel">
             <h3>Insight Operasional</h3>
-            <p>{insightsSpecialText}</p>
+            <p>{analyticsInsightText}</p>
             <button
               type="button"
               className="superadmin-primary-button"
@@ -3097,7 +3245,7 @@ const AdminDashboardPage = () => {
                     className="superadmin-report-button is-light"
                     onClick={() => handleModerationAction(report, 'ignore')}
                   >
-                    Abaikan
+                    Sembunyikan Sesi
                   </button>
                 </div>
               </article>
@@ -3106,23 +3254,16 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="superadmin-moderation-footer">
-          <button type="button" className="superadmin-inline-nav">
-            ‹ Sebelumnya
-          </button>
-          <div className="superadmin-pagination">
-            <button type="button" className="superadmin-page-button is-active">
-              1
-            </button>
-            <button type="button" className="superadmin-page-button">
-              2
-            </button>
-            <button type="button" className="superadmin-page-button">
-              3
-            </button>
-          </div>
-          <button type="button" className="superadmin-inline-nav">
-            Selanjutnya ›
-          </button>
+          <Pagination
+            label={`Menampilkan ${
+              filteredModerationReports.length === 0 ? 0 : (moderationPage - 1) * PAGE_SIZE + 1
+            }-${Math.min(moderationPage * PAGE_SIZE, filteredModerationReports.length)} dari ${
+              filteredModerationReports.length
+            } antrian`}
+            page={moderationPage}
+            totalItems={filteredModerationReports.length}
+            onPageChange={setModerationPage}
+          />
         </div>
       </article>
     </section>
