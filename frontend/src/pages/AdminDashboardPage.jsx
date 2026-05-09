@@ -1522,12 +1522,7 @@ const AdminDashboardPage = () => {
         <div className="superadmin-header-user-meta">
           <strong>{user?.name || 'Nama Superadmin'}</strong>
         </div>
-        {(activeSection === 'pelamar' || activeSection === 'lowongan') && (
-          <div className="superadmin-avatar-badge">{getInitials(user?.name)}</div>
-        )}
-        <button type="button" className="superadmin-header-logout" onClick={handleLogout}>
-          {isLoggingOut ? 'Logout...' : 'Logout'}
-        </button>
+        <div className="superadmin-avatar-badge">{getInitials(user?.name)}</div>
       </div>
     );
   };
@@ -2056,18 +2051,6 @@ const AdminDashboardPage = () => {
               </article>
             ))}
           </div>
-        </article>
-
-        <article className="superadmin-panel superadmin-dark-help">
-          <h3>Bantuan Verifikasi</h3>
-          <p>
-            Butuh bantuan dalam melakukan validasi dokumen perusahaan? Baca panduan verifikasi sesuai
-            standar internal KerjaNusa.
-          </p>
-          <button type="button" className="superadmin-primary-button">
-            <AdminIcon name="job" />
-            Buka Panduan
-          </button>
         </article>
       </div>
     </section>
@@ -2645,10 +2628,17 @@ const AdminDashboardPage = () => {
     <div className="superadmin-page">
       <div className="superadmin-shell">
         <aside className="superadmin-sidebar">
-          <div className="superadmin-sidebar-brand">
-            <strong>KerjaNusa</strong>
-            <span>Superadmin</span>
-          </div>
+          <Link
+            to={APP_ROUTES.adminDashboard}
+            className="superadmin-sidebar-brand"
+            aria-label="Dashboard superadmin KerjaNusa"
+          >
+            <img
+              className="superadmin-sidebar-brand-image"
+              src="/kerjanusa-logo.svg"
+              alt="KerjaNusa"
+            />
+          </Link>
 
           <nav className="superadmin-sidebar-nav" aria-label="Navigasi superadmin">
             {SECTION_OPTIONS.map((section) => (
