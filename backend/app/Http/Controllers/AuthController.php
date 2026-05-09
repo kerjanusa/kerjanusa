@@ -20,13 +20,22 @@ class AuthController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
+        $request->merge([
+            'email' => User::normalizeEmail($request->input('email')),
+            'phone' => User::normalizePhone($request->input('phone')),
+        ]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
+            'email' => 'required|email|unique:users,email',
             'password' => ['required', Password::min(8)->letters()->numbers()],
             'password_confirmation' => 'required|same:password',
             'role' => ['required', Rule::in(User::PUBLIC_REGISTRATION_ROLES)],
-            'phone' => 'nullable|string',
+            'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')],
+        ], [
+            'email.unique' => 'Email sudah digunakan. Gunakan email lain.',
+            'phone.required' => 'Nomor telepon wajib diisi.',
+            'phone.unique' => 'Nomor telepon sudah digunakan. Gunakan nomor telepon lain.',
         ]);
 
         $user = $this->authService->register($validated);
@@ -44,6 +53,10 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        $request->merge([
+            'email' => User::normalizeEmail($request->input('email')),
+        ]);
+
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
@@ -93,10 +106,16 @@ class AuthController extends Controller
      */
     public function updateProfile(Request $request): JsonResponse
     {
+        $request->merge([
+            'phone' => User::normalizePhone($request->input('phone')),
+        ]);
+
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
-            'phone' => 'nullable|string',
+            'phone' => ['nullable', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($request->user()->id)],
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'phone.unique' => 'Nomor telepon sudah digunakan. Gunakan nomor telepon lain.',
         ]);
 
         $success = $this->authService->updateProfile($request->user()->id, $validated);

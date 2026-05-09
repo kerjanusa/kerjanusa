@@ -109,6 +109,7 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
           type="tel"
           value={formData.phone}
           onChange={handleChange}
+          required
           disabled={isLoading}
         />
       </div>

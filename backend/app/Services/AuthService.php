@@ -14,10 +14,10 @@ class AuthService
     {
         return User::create([
             'name' => $data['name'],
-            'email' => $data['email'],
+            'email' => User::normalizeEmail($data['email']),
             'password' => Hash::make($data['password']),
             'role' => $data['role'] ?? User::ROLE_CANDIDATE,
-            'phone' => $data['phone'] ?? null,
+            'phone' => User::normalizePhone($data['phone'] ?? null),
         ]);
     }
 
@@ -26,7 +26,7 @@ class AuthService
      */
     public function login(string $email, string $password): User|false
     {
-        $user = User::where('email', $email)->first();
+        $user = User::where('email', User::normalizeEmail($email))->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             return false;
@@ -48,7 +48,7 @@ class AuthService
      */
     public function getUserByEmail(string $email): ?User
     {
-        return User::where('email', $email)->first();
+        return User::where('email', User::normalizeEmail($email))->first();
     }
 
     /**

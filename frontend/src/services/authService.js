@@ -147,16 +147,25 @@ class AuthService {
 
       const users = getMockUsers();
       const email = data.email?.trim().toLowerCase();
+      const phone = data.phone?.trim();
 
       if (users.some((user) => user.email.toLowerCase() === email)) {
         throw { message: 'Email sudah terdaftar di mode demo.' };
+      }
+
+      if (!phone) {
+        throw { message: 'Nomor telepon wajib diisi.' };
+      }
+
+      if (users.some((user) => (user.phone || '').trim() === phone)) {
+        throw { message: 'Nomor telepon sudah digunakan. Gunakan nomor telepon lain.' };
       }
 
       const nextUser = {
         id: users.reduce((largestId, user) => Math.max(largestId, user.id), 0) + 1,
         name: data.name?.trim() || 'User Demo',
         email,
-        phone: data.phone || '',
+        phone,
         role: data.role || 'recruiter',
         company_name: data.company_name || '',
         password: data.password,

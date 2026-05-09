@@ -43,6 +43,38 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public static function normalizeEmail(?string $email): ?string
+    {
+        if ($email === null) {
+            return null;
+        }
+
+        $normalizedEmail = mb_strtolower(trim($email));
+
+        return $normalizedEmail === '' ? null : $normalizedEmail;
+    }
+
+    public static function normalizePhone(?string $phone): ?string
+    {
+        if ($phone === null) {
+            return null;
+        }
+
+        $normalizedPhone = preg_replace('/[^\d+]/', '', trim($phone)) ?? '';
+
+        return $normalizedPhone === '' ? null : $normalizedPhone;
+    }
+
+    public function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = self::normalizeEmail($value);
+    }
+
+    public function setPhoneAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = self::normalizePhone($value);
+    }
+
     public function jobs()
     {
         return $this->hasMany(Job::class, 'recruiter_id');
