@@ -46,14 +46,14 @@
 
 .superadmin-sidebar-brand {
   display: block;
-  padding: 1.7rem 1.05rem 1.2rem;
+  padding: 1.45rem 0.95rem 1rem;
   text-decoration: none;
 }
 
 .superadmin-sidebar-brand-image {
   display: block;
   width: 100%;
-  max-width: 218px;
+  max-width: 236px;
   height: auto;
 }
 
@@ -2054,7 +2054,7 @@
 
 @media (max-width: 640px) {
   .superadmin-sidebar-brand {
-    padding: 1.35rem 0.9rem 1rem;
+    padding: 1.2rem 0.85rem 0.95rem;
   }
 
   .superadmin-sidebar-nav {

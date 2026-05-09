@@ -6,12 +6,12 @@ import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/adminDashboard.css';
 
 const SECTION_OPTIONS = [
-  { value: 'monitoring', label: 'Monitoring', title: 'Pusat Kontrol KerjaNusa', shortTitle: 'Monitoring' },
-  { value: 'pelamar', label: 'Pelamar', title: 'Manajemen Pelamar', shortTitle: 'Pelamar' },
-  { value: 'recruiter', label: 'Recruiter', title: 'Recruiter Directory', shortTitle: 'Recruiter' },
-  { value: 'lowongan', label: 'Lowongan', title: 'Manajemen Lowongan', shortTitle: 'Lowongan' },
-  { value: 'analytics', label: 'Analytics', title: 'Analytics & Reporting', shortTitle: 'Analytics' },
-  { value: 'moderation', label: 'Moderasi', title: 'Moderasi Konten', shortTitle: 'Moderasi' },
+  { value: 'monitoring', label: 'Monitoring', title: 'Pusat Kontrol KerjaNusa', shortTitle: 'Monitoring', icon: 'monitor' },
+  { value: 'pelamar', label: 'Pelamar', title: 'Manajemen Pelamar', shortTitle: 'Pelamar', icon: 'candidate' },
+  { value: 'recruiter', label: 'Recruiter', title: 'Recruiter Directory', shortTitle: 'Recruiter', icon: 'recruiter' },
+  { value: 'lowongan', label: 'Lowongan', title: 'Manajemen Lowongan', shortTitle: 'Lowongan', icon: 'job' },
+  { value: 'analytics', label: 'Analytics', title: 'Analytics & Reporting', shortTitle: 'Analytics', icon: 'analytics' },
+  { value: 'moderation', label: 'Moderasi', title: 'Moderasi Konten', shortTitle: 'Moderasi', icon: 'moderation' },
 ];
 
 const MODERATION_TABS = [
@@ -2635,7 +2635,7 @@ const AdminDashboardPage = () => {
           >
             <img
               className="superadmin-sidebar-brand-image"
-              src="/kerjanusa-logo.svg"
+              src="/kerjanusa-logo-reference-tight.png"
               alt="KerjaNusa"
             />
           </Link>
@@ -2650,7 +2650,7 @@ const AdminDashboardPage = () => {
                 }`}
                 onClick={() => handleSectionChange(section.value)}
               >
-                <AdminIcon name={section.value} />
+                <AdminIcon name={section.icon} />
                 <span>{section.label}</span>
               </button>
             ))}
