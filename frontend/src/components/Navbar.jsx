@@ -13,11 +13,6 @@ const Navbar = () => {
   const isLoginPage = location.pathname === APP_ROUTES.login;
   const isPlatformPage = location.pathname === APP_ROUTES.platform;
   const isGuest = !user;
-  const platformSectionLinks = [
-    { to: `${APP_ROUTES.platform}#tentang`, label: 'Tentang', isActive: !location.hash || location.hash === '#tentang' },
-    { to: `${APP_ROUTES.platform}#layanan`, label: 'Layanan', isActive: location.hash === '#layanan' },
-    { to: `${APP_ROUTES.platform}#kontak`, label: 'Kontak', isActive: location.hash === '#kontak' },
-  ];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const contactPanelRef = useRef(null);
@@ -88,28 +83,15 @@ const Navbar = () => {
         <div className="navbar-container">
           <Link
             to={APP_ROUTES.landing}
-            className={`navbar-logo${isPlatformPage ? ' navbar-logo-platform' : ''}`}
+            className="navbar-logo"
             aria-label="Beranda KerjaNusa"
             onClick={closeMobileMenu}
           >
-            {isPlatformPage ? (
-              <>
-                <span className="navbar-platform-mark">
-                  <img
-                    className="navbar-platform-mark-image"
-                    src="/kerjanusa-mark.png"
-                    alt="KerjaNusa"
-                  />
-                </span>
-                <span className="navbar-platform-wordmark">KerjaNusa</span>
-              </>
-            ) : (
-              <img
-                className="navbar-brand-image"
-                src="/kerjanusa-logo-cutout.png"
-                alt="KerjaNusa Recruitment Platform"
-              />
-            )}
+            <img
+              className="navbar-brand-image"
+              src="/kerjanusa-logo-cutout.png"
+              alt="KerjaNusa Recruitment Platform"
+            />
           </Link>
 
           <button
@@ -128,56 +110,41 @@ const Navbar = () => {
           <div id="navbar-panel" className={`navbar-panel${isMobileMenuOpen ? ' is-open' : ''}`}>
             <div className="navbar-menu">
               {isGuest ? (
-                isPlatformPage ? (
-                  <>
-                    {platformSectionLinks.map((link) => (
-                      <Link
-                        key={link.to}
-                        to={link.to}
-                        className={`navbar-link navbar-link-platform${link.isActive ? ' active' : ''}`}
-                        onClick={closeMobileMenu}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <div
-                      ref={contactPanelRef}
-                      className={`navbar-contact${isContactOpen ? ' is-open' : ''}`}
+                <>
+                  <div
+                    ref={contactPanelRef}
+                    className={`navbar-contact${isContactOpen ? ' is-open' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="navbar-link navbar-contact-trigger"
+                      aria-expanded={isContactOpen}
+                      aria-controls="navbar-contact-panel"
+                      onClick={handleContactToggle}
                     >
-                      <button
-                        type="button"
-                        className="navbar-link navbar-contact-trigger"
-                        aria-expanded={isContactOpen}
-                        aria-controls="navbar-contact-panel"
-                        onClick={handleContactToggle}
-                      >
-                        Kontak Kami
-                      </button>
+                      Kontak Kami
+                    </button>
 
-                      <div
-                        id="navbar-contact-panel"
-                        className={`navbar-contact-panel${isContactOpen ? ' is-open' : ''}`}
-                      >
-                        <strong>Kontak Kami</strong>
-                        <a href={`mailto:${CONTACT_EMAIL}`} onClick={closeMobileMenu}>
-                          {CONTACT_EMAIL}
-                        </a>
-                      </div>
-                    </div>
-                    <NavLink
-                      to="/platform"
-                      className={({ isActive }) =>
-                        `navbar-link navbar-link-muted${isActive ? ' active' : ''}`
-                      }
-                      onClick={closeMobileMenu}
+                    <div
+                      id="navbar-contact-panel"
+                      className={`navbar-contact-panel${isContactOpen ? ' is-open' : ''}`}
                     >
-                      Tentang Kami
-                    </NavLink>
-                  </>
-                )
+                      <strong>Kontak Kami</strong>
+                      <a href={`mailto:${CONTACT_EMAIL}`} onClick={closeMobileMenu}>
+                        {CONTACT_EMAIL}
+                      </a>
+                    </div>
+                  </div>
+                  <NavLink
+                    to="/platform"
+                    className={({ isActive }) =>
+                      `navbar-link navbar-link-muted${isActive ? ' active' : ''}`
+                    }
+                    onClick={closeMobileMenu}
+                  >
+                    Tentang Kami
+                  </NavLink>
+                </>
               ) : (
                 <>
                   {authenticatedLinks.map((link) => (
@@ -199,23 +166,6 @@ const Navbar = () => {
                 <button className="btn btn-secondary" onClick={handleLogout}>
                   Logout
                 </button>
-              ) : isPlatformPage ? (
-                <>
-                  <Link
-                    to="/login"
-                    className="navbar-platform-login"
-                    onClick={closeMobileMenu}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to={APP_ROUTES.register}
-                    className="navbar-platform-join"
-                    onClick={closeMobileMenu}
-                  >
-                    Join Now
-                  </Link>
-                </>
               ) : (
                 <>
                   <Link to="/login" className="btn btn-outline" onClick={closeMobileMenu}>
