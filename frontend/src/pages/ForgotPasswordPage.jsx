@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import AuthService from '../services/authService.js';
 import { APP_ROUTES, getLoginRouteForRole } from '../utils/routeHelpers.js';
 import '../styles/auth.css';
 import '../styles/authForm.css';
@@ -63,6 +64,10 @@ const ForgotPasswordPage = () => {
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [submittedEmail, setSubmittedEmail] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   const requestedRole = searchParams.get('role');
   const entryKey =
     requestedRole === 'candidate' || requestedRole === 'recruiter'
@@ -71,14 +76,52 @@ const ForgotPasswordPage = () => {
         ? 'superadmin'
         : 'default';
   const forgotPasswordCopy = FORGOT_PASSWORD_COPY[entryKey];
+  const hasFieldErrors = Object.keys(validationErrors || {}).length > 0;
+  const getFieldError = (fieldName) => validationErrors?.[fieldName]?.[0] || '';
 
-  const handleSubmit = (event) => {
+  const clearFeedback = () => {
+    if (error || hasFieldErrors) {
+      setError('');
+      setValidationErrors({});
+    }
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmittedEmail(email.trim());
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+    setValidationErrors({});
+
+    try {
+      const response = await AuthService.forgotPassword(email.trim());
+      setSubmittedEmail(email.trim());
+      setSuccessMessage(
+        response?.message || 'Jika email terdaftar, link reset password telah dikirim ke email Anda.'
+      );
+    } catch (submissionError) {
+      setError(
+        typeof submissionError === 'string'
+          ? submissionError
+          : submissionError?.message || 'Permintaan reset password gagal.'
+      );
+      setValidationErrors(
+        typeof submissionError === 'object' && submissionError?.errors ? submissionError.errors : {}
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
     setSubmittedEmail('');
+    setSuccessMessage('');
+    setError('');
+    setValidationErrors({});
   };
 
   return (
@@ -119,6 +162,7 @@ const ForgotPasswordPage = () => {
             </div>
 
             <div className="auth-forgot-copy">
+              <h2>{forgotPasswordCopy.heading}</h2>
               <p>{forgotPasswordCopy.helper}</p>
             </div>
 
@@ -126,9 +170,10 @@ const ForgotPasswordPage = () => {
               <div className="auth-forgot-success">
                 <span className="auth-forgot-success-kicker">Permintaan diterima</span>
                 <h3>Cek email Anda</h3>
+                <p>{successMessage}</p>
                 <p>
-                  Jika <strong>{submittedEmail}</strong> terdaftar, instruksi reset password akan
-                  dikirim ke inbox email tersebut.
+                  Jika <strong>{submittedEmail}</strong> terdaftar, buka inbox email tersebut lalu
+                  gunakan link reset yang berlaku selama 60 menit.
                 </p>
 
                 <div className="auth-forgot-success-actions">
@@ -142,7 +187,9 @@ const ForgotPasswordPage = () => {
               </div>
             ) : (
               <form className="auth-form auth-forgot-form" onSubmit={handleSubmit}>
-                <div className="form-group">
+                {error && !hasFieldErrors && <div className="error-message">{error}</div>}
+
+                <div className={`form-group${getFieldError('email') ? ' has-error' : ''}`}>
                   <label htmlFor="forgot_password_email">Email</label>
                   <input
                     id="forgot_password_email"
@@ -150,13 +197,19 @@ const ForgotPasswordPage = () => {
                     autoComplete="email"
                     placeholder={forgotPasswordCopy.emailPlaceholder}
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      clearFeedback();
+                    }}
                     required
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(getFieldError('email'))}
                   />
+                  {getFieldError('email') && <p className="field-error">{getFieldError('email')}</p>}
                 </div>
 
-                <button type="submit" className="btn btn-primary">
-                  Kirim tautan reset
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Mengirim...' : 'Kirim tautan reset'}
                 </button>
 
                 <p className="auth-forgot-inline-note">
@@ -164,7 +217,9 @@ const ForgotPasswordPage = () => {
                 </p>
 
                 <p className="auth-link auth-forgot-back-link">
-                  <Link to={forgotPasswordCopy.loginTo}>{forgotPasswordCopy.loginLabel}</Link>
+                  <Link to={forgotPasswordCopy.loginTo}>
+                    {forgotPasswordCopy.loginLabel}
+                  </Link>
                 </p>
               </form>
             )}

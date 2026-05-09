@@ -6,6 +6,7 @@ export const APP_ROUTES = {
   jobs: '/jobs',
   login: '/login',
   forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
   register: '/register',
   recruiterDashboard: '/recruiter',
   recruiterCreateJob: '/recruiter/jobs/create',

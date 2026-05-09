@@ -12,6 +12,7 @@ const PlatformPage = lazy(() => import('./pages/PlatformPage.jsx'));
 const JobListPage = lazy(() => import('./pages/JobListPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'));
 const RecruiterDashboardPage = lazy(() => import('./pages/RecruiterDashboardPage.jsx'));
 const RecruiterJobCreatePage = lazy(() => import('./pages/RecruiterJobCreatePage.jsx'));
@@ -115,7 +116,9 @@ function AppLayout() {
     location.pathname === APP_ROUTES.candidateDashboard ||
     location.pathname === APP_ROUTES.adminDashboard;
   const loginShellClassName =
-    location.pathname === APP_ROUTES.login || location.pathname === APP_ROUTES.forgotPassword
+    location.pathname === APP_ROUTES.login ||
+    location.pathname === APP_ROUTES.forgotPassword ||
+    location.pathname === APP_ROUTES.resetPassword
       ? 'auth-shell auth-shell-with-navbar'
       : 'auth-shell';
 
@@ -161,6 +164,14 @@ function AppLayout() {
                   <ForgotPasswordPage />
                 </main>
               </GuestRoute>
+            }
+          />
+          <Route
+            path={APP_ROUTES.resetPassword}
+            element={
+              <main className={loginShellClassName}>
+                <ResetPasswordPage />
+              </main>
             }
           />
           <Route

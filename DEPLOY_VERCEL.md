@@ -28,6 +28,7 @@ Variable penting:
 
 - `APP_KEY`
 - `APP_URL`
+- `FRONTEND_APP_URL`
 - `APP_STORAGE_PATH=/tmp/pintarnya-storage`
 - `DB_CONNECTION=pgsql`
 - `DB_HOST`
@@ -42,6 +43,11 @@ Variable penting:
 - `QUEUE_CONNECTION=sync`
 - `SANCTUM_STATEFUL_DOMAINS`
 - `CORS_ALLOWED_ORIGINS`
+- `MAIL_MAILER`
+- `MAIL_FROM_ADDRESS`
+- `MAIL_FROM_NAME`
+
+Jika ingin forgot/reset password benar-benar mengirim email, backend production harus memakai mailer sungguhan seperti SMTP. Jika `MAIL_MAILER=log`, request reset password tetap sukses tetapi email hanya masuk ke log backend, bukan ke inbox pengguna.
 
 Untuk Supabase, mulailah dari Session pooler / shared pooler pada port `5432` agar kompatibilitas Laravel lebih aman.
 

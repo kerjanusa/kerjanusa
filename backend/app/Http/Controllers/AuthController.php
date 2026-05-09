@@ -4,14 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AuthService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller
 {
+    private const FORGOT_PASSWORD_SUCCESS_MESSAGE = 'Jika email terdaftar, link reset password telah dikirim ke email Anda.';
+    private const RESET_PASSWORD_SUCCESS_MESSAGE = 'Password berhasil diubah. Silakan login dengan password baru Anda.';
+    private const RESET_PASSWORD_INVALID_MESSAGE = 'Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link baru.';
+
     public function __construct(private AuthService $authService)
     {
     }
@@ -29,7 +36,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => ['required', Password::min(8)->letters()->numbers()],
+            'password' => ['required', PasswordRule::min(8)->letters()->numbers()],
             'password_confirmation' => 'required|same:password',
             'role' => ['required', Rule::in(User::PUBLIC_REGISTRATION_ROLES)],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')],
@@ -103,6 +110,87 @@ class AuthController extends Controller
     }
 
     /**
+     * Send forgot-password link
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->merge([
+            'email' => User::normalizeEmail($request->input('email')),
+        ]);
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+        ]);
+
+        PasswordBroker::sendResetLink([
+            'email' => $validated['email'],
+        ]);
+
+        return response()->json([
+            'message' => self::FORGOT_PASSWORD_SUCCESS_MESSAGE,
+        ]);
+    }
+
+    /**
+     * Reset password using email token
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->merge([
+            'email' => User::normalizeEmail($request->input('email')),
+        ]);
+
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'password' => ['required', PasswordRule::min(8)->letters()->numbers()],
+            'password_confirmation' => 'required|same:password',
+        ], [
+            'token.required' => 'Token reset password wajib ada.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'password.required' => 'Password baru wajib diisi.',
+            'password_confirmation.required' => 'Konfirmasi password wajib diisi.',
+            'password_confirmation.same' => 'Konfirmasi password harus sama dengan password baru.',
+        ]);
+
+        $status = PasswordBroker::reset(
+            [
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+                'password_confirmation' => $validated['password_confirmation'],
+                'token' => $validated['token'],
+            ],
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === PasswordBroker::PASSWORD_RESET) {
+            return response()->json([
+                'message' => self::RESET_PASSWORD_SUCCESS_MESSAGE,
+            ]);
+        }
+
+        return response()->json([
+            'message' => self::RESET_PASSWORD_INVALID_MESSAGE,
+            'errors' => [
+                'token' => [self::RESET_PASSWORD_INVALID_MESSAGE],
+            ],
+        ], 422);
+    }
+
+    /**
      * Logout user
      */
     public function logout(Request $request): JsonResponse
@@ -162,7 +250,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'old_password' => 'required|string',
-            'new_password' => ['required', Password::min(8)->letters()->numbers()],
+            'new_password' => ['required', PasswordRule::min(8)->letters()->numbers()],
             'new_password_confirmation' => 'required|same:new_password',
         ]);
 

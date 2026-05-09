@@ -16,7 +16,12 @@ const isPublicAuthRequest = (url = '') => {
     return false;
   }
 
-  return url.endsWith('/login') || url.endsWith('/register');
+  return (
+    url.endsWith('/login') ||
+    url.endsWith('/register') ||
+    url.endsWith('/forgot-password') ||
+    url.endsWith('/reset-password')
+  );
 };
 
 // Add token to requests

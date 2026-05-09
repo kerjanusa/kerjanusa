@@ -3,6 +3,7 @@ import { shouldUseMockData } from '../utils/mockMode';
 import { normalizeUserRole } from '../utils/routeHelpers.js';
 
 const MOCK_USERS_STORAGE_KEY = 'mock_auth_users';
+const MOCK_PASSWORD_RESET_STORAGE_KEY = 'mock_password_reset_tokens';
 const DEFAULT_DEMO_PASSWORD = 'password123';
 
 const defaultMockUsers = [
@@ -111,6 +112,28 @@ const saveMockUsers = (users) => {
     JSON.stringify(users.map((user) => normalizeAuthUser(user)))
   );
 };
+
+const getMockPasswordResetTokens = () => {
+  const storedTokens = localStorage.getItem(MOCK_PASSWORD_RESET_STORAGE_KEY);
+
+  if (!storedTokens) {
+    return [];
+  }
+
+  try {
+    const parsedTokens = JSON.parse(storedTokens);
+    return Array.isArray(parsedTokens) ? parsedTokens : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveMockPasswordResetTokens = (tokens) => {
+  localStorage.setItem(MOCK_PASSWORD_RESET_STORAGE_KEY, JSON.stringify(tokens));
+};
+
+const buildMockResetToken = () =>
+  `mock-reset-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 
 const persistMockSession = (user) => {
   const sessionToken = `mock-token-${user.id}`;
@@ -261,6 +284,118 @@ class AuthService {
     } catch (error) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      throw error.response?.data || error.message;
+    }
+  }
+
+  /**
+   * Send forgot password link
+   */
+  static async forgotPassword(email) {
+    if (shouldUseMockData) {
+      const normalizedEmail = email?.trim().toLowerCase();
+      const users = getMockUsers();
+      const matchingUser = users.find((user) => user.email.toLowerCase() === normalizedEmail);
+
+      if (matchingUser) {
+        const nextToken = {
+          email: normalizedEmail,
+          token: buildMockResetToken(),
+          expiresAt: Date.now() + 60 * 60 * 1000,
+        };
+        const existingTokens = getMockPasswordResetTokens().filter(
+          (entry) => entry.email !== normalizedEmail
+        );
+
+        saveMockPasswordResetTokens([...existingTokens, nextToken]);
+      }
+
+      return {
+        message: 'Jika email terdaftar, link reset password telah dikirim ke email Anda.',
+      };
+    }
+
+    try {
+      const response = await apiClient.post('/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+
+  /**
+   * Reset password using email link token
+   */
+  static async resetPassword(data) {
+    if (shouldUseMockData) {
+      const normalizedEmail = data.email?.trim().toLowerCase();
+      const tokens = getMockPasswordResetTokens();
+      const matchingToken = tokens.find(
+        (entry) =>
+          entry.email === normalizedEmail &&
+          entry.token === data.token &&
+          Number(entry.expiresAt) > Date.now()
+      );
+
+      if (!matchingToken) {
+        throw {
+          message: 'Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link baru.',
+          errors: {
+            token: ['Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link baru.'],
+          },
+        };
+      }
+
+      if (data.password !== data.password_confirmation) {
+        throw {
+          message: 'Konfirmasi password harus sama dengan password baru.',
+          errors: {
+            password_confirmation: ['Konfirmasi password harus sama dengan password baru.'],
+          },
+        };
+      }
+
+      const users = getMockUsers();
+      const userIndex = users.findIndex((user) => user.email.toLowerCase() === normalizedEmail);
+
+      if (userIndex === -1) {
+        throw {
+          message: 'Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link baru.',
+          errors: {
+            token: ['Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link baru.'],
+          },
+        };
+      }
+
+      users[userIndex] = {
+        ...users[userIndex],
+        password: data.password,
+      };
+      saveMockUsers(users);
+      saveMockPasswordResetTokens(
+        tokens.filter((entry) => !(entry.email === normalizedEmail && entry.token === data.token))
+      );
+
+      const storedUser = this.getStoredUser();
+      if (storedUser?.email?.trim().toLowerCase() === normalizedEmail) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+      }
+
+      return {
+        message: 'Password berhasil diubah. Silakan login dengan password baru Anda.',
+      };
+    }
+
+    try {
+      const response = await apiClient.post('/reset-password', data);
+      const storedUser = this.getStoredUser();
+      if (storedUser?.email?.trim().toLowerCase() === data.email?.trim().toLowerCase()) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+      }
+      return response.data;
+    } catch (error) {
       throw error.response?.data || error.message;
     }
   }

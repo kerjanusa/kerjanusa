@@ -29,6 +29,8 @@ Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
 
 // Job routes (public - listing and detail)
 Route::get('/jobs', [JobController::class, 'index']);
