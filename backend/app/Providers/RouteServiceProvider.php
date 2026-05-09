@@ -27,7 +27,9 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
-            Route::prefix('api')
+            $apiPrefix = env('VERCEL') ? '' : 'api';
+
+            Route::prefix($apiPrefix)
                 ->middleware('api')
                 ->group(base_path('routes/api.php'));
         });

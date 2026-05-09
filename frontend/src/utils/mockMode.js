@@ -1,4 +1,4 @@
-const PRODUCTION_API_FALLBACK = 'https://pintarnya-backend.vercel.app/api';
+const PRODUCTION_API_FALLBACK = 'https://pintarnya-backend-delta.vercel.app/api';
 
 export const resolvedApiUrl =
   import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PRODUCTION_API_FALLBACK : '');
