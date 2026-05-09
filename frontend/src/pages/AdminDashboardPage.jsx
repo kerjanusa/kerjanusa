@@ -227,68 +227,6 @@ const formatJobStatus = (job) => {
   return 'Review';
 };
 
-const getFooterMeta = (section) => {
-  if (section === 'moderation') {
-    return {
-      copy: '© 2024 KERJANUSA MODERATION SYSTEM • VERSION 4.2.0-STABLE',
-      links: ['MODERATION GUIDELINES', 'ADMIN LOGS', 'PRIVACY POLICY'],
-    };
-  }
-
-  return {
-    copy: '© 2024 KerjaNusa. Hak Cipta Dilindungi.',
-    links: ['Kebijakan Privasi', 'Syarat & Ketentuan', 'Bantuan'],
-  };
-};
-
-const getSectionMeta = (section) => {
-  switch (section) {
-    case 'pelamar':
-      return {
-        eyebrow: 'Database pelamar',
-        title: 'Manajemen pelamar aktif dan berisiko',
-        description:
-          'Pantau pelamar yang baru masuk, akun yang dinonaktifkan, dan lakukan tindakan admin cepat dari satu tabel kerja.',
-      };
-    case 'recruiter':
-      return {
-        eyebrow: 'Recruiter directory',
-        title: 'Verifikasi recruiter dan aktivitas perusahaan',
-        description:
-          'Seluruh recruiter aktif, kandidat verifikasi, dan akun yang bermasalah dikelola melalui direktori yang sama.',
-      };
-    case 'lowongan':
-      return {
-        eyebrow: 'Manajemen lowongan',
-        title: 'Pantau performa lowongan dan pelanggaran aturan',
-        description:
-          'Superadmin dapat meninjau lowongan paling aktif, lowongan bermasalah, serta memindahkan tanggung jawab recruiter bila diperlukan.',
-      };
-    case 'analytics':
-      return {
-        eyebrow: 'Analytics platform',
-        title: 'Analytics & Reporting',
-        description:
-          'Ringkasan volume user, distribusi kategori, performa lowongan populer, dan insight prioritas untuk keputusan cepat.',
-      };
-    case 'moderation':
-      return {
-        eyebrow: 'Moderasi operasional',
-        title: 'Moderasi konten dan laporan prioritas',
-        description:
-          'Gunakan panel ini untuk meninjau laporan, menandai konten bermasalah, dan mengarahkan tindakan admin selanjutnya.',
-      };
-    case 'monitoring':
-    default:
-      return {
-        eyebrow: 'Superadmin KerjaNusa',
-        title: 'Pusat kontrol candidate, recruiter, dan lowongan',
-        description:
-          'Panel ini memusatkan angka inti, sinkronisasi status sistem, serta log aktivitas terbaru yang wajib dipantau setiap hari.',
-      };
-  }
-};
-
 const AdminIcon = ({ name, className = '' }) => {
   const props = {
     viewBox: '0 0 24 24',
@@ -538,9 +476,9 @@ const Pagination = ({ label }) => (
 const SectionOverview = ({ eyebrow, title, description, stats }) => (
   <article className="superadmin-panel superadmin-section-overview">
     <div className="superadmin-section-overview-copy">
-      <span className="superadmin-panel-eyebrow">{eyebrow}</span>
+      {eyebrow ? <span className="superadmin-panel-eyebrow">{eyebrow}</span> : null}
       <h3>{title}</h3>
-      <p>{description}</p>
+      {description ? <p>{description}</p> : null}
     </div>
 
     <div className="superadmin-section-overview-stats">
@@ -548,7 +486,7 @@ const SectionOverview = ({ eyebrow, title, description, stats }) => (
         <article key={item.label} className="superadmin-section-overview-stat">
           <span>{item.label}</span>
           <strong>{item.value}</strong>
-          <small>{item.detail}</small>
+          {item.detail ? <small>{item.detail}</small> : null}
         </article>
       ))}
     </div>
@@ -991,7 +929,6 @@ const AdminDashboardPage = () => {
       ? 'Pencarian untuk “Artificial Intelligence” meningkat 300% dalam 2 bulan terakhir di sektor teknologi.'
       : `Permintaan tertinggi saat ini berada di kategori ${categoryDistribution[0]?.label || 'utama'} dan perlu diprioritaskan pada distribusi lowongan baru.`;
 
-  const sectionMeta = getSectionMeta(activeSection);
   const monitoringCards = [
     {
       label: 'Pelamar Aktif',
@@ -1368,8 +1305,6 @@ const AdminDashboardPage = () => {
   const currentSection = SECTION_OPTIONS.find((section) => section.value === activeSection) || SECTION_OPTIONS[0];
   const titleBadge =
     activeSection === 'moderation' ? `${filteredModerationReports.length} PERLU TINJAUAN` : '';
-  const footerMeta = getFooterMeta(activeSection);
-
   const handleSectionChange = (section) => {
     setActiveSection(section);
     navigate(getSectionRoute(section));
@@ -1586,13 +1521,6 @@ const AdminDashboardPage = () => {
       <div className="superadmin-header-user">
         <div className="superadmin-header-user-meta">
           <strong>{user?.name || 'Nama Superadmin'}</strong>
-          <span>
-            {activeSection === 'recruiter'
-              ? 'Administrator Level 1'
-              : activeSection === 'pelamar'
-                ? 'Administrator Utama'
-                : 'Superadmin'}
-          </span>
         </div>
         {(activeSection === 'pelamar' || activeSection === 'lowongan') && (
           <div className="superadmin-avatar-badge">{getInitials(user?.name)}</div>
@@ -1610,12 +1538,8 @@ const AdminDashboardPage = () => {
         <article className="superadmin-panel superadmin-monitoring-overview">
           <div className="superadmin-monitoring-overview-head">
             <div className="superadmin-monitoring-overview-copy">
-              <span className="superadmin-panel-eyebrow">Platform Pulse</span>
-              <h2>Monitoring operasional platform dalam satu layar.</h2>
-              <p>
-                Fokus utama dashboard ini adalah memantau kesehatan feed admin, beban review akun,
-                dan antrian prioritas sebelum Anda masuk ke menu detail.
-              </p>
+              <span className="superadmin-panel-eyebrow">Monitoring</span>
+              <h2>Kondisi platform dalam satu layar.</h2>
             </div>
 
             <div className="superadmin-monitoring-overview-actions">
@@ -1624,7 +1548,7 @@ const AdminDashboardPage = () => {
                 <strong>{lastSyncedAt ? formatDateTime(lastSyncedAt) : 'Belum tersinkron'}</strong>
               </div>
               <div className="superadmin-monitoring-action-row">
-                <button
+              <button
                   type="button"
                   className="superadmin-primary-button"
                   onClick={() => loadDashboard()}
@@ -1648,19 +1572,11 @@ const AdminDashboardPage = () => {
                     ? 'Sedang sinkron'
                     : 'Stabil'}
               </strong>
-              <p>
-                {syncTone === 'error'
-                  ? 'Ada kegagalan saat menarik feed dashboard.'
-                  : syncTone === 'loading'
-                    ? 'Backend sedang menarik data live terbaru.'
-                    : 'Panel utama bisa dipakai untuk pengambilan keputusan cepat.'}
-              </p>
             </article>
 
             <article className="superadmin-monitoring-meta-card">
               <span className="superadmin-monitoring-meta-label">Antrian hari ini</span>
               <strong>{numberFormatter.format(filteredModerationReports.length)}</strong>
-              <p>Item moderasi, review profil, dan lowongan flagged menunggu tindak lanjut.</p>
             </article>
 
             <article className="superadmin-monitoring-meta-card">
@@ -1672,13 +1588,6 @@ const AdminDashboardPage = () => {
                     ? 'Verifikasi recruiter'
                     : 'Feed stabil'}
               </strong>
-              <p>
-                {flaggedJobsCount > 0
-                  ? 'Periksa lowongan yang tidak aktif atau berisiko lebih dulu.'
-                  : recruiterReviewCount > 0
-                    ? 'Lanjutkan validasi recruiter yang masih tertahan.'
-                    : 'Tidak ada prioritas kritis yang menumpuk saat ini.'}
-              </p>
             </article>
           </div>
         </article>
@@ -1690,7 +1599,6 @@ const AdminDashboardPage = () => {
             <div className="superadmin-panel-head">
               <div>
                 <h3>Health & Alerts</h3>
-                <p>Empat sinyal utama yang perlu dibaca sebelum berpindah menu.</p>
               </div>
             </div>
 
@@ -1715,7 +1623,6 @@ const AdminDashboardPage = () => {
             <div className="superadmin-panel-head">
               <div>
                 <h3>Quick Actions</h3>
-                <p>Shortcut ke area yang paling sering butuh respon cepat dari superadmin.</p>
               </div>
             </div>
 
@@ -1741,7 +1648,6 @@ const AdminDashboardPage = () => {
             <div className="superadmin-panel-head">
               <div>
                 <h3>Aktivitas Terbaru</h3>
-                <p>Feed live dari aplikasi dan pergerakan lowongan yang baru masuk.</p>
               </div>
               <button
                 type="button"
@@ -1778,7 +1684,6 @@ const AdminDashboardPage = () => {
             <div className="superadmin-panel-head">
               <div>
                 <h3>Ringkasan Prioritas</h3>
-                <p>Tiga area yang paling menentukan ritme kerja admin hari ini.</p>
               </div>
             </div>
 
@@ -1805,9 +1710,9 @@ const AdminDashboardPage = () => {
   const renderCandidateManagement = () => (
     <section className="superadmin-section-block">
       <SectionOverview
-        eyebrow="Candidate Ops"
+        eyebrow=""
         title="Manajemen pelamar yang lebih tenang dan cepat dipindai."
-        description="Gunakan ringkasan ini untuk memisahkan pelamar yang siap lanjut dari akun yang masih butuh review, suspend, atau follow-up profil."
+        description=""
         stats={candidateOverviewStats}
       />
 
@@ -1934,7 +1839,6 @@ const AdminDashboardPage = () => {
           <div className="superadmin-panel-head">
             <div>
               <h3>Pelamar Prioritas Review</h3>
-              <p>Daftar singkat akun yang paling perlu disentuh setelah membaca tabel utama.</p>
             </div>
           </div>
           <div className="superadmin-list-stack">
@@ -1968,7 +1872,6 @@ const AdminDashboardPage = () => {
           <div className="superadmin-panel-head">
             <div>
               <h3>Checklist Admin</h3>
-              <p>Tiga aksi cepat yang biasanya paling membantu menjaga funnel kandidat tetap sehat.</p>
             </div>
           </div>
           <div className="superadmin-monitoring-priority-list">
@@ -2002,9 +1905,9 @@ const AdminDashboardPage = () => {
   const renderRecruiterManagement = () => (
     <section className="superadmin-section-block">
       <SectionOverview
-        eyebrow="Recruiter Ops"
+        eyebrow=""
         title="Direktori recruiter yang fokus pada status, kesiapan, dan verifikasi."
-        description="Bagian ini dipakai untuk membaca kesehatan supply-side: siapa yang siap tayang, siapa yang masih menunggu verifikasi, dan siapa yang perlu dibatasi."
+        description=""
         stats={recruiterOverviewStats}
       />
 
@@ -2173,9 +2076,9 @@ const AdminDashboardPage = () => {
   const renderJobManagement = () => (
     <section className="superadmin-section-block">
       <SectionOverview
-        eyebrow="Job Inventory"
+        eyebrow=""
         title="Kontrol lowongan yang aktif, bermasalah, dan perlu dipindahkan."
-        description="Fokus halaman ini adalah inventori lowongan: performa aplikasi, status publikasi, dan rekomendasi intervensi untuk lowongan yang tidak sehat."
+        description=""
         stats={jobsOverviewStats}
       />
 
@@ -2411,9 +2314,9 @@ const AdminDashboardPage = () => {
   const renderAnalytics = () => (
     <section className="superadmin-section-block">
       <SectionOverview
-        eyebrow="Reporting Layer"
+        eyebrow=""
         title="Satu ringkasan visual untuk membaca pertumbuhan dan distribusi hiring."
-        description="Analytics dipertahankan ringkas: cukup satu chart utama, kategori dominan, lowongan populer, dan insight yang bisa langsung dipakai untuk keputusan berikutnya."
+        description=""
         stats={analyticsOverviewStats}
       />
 
@@ -2424,7 +2327,6 @@ const AdminDashboardPage = () => {
           <div className="superadmin-panel-head">
             <div>
               <h3>Pertumbuhan Pengguna</h3>
-              <p>Statistik perbandingan pendaftaran bulanan</p>
             </div>
             <div className="superadmin-chart-legend">
               <span>
@@ -2463,7 +2365,6 @@ const AdminDashboardPage = () => {
           <div className="superadmin-panel-head">
             <div>
               <h3>Kategori Pekerjaan</h3>
-              <p>Distribusi sektor terpopuler</p>
             </div>
           </div>
           <div className="superadmin-category-list">
@@ -2488,7 +2389,6 @@ const AdminDashboardPage = () => {
           <div className="superadmin-panel-head">
             <div>
               <h3>Lowongan Paling Populer</h3>
-              <p>Berdasarkan jumlah klik dan lamaran masuk</p>
             </div>
             <button type="button" className="superadmin-inline-link" onClick={() => handleSectionChange('lowongan')}>
               Lihat Semua
@@ -2589,9 +2489,9 @@ const AdminDashboardPage = () => {
   const renderModeration = () => (
     <section className="superadmin-section-block">
       <SectionOverview
-        eyebrow="Moderation Ops"
+        eyebrow=""
         title="Antrian moderasi dengan prioritas yang jelas dan tindakan yang langsung terlihat."
-        description="Panel moderasi dipakai untuk memisahkan laporan kritis dari noise. Fokus utamanya adalah kejelasan alasan laporan dan aksi admin yang bisa dijalankan cepat."
+        description=""
         stats={moderationOverviewStats}
       />
 
@@ -2743,16 +2643,11 @@ const AdminDashboardPage = () => {
 
   return (
     <div className="superadmin-page">
-      <div className="superadmin-stitch-banner">
-        Konten ini dibuat oleh pengguna Stitch. Jangan masukkan informasi sensitif karena dapat
-        dilihat oleh pemilik.
-      </div>
-
       <div className="superadmin-shell">
         <aside className="superadmin-sidebar">
           <div className="superadmin-sidebar-brand">
             <strong>KerjaNusa</strong>
-            <span>Superadmin Dashboard</span>
+            <span>Superadmin</span>
           </div>
 
           <nav className="superadmin-sidebar-nav" aria-label="Navigasi superadmin">
@@ -2772,31 +2667,17 @@ const AdminDashboardPage = () => {
           </nav>
 
           <div className="superadmin-sidebar-footer">
-            <button type="button" className="superadmin-sidebar-post-job">
-              <span>+</span>
-              Post Job
-            </button>
-
             <div className="superadmin-sidebar-user">
               <div className="superadmin-sidebar-avatar">{getInitials(user?.name)}</div>
               <div>
                 <strong>{user?.name || 'Nama Superadmin'}</strong>
-                <span>
-                  {activeSection === 'moderation'
-                    ? 'Administrator Utama'
-                    : activeSection === 'recruiter'
-                      ? 'Administrator Level 1'
-                      : 'Superadmin Profile'}
-                </span>
               </div>
             </div>
 
-            {activeSection === 'moderation' && (
-              <button type="button" className="superadmin-sidebar-logout" onClick={handleLogout}>
-                <AdminIcon name="logout" />
-                Logout
-              </button>
-            )}
+            <button type="button" className="superadmin-sidebar-logout" onClick={handleLogout}>
+              <AdminIcon name="logout" />
+              {isLoggingOut ? 'Logout...' : 'Logout'}
+            </button>
           </div>
         </aside>
 
@@ -2815,17 +2696,6 @@ const AdminDashboardPage = () => {
             {renderFeedback()}
             {renderSectionContent()}
           </section>
-
-          <footer className="superadmin-footer">
-            <span>{footerMeta.copy}</span>
-            <div className="superadmin-footer-links">
-              {footerMeta.links.map((link) => (
-                <a key={link} href="#admin-meta">
-                  {link}
-                </a>
-              ))}
-            </div>
-          </footer>
         </main>
       </div>
     </div>

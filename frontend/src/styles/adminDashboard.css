@@ -1,18 +1,18 @@
 .superadmin-page {
-  --sa-bg: #f8f5f6;
+  --sa-bg: #faf5ee;
   --sa-surface: #ffffff;
-  --sa-surface-soft: #faf7f8;
-  --sa-border: rgba(15, 24, 48, 0.14);
-  --sa-border-strong: rgba(15, 24, 48, 0.24);
-  --sa-text: #0f1733;
-  --sa-text-soft: #6d7387;
-  --sa-sidebar: #0f1830;
-  --sa-sidebar-soft: rgba(255, 255, 255, 0.62);
-  --sa-orange: #ffab19;
-  --sa-orange-deep: #a66c04;
+  --sa-surface-soft: #f6efe8;
+  --sa-border: rgba(46, 18, 41, 0.12);
+  --sa-border-strong: rgba(46, 18, 41, 0.22);
+  --sa-text: #1a1420;
+  --sa-text-soft: #756871;
+  --sa-sidebar: #2f1027;
+  --sa-sidebar-soft: rgba(255, 246, 233, 0.7);
+  --sa-orange: #d7a53d;
+  --sa-orange-deep: #8d5d11;
   --sa-danger: #cf1f1f;
   --sa-success: #16a34a;
-  --sa-muted: #8b90a4;
+  --sa-muted: #92828d;
   min-height: 100vh;
   background: var(--sa-bg);
   color: var(--sa-text);
@@ -25,35 +25,27 @@
   box-sizing: border-box;
 }
 
-.superadmin-stitch-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 21px;
-  padding: 0 1rem;
-  background: #171717;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.65rem;
-  text-align: center;
-}
-
 .superadmin-shell {
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
-  min-height: calc(100vh - 21px);
+  grid-template-columns: 292px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
 .superadmin-sidebar {
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #10182f 0%, #0d1730 100%);
-  color: #ffffff;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 6px 0 18px rgba(11, 18, 39, 0.14);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #341127 0%, #250917 100%);
+  color: #fff6eb;
+  border-right: 1px solid rgba(255, 240, 224, 0.08);
+  box-shadow: 10px 0 28px rgba(30, 9, 20, 0.12);
 }
 
 .superadmin-sidebar-brand {
-  padding: 2.6rem 1.8rem 1.8rem;
+  padding: 2rem 1.25rem 1.25rem;
 }
 
 .superadmin-sidebar-brand strong,
@@ -62,23 +54,24 @@
 }
 
 .superadmin-sidebar-brand strong {
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: 800;
   letter-spacing: -0.05em;
 }
 
 .superadmin-sidebar-brand span {
-  margin-top: 0.45rem;
+  margin-top: 0.32rem;
   color: var(--sa-sidebar-soft);
-  font-size: 0.96rem;
-  letter-spacing: 0.02em;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .superadmin-sidebar-nav {
   display: grid;
-  gap: 0.1rem;
-  margin-top: 1rem;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  padding: 0 0.95rem;
 }
 
 .superadmin-sidebar-link {
@@ -86,26 +79,24 @@
   align-items: center;
   gap: 0.95rem;
   width: 100%;
-  min-height: 64px;
-  padding: 0 1.7rem;
-  border: 0;
+  min-height: 54px;
+  padding: 0 1rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 246, 233, 0.76);
   font-size: 0.95rem;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.18s ease, color 0.18s ease, padding-left 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .superadmin-sidebar-link:hover,
 .superadmin-sidebar-link.is-active {
-  background: var(--sa-orange);
-  color: #1a1a1a;
-}
-
-.superadmin-sidebar-link:hover {
-  padding-left: 1.85rem;
+  background: linear-gradient(180deg, #d7a53d 0%, #c8922b 100%);
+  border-color: rgba(255, 233, 188, 0.25);
+  color: #24130e;
 }
 
 .superadmin-icon {
@@ -116,38 +107,18 @@
 
 .superadmin-sidebar-footer {
   margin-top: auto;
-  padding: 1.5rem 1rem 1.2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.superadmin-sidebar-post-job {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.8rem;
-  width: 100%;
-  min-height: 70px;
-  border: 0;
-  border-radius: 10px;
-  background: #a36b04;
-  color: #fff8ec;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(255, 194, 95, 0.14);
-}
-
-.superadmin-sidebar-post-job span {
-  font-size: 1.9rem;
-  line-height: 1;
-  font-weight: 400;
+  padding: 1rem 0.95rem 1.1rem;
+  border-top: 1px solid rgba(255, 240, 224, 0.08);
 }
 
 .superadmin-sidebar-user {
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  margin-top: 1.5rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(255, 240, 224, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 246, 233, 0.04);
 }
 
 .superadmin-sidebar-avatar {
@@ -176,9 +147,7 @@
 }
 
 .superadmin-sidebar-user span {
-  margin-top: 0.15rem;
-  color: rgba(255, 255, 255, 0.52);
-  font-size: 0.9rem;
+  display: none;
 }
 
 .superadmin-sidebar-logout {
@@ -188,11 +157,11 @@
   gap: 0.7rem;
   width: 100%;
   min-height: 44px;
-  margin-top: 1.35rem;
-  border: 0;
-  border-radius: 8px;
-  background: #ce2020;
-  color: #ffffff;
+  margin-top: 0.85rem;
+  border: 1px solid rgba(255, 240, 224, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 246, 233, 0.06);
+  color: #fff6eb;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
@@ -202,6 +171,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100vh;
 }
 
 .superadmin-main-header {
@@ -210,9 +180,13 @@
   justify-content: space-between;
   gap: 1.4rem;
   min-height: 88px;
-  padding: 0 1.8rem 0 1.8rem;
-  background: rgba(255, 255, 255, 0.4);
-  border-bottom: 1px solid rgba(15, 24, 48, 0.14);
+  padding: 0 1.8rem;
+  background: rgba(255, 251, 246, 0.88);
+  border-bottom: 1px solid rgba(46, 18, 41, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  backdrop-filter: blur(16px);
 }
 
 .superadmin-main-title h1 {
@@ -258,7 +232,6 @@
 .superadmin-header-logout,
 .superadmin-report-button,
 .superadmin-danger-button,
-.superadmin-sidebar-post-job,
 .superadmin-sidebar-logout,
 .superadmin-inline-link,
 .superadmin-tab-button,
@@ -394,9 +367,7 @@
 }
 
 .superadmin-header-user-meta span {
-  margin-top: 0.16rem;
-  color: var(--sa-text-soft);
-  font-size: 0.92rem;
+  display: none;
 }
 
 .superadmin-avatar-badge {
@@ -474,7 +445,7 @@
 }
 
 .superadmin-panel-eyebrow {
-  display: inline-block;
+  display: none;
   color: #9c6a07;
   font-size: 0.74rem;
   font-weight: 800;
@@ -497,7 +468,7 @@
 
 .superadmin-panel h3 {
   margin-bottom: 0.45rem;
-  font-size: 1.1rem;
+  font-size: 1.04rem;
   font-weight: 700;
   letter-spacing: -0.03em;
 }
@@ -525,17 +496,15 @@
 }
 
 .superadmin-section-overview-copy h3 {
-  max-width: 14ch;
-  margin-top: 0.72rem;
-  margin-bottom: 0.62rem;
-  font-size: clamp(1.65rem, 2vw, 2.35rem);
-  line-height: 1.02;
+  max-width: 18ch;
+  margin: 0;
+  font-size: clamp(1.4rem, 1.8vw, 1.95rem);
+  line-height: 1.08;
   letter-spacing: -0.05em;
 }
 
 .superadmin-section-overview-copy p {
-  max-width: 42rem;
-  font-size: 0.94rem;
+  display: none;
 }
 
 .superadmin-section-overview-stats {
@@ -570,11 +539,7 @@
 }
 
 .superadmin-section-overview-stat small {
-  display: block;
-  margin-top: 0.36rem;
-  color: var(--sa-text-soft);
-  font-size: 0.84rem;
-  line-height: 1.55;
+  display: none;
 }
 
 .superadmin-panel-head {
@@ -583,6 +548,10 @@
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.superadmin-panel-head p {
+  display: none;
 }
 
 .superadmin-inline-link {
@@ -659,13 +628,8 @@
 
 .superadmin-monitoring-overview-copy h2 {
   max-width: 12ch;
-  margin-bottom: 0.7rem;
-  font-size: clamp(2rem, 2.5vw, 2.9rem);
-}
-
-.superadmin-monitoring-overview-copy p {
-  max-width: 44rem;
-  font-size: 0.96rem;
+  margin: 0;
+  font-size: clamp(1.8rem, 2.1vw, 2.45rem);
 }
 
 .superadmin-monitoring-overview-actions {
@@ -733,8 +697,7 @@
 }
 
 .superadmin-monitoring-meta-card p {
-  margin-top: 0.45rem;
-  font-size: 0.9rem;
+  display: none;
 }
 
 .superadmin-monitoring-mainrow,
@@ -799,8 +762,7 @@
 }
 
 .superadmin-monitoring-health-card p {
-  margin-top: 0.38rem;
-  font-size: 0.88rem;
+  display: none;
 }
 
 .superadmin-monitoring-health-card.is-warning {
@@ -835,9 +797,7 @@
 }
 
 .superadmin-monitoring-action-card p {
-  color: var(--sa-text-soft);
-  font-size: 0.88rem;
-  line-height: 1.55;
+  display: none;
 }
 
 .superadmin-monitoring-action-card.is-warning {
@@ -868,10 +828,7 @@
 }
 
 .superadmin-monitoring-priority-item p {
-  margin-top: 0.38rem;
-  color: var(--sa-text-soft);
-  font-size: 0.88rem;
-  line-height: 1.55;
+  display: none;
 }
 
 .superadmin-monitoring-priority-item.is-warning {
@@ -948,15 +905,11 @@
 .superadmin-list-item p,
 .superadmin-report-top span,
 .superadmin-report-meta small {
-  margin-top: 0.2rem;
-  color: var(--sa-text-soft);
-  font-size: 0.9rem;
-  line-height: 1.55;
+  display: none;
 }
 
 .superadmin-activity-row small {
-  color: var(--sa-text-soft);
-  font-size: 0.84rem;
+  display: none;
 }
 
 .superadmin-empty-state {
@@ -1038,9 +991,7 @@
 }
 
 .superadmin-metric-detail {
-  margin: 0.95rem 0 0;
-  color: var(--sa-text-soft);
-  font-size: 0.98rem;
+  display: none;
 }
 
 .superadmin-metric-card.is-dark .superadmin-metric-detail {
@@ -1139,7 +1090,7 @@
 .superadmin-toolbar-right {
   margin-left: auto;
   color: #5d6478;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
 }
 
@@ -1982,32 +1933,6 @@
   text-transform: uppercase;
 }
 
-.superadmin-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 1.8rem 1.6rem;
-  color: #7c8190;
-  font-size: 0.9rem;
-}
-
-.superadmin-footer-links {
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-  flex-wrap: wrap;
-}
-
-.superadmin-footer-links a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.superadmin-footer-links a:hover {
-  color: #111828;
-}
-
 @media (max-width: 1360px) {
   .superadmin-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2052,8 +1977,11 @@
   }
 
   .superadmin-sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
     border-right: 0;
-    border-bottom: 1px solid rgba(15, 24, 48, 0.12);
+    border-bottom: 1px solid rgba(46, 18, 41, 0.12);
   }
 
   .superadmin-sidebar-nav {
@@ -2066,16 +1994,11 @@
     justify-content: center;
   }
 
-  .superadmin-sidebar-link:hover {
-    padding-left: 1rem;
-  }
-
   .superadmin-sidebar-link span {
     font-size: 0.88rem;
   }
 
-  .superadmin-main-header,
-  .superadmin-footer {
+  .superadmin-main-header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -2087,11 +2010,6 @@
 }
 
 @media (max-width: 920px) {
-  .superadmin-stitch-banner {
-    min-height: 32px;
-    font-size: 0.68rem;
-  }
-
   .superadmin-sidebar-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
