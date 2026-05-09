@@ -17,6 +17,10 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 !backend/.env.vercel.example
+backend/storage/framework/cache/data/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/storage/logs/
 
 # Common
 *.log
