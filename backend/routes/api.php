@@ -21,14 +21,7 @@ use Illuminate\Support\Facades\Schema;
 */
 
 // Public routes
-Route::get('/', fn () => response()->json([
-    'name' => 'Pintarnya API',
-    'status' => 'ok',
-    'database' => 'not-required-for-health',
-    'timestamp' => now()->toIso8601String(),
-]));
-Route::get('/health', fn () => response()->json(['status' => 'ok']));
-Route::get('/health/database', function () {
+$databaseHealthResponder = function () {
     try {
         DB::connection()->getPdo();
         DB::select('select 1');
@@ -68,7 +61,16 @@ Route::get('/health/database', function () {
             'exception' => class_basename($exception),
         ], 500);
     }
-});
+};
+
+Route::get('/', fn () => response()->json([
+    'name' => 'Pintarnya API',
+    'status' => 'ok',
+    'database' => 'not-required-for-health',
+    'timestamp' => now()->toIso8601String(),
+]));
+Route::get('/health', $databaseHealthResponder);
+Route::get('/health/database', $databaseHealthResponder);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
