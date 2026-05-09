@@ -31,13 +31,12 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->group(base_path('routes/api.php'));
 
-            // Vercel's PHP routing can invoke some wrappers via PATH_INFO without the /api
-            // prefix even though the public URL still starts with /api. Registering an
-            // additional unprefixed group keeps auth/profile/admin endpoints resolvable.
-            if (env('VERCEL')) {
-                Route::middleware('api')
-                    ->group(base_path('routes/api.php'));
-            }
+            // Some Vercel PHP entrypoints arrive at Laravel with PATH_INFO stripped of the
+            // public /api prefix (for example /api/login can reach Laravel as /login).
+            // Registering a second, unprefixed copy keeps those routes resolvable while the
+            // explicit /api-prefixed group continues to serve exact wrapper routes.
+            Route::middleware('api')
+                ->group(base_path('routes/api.php'));
         });
     }
 }
