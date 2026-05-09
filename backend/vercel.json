@@ -1,5 +1,107 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/health/database",
+      "destination": "/api/health/database.php"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health.php"
+    },
+    {
+      "source": "/api/login",
+      "destination": "/api/login.php"
+    },
+    {
+      "source": "/api/register",
+      "destination": "/api/register.php"
+    },
+    {
+      "source": "/api/forgot-password",
+      "destination": "/api/forgot-password.php"
+    },
+    {
+      "source": "/api/reset-password",
+      "destination": "/api/reset-password.php"
+    },
+    {
+      "source": "/api/logout",
+      "destination": "/api/logout.php"
+    },
+    {
+      "source": "/api/me",
+      "destination": "/api/me.php"
+    },
+    {
+      "source": "/api/profile",
+      "destination": "/api/profile.php"
+    },
+    {
+      "source": "/api/change-password",
+      "destination": "/api/change-password.php"
+    },
+    {
+      "source": "/api/job-locations",
+      "destination": "/api/job-locations.php"
+    },
+    {
+      "source": "/api/my-jobs",
+      "destination": "/api/my-jobs.php"
+    },
+    {
+      "source": "/api/my-applications",
+      "destination": "/api/my-applications.php"
+    },
+    {
+      "source": "/api/apply",
+      "destination": "/api/apply.php"
+    },
+    {
+      "source": "/api/jobs/:jobId/statistics",
+      "destination": "/api/jobs/[jobId]/statistics.php"
+    },
+    {
+      "source": "/api/jobs/:jobId/applications",
+      "destination": "/api/jobs/[jobId]/applications.php"
+    },
+    {
+      "source": "/api/jobs/:jobId",
+      "destination": "/api/jobs/[jobId].php"
+    },
+    {
+      "source": "/api/jobs",
+      "destination": "/api/jobs.php"
+    },
+    {
+      "source": "/api/applications/:applicationId/status",
+      "destination": "/api/applications/[applicationId]/status.php"
+    },
+    {
+      "source": "/api/applications/:applicationId/withdraw",
+      "destination": "/api/applications/[applicationId]/withdraw.php"
+    },
+    {
+      "source": "/api/applications/:applicationId",
+      "destination": "/api/applications/[applicationId].php"
+    },
+    {
+      "source": "/api/admin/users/:userId/send-reset-link",
+      "destination": "/api/admin/users/[userId]/send-reset-link.php"
+    },
+    {
+      "source": "/api/admin/users/:userId",
+      "destination": "/api/admin/users/[userId].php"
+    },
+    {
+      "source": "/api/admin/jobs/:jobId/reassign",
+      "destination": "/api/admin/jobs/[jobId]/reassign.php"
+    },
+    {
+      "source": "/api/admin/dashboard",
+      "destination": "/api/admin/dashboard.php"
+    }
+  ],
   "functions": {
     "api/*.php": {
       "runtime": "vercel-php@0.7.4",
