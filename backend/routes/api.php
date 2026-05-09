@@ -22,6 +22,14 @@ use Illuminate\Support\Facades\Schema;
 
 // Public routes
 $databaseHealthResponder = function () {
+    $databaseHost = (string) env('DB_HOST', '');
+    $databasePort = (string) env('DB_PORT', '');
+    $databaseName = (string) env('DB_DATABASE', '');
+    $databaseUsername = (string) env('DB_USERNAME', '');
+    $databasePassword = env('DB_PASSWORD');
+    $databaseUrl = env('DATABASE_URL');
+    $databaseSslMode = (string) env('DB_SSLMODE', '');
+
     try {
         DB::connection()->getPdo();
         DB::select('select 1');
@@ -49,16 +57,54 @@ $databaseHealthResponder = function () {
             'status' => empty($missingTables) ? 'ok' : 'warning',
             'database' => empty($missingTables) ? 'ready' : 'schema_incomplete',
             'connection' => config('database.default'),
+            'env' => [
+                'database_url_present' => filled($databaseUrl),
+                'db_host_present' => filled($databaseHost),
+                'db_host_supabase' => filled($databaseHost) && str_contains($databaseHost, '.supabase.com'),
+                'db_port' => $databasePort,
+                'db_database_present' => filled($databaseName),
+                'db_username_present' => filled($databaseUsername),
+                'db_username_postgres' => str_starts_with($databaseUsername, 'postgres'),
+                'db_password_present' => filled($databasePassword),
+                'db_sslmode' => $databaseSslMode,
+            ],
             'tables' => $tables,
             'missing_tables' => $missingTables,
         ], empty($missingTables) ? 200 : 500);
     } catch (\Throwable $exception) {
+        $exceptionMessage = $exception->getMessage();
+        $errorHint = 'unknown';
+
+        if (str_contains($exceptionMessage, 'password authentication failed')) {
+            $errorHint = 'invalid_credentials';
+        } elseif (str_contains($exceptionMessage, 'could not translate host name')) {
+            $errorHint = 'invalid_host';
+        } elseif (str_contains($exceptionMessage, 'Connection refused')) {
+            $errorHint = 'connection_refused';
+        } elseif (str_contains($exceptionMessage, 'could not find driver')) {
+            $errorHint = 'missing_driver';
+        } elseif (str_contains($exceptionMessage, 'SSL')) {
+            $errorHint = 'ssl_error';
+        }
+
         return response()->json([
             'status' => 'error',
             'database' => 'unavailable',
             'connection' => config('database.default'),
             'message' => 'Database connection failed.',
             'exception' => class_basename($exception),
+            'error_hint' => $errorHint,
+            'env' => [
+                'database_url_present' => filled($databaseUrl),
+                'db_host_present' => filled($databaseHost),
+                'db_host_supabase' => filled($databaseHost) && str_contains($databaseHost, '.supabase.com'),
+                'db_port' => $databasePort,
+                'db_database_present' => filled($databaseName),
+                'db_username_present' => filled($databaseUsername),
+                'db_username_postgres' => str_starts_with($databaseUsername, 'postgres'),
+                'db_password_present' => filled($databasePassword),
+                'db_sslmode' => $databaseSslMode,
+            ],
         ], 500);
     }
 };
