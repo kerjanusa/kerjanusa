@@ -14,6 +14,15 @@ class User extends Authenticatable
     public const ROLE_CANDIDATE = 'candidate';
     public const ROLE_RECRUITER = 'recruiter';
     public const ROLE_SUPERADMIN = 'superadmin';
+    public const ALL_ROLES = [
+        self::ROLE_CANDIDATE,
+        self::ROLE_RECRUITER,
+        self::ROLE_SUPERADMIN,
+    ];
+    public const PUBLIC_REGISTRATION_ROLES = [
+        self::ROLE_CANDIDATE,
+        self::ROLE_RECRUITER,
+    ];
 
     protected $fillable = [
         'name',

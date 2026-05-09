@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ApplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ApplicationController extends Controller
 {
@@ -101,7 +102,7 @@ class ApplicationController extends Controller
     public function updateStatus(Request $request, int $applicationId): JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending,accepted,rejected,withdrawn',
+            'status' => ['required', Rule::in(Application::STATUSES)],
         ]);
 
         $application = Application::with('job')->find($applicationId);

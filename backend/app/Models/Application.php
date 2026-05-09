@@ -9,6 +9,17 @@ class Application extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACCEPTED = 'accepted';
+    public const STATUS_REJECTED = 'rejected';
+    public const STATUS_WITHDRAWN = 'withdrawn';
+    public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_ACCEPTED,
+        self::STATUS_REJECTED,
+        self::STATUS_WITHDRAWN,
+    ];
+
     protected $fillable = [
         'job_id',
         'candidate_id',

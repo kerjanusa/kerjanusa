@@ -18,13 +18,13 @@ class AdminService
             'recruiters' => User::where('role', User::ROLE_RECRUITER)->count(),
             'superadmins' => User::where('role', User::ROLE_SUPERADMIN)->count(),
             'total_jobs' => Job::count(),
-            'active_jobs' => Job::where('status', 'active')->count(),
-            'inactive_jobs' => Job::where('status', 'inactive')->count(),
+            'active_jobs' => Job::where('status', Job::STATUS_ACTIVE)->count(),
+            'inactive_jobs' => Job::where('status', Job::STATUS_INACTIVE)->count(),
             'total_applications' => Application::count(),
-            'pending_applications' => Application::where('status', 'pending')->count(),
-            'accepted_applications' => Application::where('status', 'accepted')->count(),
-            'rejected_applications' => Application::where('status', 'rejected')->count(),
-            'withdrawn_applications' => Application::where('status', 'withdrawn')->count(),
+            'pending_applications' => Application::where('status', Application::STATUS_PENDING)->count(),
+            'accepted_applications' => Application::where('status', Application::STATUS_ACCEPTED)->count(),
+            'rejected_applications' => Application::where('status', Application::STATUS_REJECTED)->count(),
+            'withdrawn_applications' => Application::where('status', Application::STATUS_WITHDRAWN)->count(),
         ];
 
         $growth = [
@@ -70,7 +70,7 @@ class AdminService
             ->where('role', User::ROLE_RECRUITER)
             ->withCount([
                 'jobs',
-                'jobs as active_jobs_count' => fn ($query) => $query->where('status', 'active'),
+                'jobs as active_jobs_count' => fn ($query) => $query->where('status', Job::STATUS_ACTIVE),
             ])
             ->latest()
             ->limit(6)

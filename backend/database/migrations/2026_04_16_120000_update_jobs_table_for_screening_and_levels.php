@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::table('jobs', function (Blueprint $table) {
             if (!Schema::hasColumn('jobs', 'work_mode')) {
-                $table->enum('work_mode', ['wfo', 'hybrid', 'wfh'])->nullable()->after('job_type');
+                $table->string('work_mode', 32)->nullable()->after('job_type');
             }
 
             if (!Schema::hasColumn('jobs', 'openings_count')) {
@@ -19,7 +19,7 @@ return new class extends Migration
             }
 
             if (!Schema::hasColumn('jobs', 'interview_type')) {
-                $table->enum('interview_type', ['onsite', 'online', 'phone', 'hybrid'])->nullable()->after('openings_count');
+                $table->string('interview_type', 32)->nullable()->after('openings_count');
             }
 
             if (!Schema::hasColumn('jobs', 'interview_note')) {
@@ -27,20 +27,24 @@ return new class extends Migration
             }
 
             if (!Schema::hasColumn('jobs', 'video_screening_requirement')) {
-                $table->enum('video_screening_requirement', ['required', 'optional'])
+                $table->string('video_screening_requirement', 32)
                     ->default('optional')
                     ->after('interview_note');
             }
         });
 
         if (DB::getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE jobs MODIFY experience_level ENUM('entry', 'junior', 'mid', 'senior') NOT NULL");
+            DB::statement("ALTER TABLE jobs MODIFY experience_level VARCHAR(32) NOT NULL");
         }
     }
 
     public function down(): void
     {
         if (DB::getDriverName() === 'mysql') {
+            DB::table('jobs')
+                ->where('experience_level', 'junior')
+                ->update(['experience_level' => 'entry']);
+
             DB::statement("ALTER TABLE jobs MODIFY experience_level ENUM('entry', 'mid', 'senior') NOT NULL");
         }
 

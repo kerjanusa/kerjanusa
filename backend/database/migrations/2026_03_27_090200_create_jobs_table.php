@@ -20,9 +20,9 @@ return new class extends Migration
             $table->unsignedInteger('salary_min');
             $table->unsignedInteger('salary_max');
             $table->string('location');
-            $table->enum('job_type', ['full-time', 'part-time', 'contract', 'freelance']);
-            $table->enum('experience_level', ['entry', 'mid', 'senior']);
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->string('job_type', 32);
+            $table->string('experience_level', 32);
+            $table->string('status', 32)->default('active');
             $table->timestamps();
 
             $table->index(['status', 'created_at']);

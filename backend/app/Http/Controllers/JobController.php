@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\JobService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class JobController extends Controller
 {
@@ -65,14 +66,14 @@ class JobController extends Controller
             'salary_min' => 'required|numeric|min:0',
             'salary_max' => 'required|numeric|gte:salary_min',
             'location' => 'required|string',
-            'job_type' => 'required|in:full-time,part-time,contract,freelance',
-            'experience_level' => 'required|in:entry,junior,mid,senior',
-            'work_mode' => 'nullable|in:wfo,hybrid,wfh',
+            'job_type' => ['required', Rule::in(Job::JOB_TYPES)],
+            'experience_level' => ['required', Rule::in(Job::EXPERIENCE_LEVELS)],
+            'work_mode' => ['nullable', Rule::in(Job::WORK_MODES)],
             'openings_count' => 'nullable|integer|min:0',
-            'interview_type' => 'nullable|in:onsite,online,phone,hybrid',
+            'interview_type' => ['nullable', Rule::in(Job::INTERVIEW_TYPES)],
             'interview_note' => 'nullable|string',
-            'video_screening_requirement' => 'nullable|in:required,optional',
-            'status' => 'nullable|in:active,inactive',
+            'video_screening_requirement' => ['nullable', Rule::in(Job::VIDEO_SCREENING_REQUIREMENTS)],
+            'status' => ['nullable', Rule::in(Job::STATUSES)],
         ]);
 
         $job = $this->jobService->createJob($request->user()->id, $validated);
@@ -95,14 +96,14 @@ class JobController extends Controller
             'salary_min' => 'nullable|numeric|min:0',
             'salary_max' => 'nullable|numeric',
             'location' => 'nullable|string',
-            'job_type' => 'nullable|in:full-time,part-time,contract,freelance',
-            'experience_level' => 'nullable|in:entry,junior,mid,senior',
-            'work_mode' => 'nullable|in:wfo,hybrid,wfh',
+            'job_type' => ['nullable', Rule::in(Job::JOB_TYPES)],
+            'experience_level' => ['nullable', Rule::in(Job::EXPERIENCE_LEVELS)],
+            'work_mode' => ['nullable', Rule::in(Job::WORK_MODES)],
             'openings_count' => 'nullable|integer|min:0',
-            'interview_type' => 'nullable|in:onsite,online,phone,hybrid',
+            'interview_type' => ['nullable', Rule::in(Job::INTERVIEW_TYPES)],
             'interview_note' => 'nullable|string',
-            'video_screening_requirement' => 'nullable|in:required,optional',
-            'status' => 'nullable|in:active,inactive',
+            'video_screening_requirement' => ['nullable', Rule::in(Job::VIDEO_SCREENING_REQUIREMENTS)],
+            'status' => ['nullable', Rule::in(Job::STATUSES)],
         ]);
 
         $job = Job::find($id);

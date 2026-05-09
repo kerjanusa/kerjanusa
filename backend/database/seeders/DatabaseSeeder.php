@@ -55,9 +55,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 5000000,
                 'salary_max' => 9000000,
                 'location' => 'Jakarta Pusat',
-                'job_type' => 'full-time',
-                'experience_level' => 'mid',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_MID,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -69,9 +69,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 5500000,
                 'salary_max' => 8500000,
                 'location' => 'Jakarta Barat',
-                'job_type' => 'full-time',
-                'experience_level' => 'mid',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_MID,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -83,9 +83,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4500000,
                 'salary_max' => 7000000,
                 'location' => 'Jakarta Selatan',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -97,9 +97,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4000000,
                 'salary_max' => 6500000,
                 'location' => 'Jakarta Timur',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -111,9 +111,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 6000000,
                 'salary_max' => 9500000,
                 'location' => 'Jakarta Utara',
-                'job_type' => 'full-time',
-                'experience_level' => 'senior',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_SENIOR,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -125,9 +125,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4500000,
                 'salary_max' => 8000000,
                 'location' => 'Bandung',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -139,9 +139,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4000000,
                 'salary_max' => 7000000,
                 'location' => 'Surabaya',
-                'job_type' => 'contract',
-                'experience_level' => 'mid',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_CONTRACT,
+                'experience_level' => Job::EXPERIENCE_LEVEL_MID,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -153,9 +153,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 3800000,
                 'salary_max' => 5500000,
                 'location' => 'Bogor Kota',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -167,9 +167,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4000000,
                 'salary_max' => 6200000,
                 'location' => 'Kabupaten Bogor',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -181,9 +181,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 4500000,
                 'salary_max' => 7000000,
                 'location' => 'Kemang, Kabupaten Bogor',
-                'job_type' => 'full-time',
-                'experience_level' => 'mid',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_MID,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -195,9 +195,9 @@ class DatabaseSeeder extends Seeder
                 'salary_min' => 3900000,
                 'salary_max' => 5800000,
                 'location' => 'Parung, Kabupaten Bogor',
-                'job_type' => 'full-time',
-                'experience_level' => 'entry',
-                'status' => 'active',
+                'job_type' => Job::JOB_TYPE_FULL_TIME,
+                'experience_level' => Job::EXPERIENCE_LEVEL_ENTRY,
+                'status' => Job::STATUS_ACTIVE,
             ]
         );
 
@@ -207,7 +207,7 @@ class DatabaseSeeder extends Seeder
                 'candidate_id' => $candidate->id,
             ],
             [
-                'status' => 'pending',
+                'status' => Application::STATUS_PENDING,
                 'cover_letter' => 'Saya tertarik dengan posisi ini dan siap bergabung secepatnya.',
                 'applied_at' => now()->subDays(2),
             ]

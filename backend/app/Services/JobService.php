@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Job;
+use App\Models\Application;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -14,7 +15,7 @@ class JobService
     public function getAllJobs(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = Job::with('recruiter')
-            ->where('status', 'active');
+            ->where('status', Job::STATUS_ACTIVE);
 
         return $this->applyFilters($query, $filters)
             ->latest()
@@ -35,7 +36,7 @@ class JobService
     public function createJob(int $recruiterId, array $data): Job
     {
         $data['recruiter_id'] = $recruiterId;
-        $data['status'] = $data['status'] ?? 'active';
+        $data['status'] = $data['status'] ?? Job::STATUS_ACTIVE;
 
         return Job::create($data);
     }
@@ -84,7 +85,7 @@ class JobService
     public function getAvailableLocations(): array
     {
         return Job::query()
-            ->where('status', 'active')
+            ->where('status', Job::STATUS_ACTIVE)
             ->whereNotNull('location')
             ->select('location')
             ->distinct()
@@ -107,9 +108,9 @@ class JobService
 
         return [
             'total_applications' => $job->applications()->count(),
-            'pending_applications' => $this->countApplicationsByStatus($job, 'pending'),
-            'accepted_applications' => $this->countApplicationsByStatus($job, 'accepted'),
-            'rejected_applications' => $this->countApplicationsByStatus($job, 'rejected'),
+            'pending_applications' => $this->countApplicationsByStatus($job, Application::STATUS_PENDING),
+            'accepted_applications' => $this->countApplicationsByStatus($job, Application::STATUS_ACCEPTED),
+            'rejected_applications' => $this->countApplicationsByStatus($job, Application::STATUS_REJECTED),
         ];
     }
 

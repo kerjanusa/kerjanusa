@@ -5,7 +5,7 @@ Project ini memakai dua project Vercel terpisah:
 - `frontend/` untuk React + Vite
 - `backend/` untuk Laravel API via `vercel-php`
 
-MySQL tidak dijalankan di dalam Vercel. Database harus berupa MySQL eksternal yang sudah bisa diakses dari internet.
+Database tidak dijalankan di dalam Vercel. Backend harus memakai database eksternal yang bisa diakses dari internet. Untuk setup yang paling aman di project ini, gunakan Supabase Postgres.
 
 ## 1. Link project ke Vercel
 
@@ -29,17 +29,21 @@ Variable penting:
 - `APP_KEY`
 - `APP_URL`
 - `APP_STORAGE_PATH=/tmp/pintarnya-storage`
+- `DB_CONNECTION=pgsql`
 - `DB_HOST`
 - `DB_PORT`
 - `DB_DATABASE`
 - `DB_USERNAME`
 - `DB_PASSWORD`
+- `DB_SSLMODE=require`
 - `LOG_CHANNEL=stderr`
 - `CACHE_DRIVER=array`
 - `SESSION_DRIVER=array`
 - `QUEUE_CONNECTION=sync`
 - `SANCTUM_STATEFUL_DOMAINS`
 - `CORS_ALLOWED_ORIGINS`
+
+Untuk Supabase, mulailah dari Session pooler / shared pooler pada port `5432` agar kompatibilitas Laravel lebih aman.
 
 Contoh add lewat CLI:
 

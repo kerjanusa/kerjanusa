@@ -13,7 +13,7 @@ return new class extends Migration
         }
 
         DB::statement(
-            "ALTER TABLE users MODIFY role ENUM('candidate', 'recruiter', 'superadmin') NOT NULL DEFAULT 'candidate'"
+            "ALTER TABLE users MODIFY role VARCHAR(32) NOT NULL DEFAULT 'candidate'"
         );
     }
 

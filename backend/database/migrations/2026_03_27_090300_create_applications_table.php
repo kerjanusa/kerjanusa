@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('job_id')->constrained('jobs')->cascadeOnDelete();
             $table->foreignId('candidate_id')->constrained('users')->cascadeOnDelete();
-            $table->enum('status', ['pending', 'accepted', 'rejected', 'withdrawn'])->default('pending');
+            $table->string('status', 32)->default('pending');
             $table->text('cover_letter')->nullable();
             $table->timestamp('applied_at')->nullable();
             $table->timestamps();

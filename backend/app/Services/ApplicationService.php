@@ -15,7 +15,7 @@ class ApplicationService
     {
         // Check if job exists
         $job = Job::find($jobId);
-        if (!$job || $job->status !== 'active') {
+        if (!$job || $job->status !== Job::STATUS_ACTIVE) {
             return false;
         }
 
@@ -32,7 +32,7 @@ class ApplicationService
             'job_id' => $jobId,
             'candidate_id' => $candidateId,
             'cover_letter' => $data['cover_letter'] ?? null,
-            'status' => 'pending',
+            'status' => Application::STATUS_PENDING,
             'applied_at' => now(),
         ]);
     }

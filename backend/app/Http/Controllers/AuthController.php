@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -23,7 +25,7 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users',
             'password' => ['required', Password::min(8)->letters()->numbers()],
             'password_confirmation' => 'required|same:password',
-            'role' => 'required|in:candidate,recruiter',
+            'role' => ['required', Rule::in(User::PUBLIC_REGISTRATION_ROLES)],
             'phone' => 'nullable|string',
         ]);
 
