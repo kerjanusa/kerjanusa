@@ -73,6 +73,21 @@ const formatDateShort = (value) => {
   }
 };
 
+const formatDayLabel = (value) => {
+  if (!value) {
+    return '-';
+  }
+
+  try {
+    return new Date(value).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+    });
+  } catch {
+    return '-';
+  }
+};
+
 const formatCompactNumber = (value = 0) => {
   const numericValue = Number(value || 0);
 
@@ -120,6 +135,65 @@ const downloadCsv = (filename, rows) => {
 };
 
 const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
+
+const buildLast7DaySeries = (items = []) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const buckets = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 6 + index);
+
+    return {
+      key: date.toISOString().slice(0, 10),
+      label: formatDayLabel(date),
+      value: 0,
+    };
+  });
+
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+  items.forEach((item) => {
+    if (!item) {
+      return;
+    }
+
+    const date = new Date(item);
+
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    date.setHours(0, 0, 0, 0);
+    const key = date.toISOString().slice(0, 10);
+    const bucket = bucketMap.get(key);
+
+    if (bucket) {
+      bucket.value += 1;
+    }
+  });
+
+  return buckets;
+};
+
+const createAnalyticsLinePath = (points, width = 640, height = 260, padding = 22) => {
+  if (!points.length) {
+    return '';
+  }
+
+  const values = points.map((point) => point.value);
+  const maxValue = Math.max(...values, 1);
+  const xStep = (width - padding * 2) / Math.max(points.length - 1, 1);
+  const usableHeight = height - padding * 2;
+
+  return points
+    .map((point, index) => {
+      const x = padding + index * xStep;
+      const y = height - padding - (point.value / maxValue) * usableHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(' ');
+};
 
 const getGrowthBadge = (value, positivePrefix = '+') => {
   const numericValue = Number(value || 0);
@@ -582,26 +656,6 @@ const Pagination = ({ label, page, totalItems, pageSize = PAGE_SIZE, onPageChang
     </div>
   );
 };
-
-const SectionOverview = ({ eyebrow, title, description, stats }) => (
-  <article className="superadmin-panel superadmin-section-overview">
-    <div className="superadmin-section-overview-copy">
-      {eyebrow ? <span className="superadmin-panel-eyebrow">{eyebrow}</span> : null}
-      <h3>{title}</h3>
-      {description ? <p>{description}</p> : null}
-    </div>
-
-    <div className="superadmin-section-overview-stats">
-      {stats.map((item) => (
-        <article key={item.label} className="superadmin-section-overview-stat">
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-          {item.detail ? <small>{item.detail}</small> : null}
-        </article>
-      ))}
-    </div>
-  </article>
-);
 
 const AdminDashboardPage = () => {
   const location = useLocation();
@@ -1231,41 +1285,25 @@ const AdminDashboardPage = () => {
     ];
   }, [jobRows]);
 
-  const liveGrowthSeries = useMemo(() => {
-    const items = [
-      {
-        label: 'Pelamar Baru',
-        value: Number(growth.new_candidates_last_7_days ?? 0),
-        totalLabel: `${numberFormatter.format(totals.candidates ?? 0)} total akun`,
-        tone: 'navy',
-      },
-      {
-        label: 'Recruiter Baru',
-        value: Number(growth.new_recruiters_last_7_days ?? 0),
-        totalLabel: `${numberFormatter.format(totals.recruiters ?? 0)} total recruiter`,
-        tone: 'orange',
-      },
-      {
-        label: 'Lowongan Baru',
-        value: Number(growth.new_jobs_last_7_days ?? 0),
-        totalLabel: `${numberFormatter.format(totals.total_jobs ?? 0)} total lowongan`,
-        tone: 'forest',
-      },
-      {
-        label: 'Lamaran Baru',
-        value: Number(growth.new_applications_last_7_days ?? 0),
-        totalLabel: `${numberFormatter.format(totals.total_applications ?? 0)} total lamaran`,
-        tone: 'stone',
-      },
-    ];
+  const candidateDailySeries = useMemo(
+    () => buildLast7DaySeries(candidateRows.map((candidate) => candidate.created_at)),
+    [candidateRows]
+  );
 
-    const maxValue = Math.max(...items.map((item) => item.value), 1);
+  const recruiterDailySeries = useMemo(
+    () => buildLast7DaySeries(recruiterRows.map((recruiter) => recruiter.created_at)),
+    [recruiterRows]
+  );
 
-    return items.map((item) => ({
-      ...item,
-      progress: Math.max(8, Math.round((item.value / maxValue) * 100)),
-    }));
-  }, [growth, totals]);
+  const analyticsDayLabels = candidateDailySeries.map((item) => item.label);
+  const candidateAnalyticsPath = useMemo(
+    () => createAnalyticsLinePath(candidateDailySeries),
+    [candidateDailySeries]
+  );
+  const recruiterAnalyticsPath = useMemo(
+    () => createAnalyticsLinePath(recruiterDailySeries),
+    [recruiterDailySeries]
+  );
 
   const applicationStageDistribution = useMemo(() => {
     const stageCounts = applications.reduce((accumulator, application) => {
@@ -1294,24 +1332,6 @@ const AdminDashboardPage = () => {
     ];
   }, [applications]);
 
-  const stageDistributionGradient = useMemo(() => {
-    let currentDegree = 0;
-
-    const segments = applicationStageDistribution
-      .map((item) => {
-        const nextDegree = currentDegree + item.value * 3.6;
-        const segment = `${item.color} ${currentDegree}deg ${nextDegree}deg`;
-        currentDegree = nextDegree;
-        return segment;
-      })
-      .join(', ');
-
-    const fallbackSegment =
-      currentDegree < 360 ? `, #ebe7eb ${currentDegree}deg 360deg` : '';
-
-    return `conic-gradient(${segments}${fallbackSegment})`;
-  }, [applicationStageDistribution]);
-
   const analyticsPeriodLabel = lastSyncedAt
     ? `Data live • ${formatDateTime(lastSyncedAt)}`
     : 'Data live';
@@ -1327,6 +1347,43 @@ const AdminDashboardPage = () => {
       : `Distribusi terbesar saat ini ada di kategori ${categoryDistribution[0]?.label || 'utama'} dengan stage aplikasi dominan ${
           applicationStageDistribution[0]?.label || 'Baru Masuk'
         }.`;
+
+  const analyticsHealthItems = [
+    {
+      label: 'Server API',
+      tone: syncTone === 'error' ? 'danger' : 'success',
+      value: syncTone === 'error' ? 'Issue' : 'Live',
+    },
+    {
+      label: 'Database Feed',
+      tone: lastSyncedAt ? 'success' : 'warning',
+      value: lastSyncedAt ? 'Synced' : 'Checking',
+    },
+    {
+      label: 'Review Queue',
+      tone: filteredModerationReports.length > 0 ? 'warning' : 'success',
+      value: filteredModerationReports.length > 0 ? `${filteredModerationReports.length} item` : 'Clear',
+    },
+  ];
+
+  const analyticsAdminLogs = useMemo(
+    () =>
+      [
+        ...recruiterVerificationActivities.slice(0, 2).map((item) => ({
+          key: `recruiter-log-${item.key}`,
+          title: item.title,
+          detail: item.timestamp,
+          tone: item.tone,
+        })),
+        ...lowonganActivityLogs.slice(0, 2).map((item) => ({
+          key: `job-log-${item.key}`,
+          title: item.title,
+          detail: item.timestamp,
+          tone: item.tone,
+        })),
+      ].slice(0, 4),
+    [recruiterVerificationActivities, lowonganActivityLogs]
+  );
 
   const monitoringCards = [
     {
@@ -1562,24 +1619,6 @@ const AdminDashboardPage = () => {
     },
   ];
 
-  const analyticsOverviewStats = [
-    {
-      label: 'Top category',
-      value: categoryDistribution[0]?.label || 'Lainnya',
-      detail: `${categoryDistribution[0]?.percentage || 0}% distribusi lowongan`,
-    },
-    {
-      label: 'Placement rate',
-      value: formatPercentage(placementRate),
-      detail: 'rasio accepted terhadap total aplikasi',
-    },
-    {
-      label: 'Queue review',
-      value: numberFormatter.format(filteredModerationReports.length),
-      detail: 'item aktif yang butuh intervensi admin',
-    },
-  ];
-
   const moderationOverviewStats = [
     {
       label: 'Queue total',
@@ -1602,30 +1641,35 @@ const AdminDashboardPage = () => {
     {
       label: 'Total Pelamar',
       value: numberFormatter.format(totals.candidates ?? 0),
-      detail: 'Pengguna terdaftar aktif',
+      detail: `+ ${numberFormatter.format(growth.new_candidates_last_7_days ?? 0)} / 7 hari`,
       badge: getGrowthBadge((growth.new_candidates_last_7_days ?? 0) * 1.8),
+      icon: 'candidate',
     },
     {
-      label: 'Total Recruiter',
-      value: numberFormatter.format(totals.recruiters ?? 0),
-      detail: 'Perusahaan terverifikasi',
+      label: 'Recruiter Aktif',
+      value: numberFormatter.format(activeRecruitersCount),
+      detail: `${numberFormatter.format(activeRecruitersCount)} / ${numberFormatter.format(
+        totals.recruiters ?? 0
+      )}`,
       badge: getGrowthBadge((growth.new_recruiters_last_7_days ?? 0) * 2),
+      icon: 'recruiter',
     },
     {
       label: 'Lowongan Aktif',
       value: numberFormatter.format(totals.active_jobs ?? 0),
-      detail: 'Sisa slot tayang terbuka',
+      detail: `${numberFormatter.format(growth.new_jobs_last_7_days ?? 0)} baru minggu ini`,
       badge: getGrowthBadge(growth.new_jobs_last_7_days ?? 0),
+      icon: 'job',
     },
     {
-      label: 'Laju Penempatan',
+      label: 'Placement Rate',
       value: formatPercentage(placementRate),
       progress: {
-        label: 'Goal 85%',
-        goal: 'Goal 85%',
+        label: 'Placement',
+        goal: 'Target: 80%',
         value: placementRate,
       },
-      dark: true,
+      icon: 'trend',
     },
   ];
 
@@ -2008,8 +2052,9 @@ const AdminDashboardPage = () => {
   const renderHeaderAside = () => {
     if (activeSection === 'analytics') {
       return (
-        <div className="superadmin-header-actions">
+        <div className="superadmin-header-actions is-analytics">
           <button type="button" className="superadmin-chip-button">
+            <AdminIcon name="calendar" />
             {analyticsPeriodLabel}
           </button>
           <button
@@ -2020,6 +2065,9 @@ const AdminDashboardPage = () => {
             <AdminIcon name="download" />
             Export Report
           </button>
+          <div className="superadmin-analytics-header-user">
+            <strong>{user?.name || 'Superadmin KerjaNusa'}</strong>
+          </div>
         </div>
       );
     }
@@ -2977,72 +3025,130 @@ const AdminDashboardPage = () => {
 
   const renderAnalytics = () => (
     <section className="superadmin-section-block">
-      <SectionOverview
-        eyebrow=""
-        title="Satu ringkasan visual untuk membaca pertumbuhan dan distribusi hiring."
-        description=""
-        stats={analyticsOverviewStats}
-      />
-
-      <SectionMetrics cards={analyticsCards} />
+      <div className="superadmin-analytics-metrics">
+        {analyticsCards.map((card) => (
+          <article
+            key={card.label}
+            className={`superadmin-panel superadmin-analytics-metric-card${
+              card.progress ? ' is-placement' : ''
+            }`}
+          >
+            {!card.progress ? (
+              <>
+                <div className="superadmin-analytics-metric-head">
+                  <span>{card.label}</span>
+                  <AdminIcon name={card.icon || 'analytics'} />
+                </div>
+                <strong>{card.value}</strong>
+                <div className="superadmin-analytics-metric-foot">
+                  <small className={`is-${card.badge?.tone || 'positive'}`}>{card.badge?.label}</small>
+                  <span>{card.detail}</span>
+                </div>
+              </>
+            ) : (
+              <div className="superadmin-analytics-placement-card">
+                <div
+                  className="superadmin-analytics-rate-ring"
+                  style={{
+                    background: `conic-gradient(#a56d09 0deg ${placementRate * 3.6}deg, #ece7eb ${
+                      placementRate * 3.6
+                    }deg 360deg)`,
+                  }}
+                >
+                  <div className="superadmin-analytics-rate-ring-inner">{Math.round(placementRate)}%</div>
+                </div>
+                <div className="superadmin-analytics-placement-copy">
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.progress.goal}</small>
+                </div>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
 
       <div className="superadmin-analytics-grid">
-        <article className="superadmin-panel superadmin-chart-panel">
+        <article className="superadmin-panel superadmin-chart-panel is-analytics">
           <div className="superadmin-panel-head">
             <div>
-              <h3>Aktivitas 7 Hari Terakhir</h3>
+              <h3>Pertumbuhan Pengguna</h3>
+              <p>Data harian pelamar vs recruiter baru</p>
             </div>
             <div className="superadmin-chart-legend">
-              <span>Snapshot live dari pertumbuhan akun dan hiring.</span>
+              <span>
+                <i className="is-navy" /> Pelamar
+              </span>
+              <span>
+                <i className="is-orange" /> Recruiter
+              </span>
             </div>
           </div>
 
-          <div className="superadmin-growth-series">
-            {liveGrowthSeries.map((item) => (
-              <article key={item.label} className="superadmin-growth-row">
-                <div className="superadmin-growth-copy">
+          <div className="superadmin-line-chart">
+            <svg viewBox="0 0 640 260" aria-hidden="true">
+              {[0, 1, 2, 3].map((lineIndex) => (
+                <line
+                  key={lineIndex}
+                  x1="22"
+                  y1={46 + lineIndex * 52}
+                  x2="618"
+                  y2={46 + lineIndex * 52}
+                  className="superadmin-chart-gridline"
+                />
+              ))}
+              <path d={candidateAnalyticsPath} className="superadmin-chart-line is-navy" />
+              <path d={recruiterAnalyticsPath} className="superadmin-chart-line is-orange is-dashed" />
+            </svg>
+            <div className="superadmin-chart-months">
+              {analyticsDayLabels.map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <aside className="superadmin-panel superadmin-analytics-health-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>System Health</h3>
+            </div>
+          </div>
+
+          <div className="superadmin-analytics-health-list">
+            {analyticsHealthItems.map((item) => (
+              <article key={item.label} className="superadmin-analytics-health-item">
+                <div className="superadmin-analytics-health-copy">
+                  <i className={`is-${item.tone}`} />
                   <strong>{item.label}</strong>
-                  <small>{item.totalLabel}</small>
                 </div>
-                <div className="superadmin-growth-bar-track">
-                  <span className={`is-${item.tone}`} style={{ width: `${item.progress}%` }} />
-                </div>
-                <div className="superadmin-growth-value">
-                  <strong>{numberFormatter.format(item.value)}</strong>
-                </div>
+                <span className={`superadmin-inline-badge is-${item.tone}`}>{item.value}</span>
               </article>
             ))}
           </div>
-        </article>
 
-        <article className="superadmin-panel superadmin-category-panel">
-          <div className="superadmin-panel-head">
-            <div>
-              <h3>Kategori Pekerjaan</h3>
+          <div className="superadmin-analytics-log">
+            <div className="superadmin-analytics-log-head">
+              <h4>Log Aktivitas Admin</h4>
+            </div>
+            <div className="superadmin-list-stack is-analytics">
+              {analyticsAdminLogs.map((item) => (
+                <article key={item.key} className="superadmin-list-item is-analytics">
+                  <div className={`superadmin-list-dot is-${item.tone}`} />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.detail}</small>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
-          <div className="superadmin-category-list">
-            {categoryDistribution.map((category) => (
-              <article key={category.label} className="superadmin-category-item">
-                <div className="superadmin-category-head">
-                  <strong>{category.label}</strong>
-                  <span>{category.percentage}%</span>
-                </div>
-                <div className="superadmin-category-track">
-                  <span
-                    className={`is-${category.tone}`}
-                    style={{ width: `${category.percentage}%` }}
-                  />
-                </div>
-              </article>
-            ))}
-          </div>
-        </article>
+        </aside>
 
-        <article className="superadmin-panel superadmin-popular-jobs-panel">
+        <article className="superadmin-panel superadmin-popular-jobs-panel is-analytics">
           <div className="superadmin-panel-head">
             <div>
-              <h3>Lowongan Paling Populer</h3>
+              <h3>Lowongan Terpopuler</h3>
             </div>
             <button type="button" className="superadmin-inline-link" onClick={() => handleSectionChange('lowongan')}>
               Lihat Semua
@@ -3053,9 +3159,10 @@ const AdminDashboardPage = () => {
             <table className="superadmin-table is-compact">
               <thead>
                 <tr>
-                  <th>Nama Pekerjaan</th>
+                  <th>Judul Pekerjaan</th>
                   <th>Perusahaan</th>
-                  <th>Lamaran</th>
+                  <th>Kategori</th>
+                  <th>Total Pelamar</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -3065,20 +3172,15 @@ const AdminDashboardPage = () => {
                     <td>
                       <div className="superadmin-job-title-cell">
                         <strong>{job.title}</strong>
-                        <span>
-                          {job.location || 'Remote'} • {job.job_type || 'Full-time'}
-                        </span>
+                        <span>{job.location || 'Remote'}</span>
                       </div>
                     </td>
                     <td>{job.companyLabel}</td>
+                    <td>{job.category || 'Umum'}</td>
                     <td>{numberFormatter.format(job.applications_count ?? 0)}</td>
                     <td>
-                      <span
-                        className={`superadmin-status-tag is-${
-                          job.workflow_status === 'active' ? 'success' : 'warning'
-                        }`}
-                      >
-                        {job.workflow_status === 'active' ? 'Aktif' : 'Review'}
+                      <span className={`superadmin-status-tag is-${job.adminStatus.tone}`}>
+                        {job.adminStatus.label}
                       </span>
                     </td>
                   </tr>
@@ -3088,34 +3190,32 @@ const AdminDashboardPage = () => {
           </div>
         </article>
 
-        <div className="superadmin-analytics-side">
-          <article className="superadmin-panel superadmin-demographic-panel">
+        <div className="superadmin-analytics-bottom">
+          <article className="superadmin-panel superadmin-category-panel is-analytics">
             <div className="superadmin-panel-head">
               <div>
-                <h3>Distribusi Lamaran</h3>
+                <h3>Kategori Pekerjaan</h3>
               </div>
             </div>
-            <div className="superadmin-demographic-wrap">
-              <div
-                className="superadmin-donut-chart"
-                style={{
-                  background: stageDistributionGradient,
-                }}
-              >
-                <div className="superadmin-donut-center">{applicationStageDistribution[0]?.value || 0}%</div>
-              </div>
-              <div className="superadmin-demographic-list">
-                {applicationStageDistribution.map((item) => (
-                  <div key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}%</strong>
+            <div className="superadmin-category-list">
+              {categoryDistribution.map((category) => (
+                <article key={category.label} className="superadmin-category-item">
+                  <div className="superadmin-category-head">
+                    <strong>{category.label}</strong>
+                    <span>{category.percentage}%</span>
                   </div>
-                ))}
-              </div>
+                  <div className="superadmin-category-track">
+                    <span
+                      className={`is-${category.tone}`}
+                      style={{ width: `${category.percentage}%` }}
+                    />
+                  </div>
+                </article>
+              ))}
             </div>
           </article>
 
-          <article className="superadmin-panel superadmin-dark-panel">
+          <article className="superadmin-panel superadmin-dark-panel is-analytics">
             <h3>Insight Operasional</h3>
             <p>{analyticsInsightText}</p>
             <button
@@ -3125,19 +3225,6 @@ const AdminDashboardPage = () => {
             >
               Buka Prioritas
             </button>
-          </article>
-
-          <article className="superadmin-panel superadmin-kpi-target-panel">
-            <div className="superadmin-kpi-target-icon">
-              <AdminIcon name="spark" />
-            </div>
-            <div>
-              <span>KPI Penempatan</span>
-              <strong>{formatPercentage(placementRate)} tercapai</strong>
-              <div className="superadmin-kpi-track">
-                <span style={{ width: `${Math.max(placementRate, 6)}%` }} />
-              </div>
-            </div>
           </article>
         </div>
       </div>
