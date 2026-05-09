@@ -14,4 +14,4 @@ if (isset($_GET['__debug_route'])) {
     exit;
 }
 
-require __DIR__ . '/index.php';
+require dirname(__DIR__) . '/index.php';

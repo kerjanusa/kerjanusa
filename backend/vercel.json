@@ -7,39 +7,39 @@
     },
     {
       "source": "/api/health",
-      "destination": "/api/health.php"
+      "destination": "/api/health/index.php"
     },
     {
       "source": "/api/login",
-      "destination": "/api/login.php"
+      "destination": "/api/login/index.php"
     },
     {
       "source": "/api/register",
-      "destination": "/api/register.php"
+      "destination": "/api/register/index.php"
     },
     {
       "source": "/api/forgot-password",
-      "destination": "/api/forgot-password.php"
+      "destination": "/api/forgot-password/index.php"
     },
     {
       "source": "/api/reset-password",
-      "destination": "/api/reset-password.php"
+      "destination": "/api/reset-password/index.php"
     },
     {
       "source": "/api/logout",
-      "destination": "/api/logout.php"
+      "destination": "/api/logout/index.php"
     },
     {
       "source": "/api/me",
-      "destination": "/api/me.php"
+      "destination": "/api/me/index.php"
     },
     {
       "source": "/api/profile",
-      "destination": "/api/profile.php"
+      "destination": "/api/profile/index.php"
     },
     {
       "source": "/api/change-password",
-      "destination": "/api/change-password.php"
+      "destination": "/api/change-password/index.php"
     },
     {
       "source": "/api/job-locations",
