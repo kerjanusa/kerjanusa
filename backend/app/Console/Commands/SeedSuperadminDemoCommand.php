@@ -9,7 +9,7 @@ class SeedSuperadminDemoCommand extends Command
 {
     protected $signature = 'demo:seed-superadmin';
 
-    protected $description = 'Seed realistic demo data for the superadmin dashboard without deleting existing records.';
+    protected $description = 'Seed realistic recruiter, candidate, job, and application demo data for the superadmin dashboard without creating a new superadmin.';
 
     public function handle(): int
     {
@@ -21,10 +21,10 @@ class SeedSuperadminDemoCommand extends Command
         ]);
 
         $this->newLine();
-        $this->info('Seeder selesai. Akun demo utama yang dibuat / diperbarui:');
-        $this->line('- Superadmin: superadmin.demo@kerjanusa.test / password123');
+        $this->info('Seeder selesai. Akun demo yang dibuat / diperbarui:');
         $this->line('- Recruiter demo: *.recruiter.demo.kerjanusa.test / password123');
         $this->line('- Candidate demo: *.candidate.demo.kerjanusa.test / password123');
+        $this->line('- Superadmin utama tetap memakai akun yang sudah ada di database.');
 
         return self::SUCCESS;
     }

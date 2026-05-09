@@ -91,6 +91,22 @@ class AdminService
                     'latest_application_status' => $latestApplication?->status,
                     'latest_application_stage' => $latestApplication?->stage,
                     'latest_job_title' => $latestApplication?->job?->title,
+                    'profile_summary' => Arr::get($candidate->candidate_profile ?? [], 'profileSummary'),
+                    'preferred_roles' => collect(Arr::get($candidate->candidate_profile ?? [], 'preferredRoles', []))
+                        ->filter(fn ($role) => filled($role))
+                        ->values()
+                        ->all(),
+                    'preferred_locations' => collect(Arr::get($candidate->candidate_profile ?? [], 'preferredLocations', []))
+                        ->filter(fn ($location) => filled($location))
+                        ->values()
+                        ->all(),
+                    'skills' => collect(Arr::get($candidate->candidate_profile ?? [], 'skills', []))
+                        ->filter(fn ($skill) => filled($skill))
+                        ->values()
+                        ->all(),
+                    'resume_files_count' => collect(Arr::get($candidate->candidate_profile ?? [], 'resumeFiles', []))
+                        ->filter(fn ($file) => filled($file))
+                        ->count(),
                     'created_at' => $candidate->created_at?->toIso8601String(),
                     'latest_applied_at' => $latestApplication?->applied_at?->toIso8601String()
                         ?? $latestApplication?->created_at?->toIso8601String(),
@@ -130,6 +146,14 @@ class AdminService
                     'jobs_count' => $recruiter->jobs_count,
                     'active_jobs_count' => $recruiter->active_jobs_count,
                     'latest_job_title' => $latestJob?->title,
+                    'contact_role' => Arr::get($recruiter->recruiter_profile ?? [], 'contactRole')
+                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'contact_role'),
+                    'company_description' => Arr::get($recruiter->recruiter_profile ?? [], 'companyDescription')
+                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'company_description'),
+                    'hiring_focus' => collect(Arr::get($recruiter->recruiter_profile ?? [], 'hiringFocus', []))
+                        ->filter(fn ($focus) => filled($focus))
+                        ->values()
+                        ->all(),
                     'created_at' => $recruiter->created_at?->toIso8601String(),
                     'latest_job_created_at' => $latestJob?->created_at?->toIso8601String(),
                 ];

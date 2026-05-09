@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class SuperadminDemoSeeder extends Seeder
@@ -18,34 +17,12 @@ class SuperadminDemoSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function (): void {
-            $this->seedDemoSuperadmin();
-
             $recruiters = $this->seedRecruiters();
             $candidates = $this->seedCandidates();
             $jobs = $this->seedJobs($recruiters);
 
             $this->seedApplications($candidates, $jobs);
         });
-    }
-
-    private function seedDemoSuperadmin(): void
-    {
-        $superadmin = User::firstOrNew([
-            'email' => 'superadmin.demo@kerjanusa.test',
-        ]);
-
-        $superadmin->fill([
-            'name' => 'Superadmin Demo KerjaNusa',
-            'company_name' => 'KerjaNusa Control Center',
-            'password' => Hash::make(self::DEMO_PASSWORD),
-            'role' => User::ROLE_SUPERADMIN,
-            'account_status' => User::STATUS_ACTIVE,
-            'account_status_reason' => null,
-            'phone' => '081700000900',
-        ]);
-        $superadmin->save();
-
-        $this->syncTimestamps($superadmin, now()->subDays(30), now()->subDays(1));
     }
 
     private function seedRecruiters(): array

@@ -834,6 +834,231 @@
   background: #f7fbf8;
 }
 
+.superadmin-monitoring-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.superadmin-monitoring-toolbar-left,
+.superadmin-monitoring-toolbar-right,
+.superadmin-monitoring-loghead {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.superadmin-monitoring-toolbar-right {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.superadmin-monitoring-toolbar-right small {
+  color: #7c8294;
+  font-size: 0.82rem;
+}
+
+.superadmin-monitoring-platform-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 34px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--sa-border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1a7f3b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.superadmin-monitoring-platform-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.superadmin-monitoring-platform-chip.is-danger {
+  color: #c53030;
+}
+
+.superadmin-monitoring-topgrid,
+.superadmin-monitoring-bodygrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) 280px;
+  gap: 1rem;
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-card {
+  min-height: 118px;
+  padding: 1rem;
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-detail {
+  display: block;
+  margin-top: 0.55rem;
+  color: #8d620e;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-label {
+  color: #5c6273;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-value {
+  margin-top: 0.7rem;
+  font-size: clamp(1.95rem, 2vw, 2.4rem);
+}
+
+.superadmin-monitoring-health-panel,
+.superadmin-monitoring-logpanel,
+.superadmin-monitoring-actions-panel {
+  padding: 1rem;
+}
+
+.superadmin-monitoring-alertbox {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(207, 31, 31, 0.16);
+  border-radius: 10px;
+  background: #fff7f6;
+}
+
+.superadmin-monitoring-alertbox strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.superadmin-monitoring-alertbox p {
+  margin: 0;
+  color: #6a6570;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.superadmin-monitoring-alertbox button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #b0432f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.superadmin-monitoring-alertbox.is-success {
+  border-color: rgba(22, 163, 74, 0.15);
+  background: #f7fbf8;
+}
+
+.superadmin-monitoring-alertbox.is-success button {
+  color: #166534;
+}
+
+.superadmin-monitoring-alertbox.is-warning {
+  border-color: rgba(201, 134, 23, 0.16);
+  background: #fffaf1;
+}
+
+.superadmin-monitoring-alertbox.is-warning button {
+  color: #9a6200;
+}
+
+.superadmin-monitoring-healthlist,
+.superadmin-monitoring-control-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.superadmin-monitoring-healthrow,
+.superadmin-monitoring-control-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 52px;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.superadmin-monitoring-healthrow-label {
+  color: #202535;
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.superadmin-monitoring-loghead {
+  margin-left: auto;
+}
+
+.superadmin-search-input.is-monitoring {
+  width: min(100%, 240px);
+  min-height: 40px;
+  padding: 0 0.9rem;
+}
+
+.superadmin-table-monitoring thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.superadmin-table-monitoring tbody td {
+  font-size: 0.86rem;
+}
+
+.superadmin-table-monitoring .superadmin-empty-state {
+  padding: 2.5rem 1rem;
+}
+
+.superadmin-monitoring-control-item {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.superadmin-monitoring-control-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.superadmin-monitoring-control-copy strong {
+  color: #23293b;
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.superadmin-monitoring-control-arrow {
+  color: #8b91a2;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-copy,
+.superadmin-monitoring-control-item.is-danger .superadmin-monitoring-control-arrow {
+  color: #c53030;
+}
+
 .superadmin-sync-icon,
 .superadmin-activity-badge,
 .superadmin-list-icon,
@@ -1181,6 +1406,10 @@
   background: #fff6f4;
 }
 
+.superadmin-table tbody tr.is-selected {
+  background: #fffaf0;
+}
+
 .superadmin-table-panel.is-candidate {
   padding: 1rem 1.1rem 1.1rem;
 }
@@ -1199,6 +1428,12 @@
   padding: 2rem 1rem;
   text-align: center;
   color: var(--sa-text-soft);
+}
+
+.superadmin-inline-empty {
+  margin: 0;
+  color: var(--sa-text-soft);
+  font-size: 0.92rem;
 }
 
 .superadmin-person-cell,
@@ -1310,6 +1545,106 @@
 .superadmin-status-tag.is-blocked {
   background: #ffdedd;
   color: #cc2a2a;
+}
+
+.superadmin-detail-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.superadmin-detail-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.superadmin-detail-identity strong,
+.superadmin-detail-identity span {
+  display: block;
+}
+
+.superadmin-detail-identity strong {
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.superadmin-detail-identity span {
+  margin-top: 0.15rem;
+  color: var(--sa-text-soft);
+  font-size: 0.85rem;
+}
+
+.superadmin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.superadmin-detail-grid div,
+.superadmin-detail-block {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.superadmin-detail-grid label,
+.superadmin-detail-block label {
+  color: var(--sa-text-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.superadmin-detail-grid strong {
+  font-size: 0.95rem;
+  font-weight: 620;
+  color: var(--sa-text);
+}
+
+.superadmin-detail-block p {
+  margin: 0;
+  color: var(--sa-text);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.superadmin-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 0;
+  border: 0;
+  border-top: 1px solid rgba(15, 24, 48, 0.08);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.superadmin-queue-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.superadmin-queue-item strong,
+.superadmin-queue-item span {
+  display: block;
+}
+
+.superadmin-queue-item strong {
+  font-size: 0.93rem;
+  font-weight: 620;
+}
+
+.superadmin-queue-item span {
+  margin-top: 0.14rem;
+  color: var(--sa-text-soft);
+  font-size: 0.82rem;
+}
+
+.superadmin-queue-item.is-active strong {
+  color: #0f1733;
 }
 
 .superadmin-icon-actions,
@@ -1543,6 +1878,12 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.superadmin-danger-button.is-inline {
+  min-height: 40px;
+  padding: 0 1rem;
+  font-size: 0.88rem;
 }
 
 .superadmin-optimization-card {
@@ -2035,6 +2376,8 @@
   .superadmin-analytics-grid,
   .superadmin-two-column,
   .superadmin-two-column-heavy,
+  .superadmin-monitoring-topgrid,
+  .superadmin-monitoring-bodygrid,
   .superadmin-monitoring-mainrow,
   .superadmin-monitoring-bottomrow {
     grid-template-columns: 1fr;
@@ -2062,6 +2405,10 @@
 
   .superadmin-monitoring-action-row {
     justify-content: flex-start;
+  }
+
+  .superadmin-monitoring-kpis .superadmin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2127,6 +2474,10 @@
   .superadmin-toolbar-left,
   .superadmin-toolbar-right,
   .superadmin-toolbar-actions,
+  .superadmin-monitoring-toolbar,
+  .superadmin-monitoring-toolbar-left,
+  .superadmin-monitoring-toolbar-right,
+  .superadmin-monitoring-loghead,
   .superadmin-header-user,
   .superadmin-panel-head,
   .superadmin-moderation-tabs,
@@ -2149,7 +2500,8 @@
   }
 
   .superadmin-demographic-wrap,
-  .superadmin-kpi-target-panel {
+  .superadmin-kpi-target-panel,
+  .superadmin-detail-grid {
     grid-template-columns: 1fr;
     justify-items: start;
   }
@@ -2157,6 +2509,10 @@
   .superadmin-monitoring-sync-chip {
     min-width: 0;
     width: 100%;
+  }
+
+  .superadmin-monitoring-kpis .superadmin-metric-grid {
+    grid-template-columns: 1fr;
   }
 
   .superadmin-table-wrap {

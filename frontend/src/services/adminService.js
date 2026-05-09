@@ -41,6 +41,15 @@ class AdminService {
       throw error.response?.data || error.message;
     }
   }
+
+  static async updateJob(jobId, payload) {
+    try {
+      const response = await apiClient.put(`/jobs/${jobId}`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
 }
 
 export default AdminService;
