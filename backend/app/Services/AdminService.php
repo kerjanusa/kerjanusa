@@ -63,14 +63,16 @@ class AdminService
         $candidateTable = User::query()
             ->where('role', User::ROLE_CANDIDATE)
             ->withCount('applications')
+            ->with([
+                'applications' => fn ($query) => $query
+                    ->with('job:id,title')
+                    ->orderByDesc('applied_at')
+                    ->orderByDesc('created_at'),
+            ])
             ->latest()
             ->get()
             ->map(function (User $candidate) {
-                $latestApplication = $candidate->applications()
-                    ->with('job:id,title')
-                    ->orderByDesc('applied_at')
-                    ->orderByDesc('created_at')
-                    ->first();
+                $latestApplication = $candidate->applications->first();
 
                 return [
                     'id' => $candidate->id,
@@ -121,10 +123,15 @@ class AdminService
                 'jobs',
                 'jobs as active_jobs_count' => fn ($query) => $query->where('status', Job::STATUS_ACTIVE),
             ])
+            ->with([
+                'jobs' => fn ($query) => $query
+                    ->select('id', 'recruiter_id', 'title', 'created_at')
+                    ->latest(),
+            ])
             ->latest()
             ->get()
             ->map(function (User $recruiter) {
-                $latestJob = $recruiter->jobs()->latest()->first();
+                $latestJob = $recruiter->jobs->first();
 
                 return [
                     'id' => $recruiter->id,
