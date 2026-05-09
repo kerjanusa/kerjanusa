@@ -5,14 +5,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
+EXPECTED_BACKEND_PROJECT_NAME="${EXPECTED_BACKEND_PROJECT_NAME:-kerjanusa-backend}"
+EXPECTED_FRONTEND_PROJECT_NAME="${EXPECTED_FRONTEND_PROJECT_NAME:-kerjanusa}"
 REQUIRED_VERCEL_USER="${REQUIRED_VERCEL_USER:-muhamadlutfichandra-7217}"
-REQUIRED_VERCEL_ORG_ID="${REQUIRED_VERCEL_ORG_ID:-team_QUSULp7afNCxpXnPmVTYU9iy}"
+REQUIRED_VERCEL_ORG_ID="${REQUIRED_VERCEL_ORG_ID:-}"
 
 require_command() {
   local command_name="$1"
 
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "Command '$command_name' tidak ditemukan. Install dulu sebelum deploy."
+    exit 1
+  fi
+}
+
+ensure_non_legacy_target() {
+  local value="$1"
+  local label="$2"
+
+  if [[ "$value" == *pintarnya* || "$value" == *Pintarnya* ]]; then
+    echo "$label masih mengarah ke target legacy Pintarnya: $value"
     exit 1
   fi
 }
@@ -112,6 +124,7 @@ read_linked_project_field() {
 ensure_vercel_project_access() {
   local project_dir="$1"
   local label="$2"
+  local expected_project_name="$3"
   local project_name=""
   local org_id=""
 
@@ -127,11 +140,20 @@ ensure_vercel_project_access() {
     exit 1
   fi
 
-  if [[ "$org_id" != "$REQUIRED_VERCEL_ORG_ID" ]]; then
+  if [[ -n "$expected_project_name" && "$project_name" != "$expected_project_name" ]]; then
+    echo "Link Vercel untuk $label mengarah ke project yang salah."
+    echo "Project saat ini: $project_name"
+    echo "Project wajib: $expected_project_name"
+    echo "Relink project sebelum deploy:"
+    echo "  (cd \"$project_dir\" && rm -rf .vercel && vercel link --yes --project \"$expected_project_name\")"
+    exit 1
+  fi
+
+  if [[ -n "$REQUIRED_VERCEL_ORG_ID" && "$org_id" != "$REQUIRED_VERCEL_ORG_ID" ]]; then
     echo "Link Vercel untuk $label mengarah ke workspace yang salah."
     echo "Org ID saat ini: $org_id"
     echo "Org ID wajib: $REQUIRED_VERCEL_ORG_ID"
-    echo "Relink project ke workspace lutfi's projects sebelum deploy."
+    echo "Relink project ke workspace Vercel yang benar sebelum deploy."
     exit 1
   fi
 
@@ -196,12 +218,14 @@ run_backend_seeders() {
 
 require_command vercel
 require_command php
+ensure_non_legacy_target "$EXPECTED_BACKEND_PROJECT_NAME" "EXPECTED_BACKEND_PROJECT_NAME"
+ensure_non_legacy_target "$EXPECTED_FRONTEND_PROJECT_NAME" "EXPECTED_FRONTEND_PROJECT_NAME"
 ensure_vercel_auth
 
 ensure_vercel_link "$BACKEND_DIR" "backend"
 ensure_vercel_link "$FRONTEND_DIR" "frontend"
-ensure_vercel_project_access "$BACKEND_DIR" "backend"
-ensure_vercel_project_access "$FRONTEND_DIR" "frontend"
+ensure_vercel_project_access "$BACKEND_DIR" "backend" "$EXPECTED_BACKEND_PROJECT_NAME"
+ensure_vercel_project_access "$FRONTEND_DIR" "frontend" "$EXPECTED_FRONTEND_PROJECT_NAME"
 
 echo "Linked projects:"
 print_linked_project_summary "$BACKEND_DIR" "backend"

@@ -110,7 +110,7 @@ $databaseHealthResponder = function () {
 };
 
 Route::get('/', fn () => response()->json([
-    'name' => 'Pintarnya API',
+    'name' => 'KerjaNusa API',
     'status' => 'ok',
     'database' => 'not-required-for-health',
     'timestamp' => now()->toIso8601String(),

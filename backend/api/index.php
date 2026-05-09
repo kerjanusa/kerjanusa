@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-$storagePath = sys_get_temp_dir() . '/pintarnya-storage';
+$storagePath = getenv('APP_STORAGE_PATH');
+
+if (!is_string($storagePath) || $storagePath === '') {
+    $storagePath = sys_get_temp_dir() . '/kerjanusa-storage';
+}
 $requiredDirectories = [
     $storagePath,
     $storagePath . '/app',

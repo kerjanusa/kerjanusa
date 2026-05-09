@@ -5,7 +5,7 @@ use Illuminate\Support\ServiceProvider;
 
 return [
 
-    'name' => env('APP_NAME', 'Pintarnya'),
+    'name' => env('APP_NAME', 'KerjaNusa'),
 
     'env' => env('APP_ENV', 'production'),
 

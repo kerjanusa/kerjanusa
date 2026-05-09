@@ -11,7 +11,7 @@ TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
 SUPABASE_DB_PORT="${SUPABASE_DB_PORT:-5432}"
 SUPABASE_DB_NAME="${SUPABASE_DB_NAME:-postgres}"
 SUPABASE_DB_SSLMODE="${SUPABASE_DB_SSLMODE:-require}"
-VERCEL_BACKEND_URL="${VERCEL_BACKEND_URL:-https://your-backend-project.vercel.app}"
+VERCEL_BACKEND_URL="${VERCEL_BACKEND_URL:-https://kerjanusa-backend.vercel.app}"
 VERCEL_FRONTEND_ORIGIN="${VERCEL_FRONTEND_ORIGIN:-https://uat-kerjanusa.vercel.app}"
 RUN_LOCAL_MIGRATIONS="${RUN_LOCAL_MIGRATIONS:-0}"
 RUN_LOCAL_SEED="${RUN_LOCAL_SEED:-0}"
@@ -157,13 +157,14 @@ APP_KEY_VALUE="$(read_env_var "$BACKEND_ENV" "APP_KEY")"
 FRONTEND_STATEFUL_HOST="$(frontend_host_from_origin "$VERCEL_FRONTEND_ORIGIN")"
 
 cat > "$VERCEL_ENV_FILE" <<EOF
-APP_NAME="Pintarnya"
+APP_NAME="KerjaNusa"
 APP_ENV=production
 APP_KEY=$(format_env_value "${APP_KEY_VALUE}")
 APP_DEBUG=false
 APP_TIMEZONE=Asia/Jakarta
 APP_URL=$(format_env_value "${VERCEL_BACKEND_URL}")
-APP_STORAGE_PATH=/tmp/pintarnya-storage
+FRONTEND_APP_URL=$(format_env_value "${VERCEL_FRONTEND_ORIGIN}")
+APP_STORAGE_PATH=/tmp/kerjanusa-storage
 
 LOG_CHANNEL=stderr
 LOG_LEVEL=error
@@ -182,7 +183,7 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=array
 
 MAIL_MAILER=log
-MAIL_FROM_ADDRESS="noreply@pintarnya.com"
+MAIL_FROM_ADDRESS="noreply@kerjanusa.com"
 MAIL_FROM_NAME="\${APP_NAME}"
 
 SANCTUM_STATEFUL_DOMAINS=$(format_env_value "${FRONTEND_STATEFUL_HOST}")
@@ -209,8 +210,11 @@ fi
 
 echo ""
 echo "Nilai yang perlu Anda set di Vercel backend:"
+echo "  APP_NAME=KerjaNusa"
 echo "  APP_KEY"
 echo "  APP_URL=$VERCEL_BACKEND_URL"
+echo "  FRONTEND_APP_URL=$VERCEL_FRONTEND_ORIGIN"
+echo "  APP_STORAGE_PATH=/tmp/kerjanusa-storage"
 echo "  DB_CONNECTION=pgsql"
 echo "  DB_HOST=$SUPABASE_DB_HOST"
 echo "  DB_PORT=$SUPABASE_DB_PORT"
@@ -218,6 +222,7 @@ echo "  DB_DATABASE=$SUPABASE_DB_NAME"
 echo "  DB_USERNAME=$SUPABASE_DB_USER"
 echo "  DB_PASSWORD=<terisi dari script>"
 echo "  DB_SSLMODE=$SUPABASE_DB_SSLMODE"
+echo "  MAIL_FROM_ADDRESS=noreply@kerjanusa.com"
 echo "  SANCTUM_STATEFUL_DOMAINS=$FRONTEND_STATEFUL_HOST"
 echo "  CORS_ALLOWED_ORIGINS=$VERCEL_FRONTEND_ORIGIN"
 

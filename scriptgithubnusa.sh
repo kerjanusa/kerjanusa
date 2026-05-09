@@ -36,6 +36,7 @@ require_command zip
 
 if [[ "$REMOTE_MODE" == "ssh" && -z "$SSH_KEY_PATH" ]]; then
   for candidate in \
+    "$HOME/.ssh/id_ed25519_reggy" \
     "$HOME/.ssh/id_ed25519_kerjanusa" \
     "$HOME/.ssh/id_ed25519" \
     "$HOME/.ssh/id_rsa"
