@@ -3,48 +3,43 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import AdminService from '../services/adminService.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
-import '../styles/workspace.css';
 import '../styles/adminDashboard.css';
 
-const ADMIN_SECTION_OPTIONS = [
-  { value: 'monitoring', label: 'Monitoring' },
-  { value: 'pelamar', label: 'Pelamar' },
-  { value: 'recruiter', label: 'Recruiter' },
-  { value: 'lowongan', label: 'Lowongan' },
-  { value: 'analytics', label: 'Analytics' },
-  { value: 'moderation', label: 'Moderasi' },
+const SECTION_OPTIONS = [
+  { value: 'monitoring', label: 'Monitoring', title: 'Pusat Kontrol KerjaNusa', shortTitle: 'Monitoring' },
+  { value: 'pelamar', label: 'Pelamar', title: 'Manajemen Pelamar', shortTitle: 'Pelamar' },
+  { value: 'recruiter', label: 'Recruiter', title: 'Recruiter Directory', shortTitle: 'Recruiter' },
+  { value: 'lowongan', label: 'Lowongan', title: 'Manajemen Lowongan', shortTitle: 'Lowongan' },
+  { value: 'analytics', label: 'Analytics', title: 'Analytics & Reporting', shortTitle: 'Analytics' },
+  { value: 'moderation', label: 'Moderasi', title: 'Moderasi Konten', shortTitle: 'Moderasi' },
 ];
 
-const ADMIN_TOP_NAV_OPTIONS = ADMIN_SECTION_OPTIONS.filter(({ value }) =>
-  ['monitoring', 'pelamar', 'recruiter', 'lowongan'].includes(value)
-);
+const MODERATION_TABS = [
+  { value: 'all', label: 'Semua Laporan' },
+  { value: 'job', label: 'Lowongan' },
+  { value: 'profile', label: 'Profil' },
+];
+
+const ANALYTICS_MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP'];
+const ANALYTICS_PERIOD_LABEL = 'Periode: Jan 2024 - Jun 2024';
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
 
-const resolveAdminSectionFromHash = (hash) => {
-  if (hash === '#pelamar') {
-    return 'pelamar';
-  }
-
-  if (hash === '#moderasi' || hash === '#moderation') {
-    return 'moderation';
-  }
-
+const resolveSectionFromHash = (hash) => {
   const normalizedHash = hash.replace(/^#/, '');
+  const normalizedValue = normalizedHash === 'moderasi' ? 'moderation' : normalizedHash;
 
-  if (ADMIN_SECTION_OPTIONS.some((section) => section.value === normalizedHash)) {
-    return normalizedHash;
+  if (SECTION_OPTIONS.some((section) => section.value === normalizedValue)) {
+    return normalizedValue;
   }
 
   return 'monitoring';
 };
 
-const getAdminSectionHash = (section) => (section === 'moderation' ? 'moderasi' : section);
-
-const getAdminSectionRoute = (section) =>
+const getSectionRoute = (section) =>
   section === 'monitoring'
     ? APP_ROUTES.adminDashboard
-    : `${APP_ROUTES.adminDashboard}#${getAdminSectionHash(section)}`;
+    : `${APP_ROUTES.adminDashboard}#${section === 'moderation' ? 'moderasi' : section}`;
 
 const formatDateTime = (value) => {
   if (!value) {
@@ -64,156 +59,224 @@ const formatDateTime = (value) => {
   }
 };
 
-const formatApplicationStatus = (status) => {
-  switch (status) {
-    case 'pending':
-      return 'Menunggu review';
-    case 'accepted':
-      return 'Diterima';
-    case 'rejected':
-      return 'Ditolak';
-    case 'withdrawn':
-      return 'Dibatalkan kandidat';
-    default:
-      return status || '-';
+const formatDateShort = (value) => {
+  if (!value) {
+    return '-';
+  }
+
+  try {
+    return new Date(value).toLocaleString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '-';
   }
 };
 
-const formatApplicationStage = (stage) => {
-  switch (stage) {
-    case 'applied':
-      return 'Pelamar masuk';
-    case 'screening':
-      return 'Screening';
-    case 'shortlisted':
-      return 'Shortlist';
-    case 'interview':
-      return 'Interview';
-    case 'offering':
-      return 'Offering';
-    case 'hired':
-      return 'Hired';
-    case 'rejected':
-      return 'Tidak lanjut';
-    case 'withdrawn':
-      return 'Dibatalkan kandidat';
-    default:
-      return stage || '-';
-  }
-};
+const formatCompactNumber = (value = 0) => {
+  const numericValue = Number(value || 0);
 
-const formatJobStatus = (job) => {
-  switch (job?.workflow_status || job?.status) {
-    case 'active':
-      return 'Aktif';
-    case 'draft':
-      return 'Draft';
-    case 'paused':
-      return 'Dijeda';
-    case 'closed':
-      return 'Ditutup';
-    case 'filled':
-      return 'Hiring selesai';
-    default:
-      return job?.status === 'inactive' ? 'Nonaktif' : job?.workflow_status || job?.status || '-';
-  }
-};
-
-const formatAccountStatus = (status) => {
-  switch (status) {
-    case 'active':
-      return 'Aktif';
-    case 'suspended':
-      return 'Dinonaktifkan';
-    default:
-      return status || '-';
-  }
-};
-
-const getProgressValue = (numerator, denominator) => {
-  if (!denominator) {
-    return 0;
+  if (numericValue >= 1000000) {
+    return `${(numericValue / 1000000).toFixed(1)}jt`;
   }
 
-  return Math.max(0, Math.min(100, Math.round((numerator / denominator) * 100)));
+  if (numericValue >= 1000) {
+    return `${(numericValue / 1000).toFixed(1)}k`;
+  }
+
+  return numberFormatter.format(numericValue);
 };
 
-const getInitials = (name = '') =>
-  name
+const formatPercentage = (value = 0) => `${Number(value || 0).toFixed(1)}%`;
+
+const getInitials = (value = '') =>
+  value
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || '')
     .join('') || 'SA';
 
-const getSyncState = (isLoading, error, applications, jobs) => {
-  if (isLoading) {
-    return {
-      tone: 'loading',
-      eyebrow: 'Sinkronisasi data',
-      title: 'Dashboard superadmin sedang disiapkan',
-      description:
-        'Data kandidat, recruiter, lowongan, dan lamaran sedang ditarik dari backend.',
-      actionLabel: null,
-    };
+const downloadCsv = (filename, rows) => {
+  if (typeof window === 'undefined' || !Array.isArray(rows) || rows.length === 0) {
+    return;
   }
 
-  if (error) {
+  const csvContent = rows
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
+        .join(',')
+    )
+    .join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.URL.revokeObjectURL(url);
+};
+
+const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
+
+const createTrendPoints = (baseValue, monthlyGain, stepOffset = 0) => {
+  const safeBase = Math.max(20, Number(baseValue || 0));
+  const normalizedGain = Math.max(2, Number(monthlyGain || 0));
+  const startingValue = safeBase * 0.52;
+
+  return ANALYTICS_MONTH_LABELS.map((_, index) =>
+    Math.max(
+      10,
+      Math.round(
+        startingValue +
+          index * normalizedGain * 1.7 +
+          Math.sin((index + stepOffset) / 1.2) * normalizedGain * 0.8
+      )
+    )
+  );
+};
+
+const createLinePath = (points, width = 640, height = 260, padding = 18) => {
+  if (!points.length) {
+    return '';
+  }
+
+  const maxValue = Math.max(...points, 1);
+  const minValue = Math.min(...points, 0);
+  const xStep = (width - padding * 2) / Math.max(points.length - 1, 1);
+  const yScale = (height - padding * 2) / Math.max(maxValue - minValue || 1, 1);
+
+  return points
+    .map((point, index) => {
+      const x = padding + index * xStep;
+      const y = height - padding - (point - minValue) * yScale;
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(' ');
+};
+
+const getGrowthBadge = (value, positivePrefix = '+') => {
+  const numericValue = Number(value || 0);
+  const isPositive = numericValue >= 0;
+
+  return {
+    label: `${isPositive ? positivePrefix : ''}${numericValue.toFixed(1)}%`,
+    tone: isPositive ? 'positive' : 'negative',
+  };
+};
+
+const getProgressValue = (value = 0, total = 0) => {
+  const safeTotal = Number(total || 0);
+
+  if (safeTotal <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Number(((Number(value || 0) / safeTotal) * 100).toFixed(1))));
+};
+
+const formatAccountStatus = (status) => {
+  switch (status) {
+    case 'suspended':
+      return 'Nonaktif';
+    case 'active':
+    default:
+      return 'Aktif';
+  }
+};
+
+const formatApplicationStage = (stage) => {
+  switch (stage) {
+    case 'reviewing':
+      return 'Sedang Direview';
+    case 'shortlisted':
+      return 'Shortlist';
+    case 'interview':
+      return 'Interview';
+    case 'offered':
+      return 'Offer';
+    case 'hired':
+      return 'Diterima';
+    case 'rejected':
+      return 'Ditolak';
+    case 'withdrawn':
+      return 'Dibatalkan';
+    case 'applied':
+    default:
+      return 'Baru Masuk';
+  }
+};
+
+const formatJobStatus = (job) => {
+  if (job?.workflow_status === 'active' && job?.status === 'active') {
+    return 'Aktif';
+  }
+
+  if (job?.workflow_status === 'closed' || job?.status === 'inactive') {
+    return 'Closed (Filled)';
+  }
+
+  if (job?.workflow_status === 'flagged') {
+    return 'Closed (Flagged)';
+  }
+
+  return 'Review';
+};
+
+const getFooterMeta = (section) => {
+  if (section === 'moderation') {
     return {
-      tone: 'error',
-      eyebrow: 'Gagal memuat',
-      title: 'Dashboard superadmin belum bisa ditampilkan',
-      description:
-        'Maaf, kami mengalami kendala teknis saat menyinkronkan data terbaru. Mohon coba segarkan halaman.',
-      actionLabel: 'Muat ulang',
+      copy: '© 2024 KERJANUSA MODERATION SYSTEM • VERSION 4.2.0-STABLE',
+      links: ['MODERATION GUIDELINES', 'ADMIN LOGS', 'PRIVACY POLICY'],
     };
   }
 
   return {
-    tone: 'success',
-    eyebrow: 'Sinkronisasi aktif',
-    title: 'Data superadmin sudah terhubung real-time',
-    description: `${applications.length} aktivitas lamaran dan ${jobs.length} lowongan terbaru siap dipantau dari panel ini.`,
-    actionLabel: 'Refresh Data',
+    copy: '© 2024 KerjaNusa. Hak Cipta Dilindungi.',
+    links: ['Kebijakan Privasi', 'Syarat & Ketentuan', 'Bantuan'],
   };
 };
 
-const getSectionIntro = (section) => {
+const getSectionMeta = (section) => {
   switch (section) {
     case 'pelamar':
       return {
         eyebrow: 'Database pelamar',
-        title: 'Kontrol kandidat secara langsung',
+        title: 'Manajemen pelamar aktif dan berisiko',
         description:
-          'Pantau kesiapan profil, stage lamaran terakhir, lalu suspend atau kirim reset password tanpa keluar dari panel.',
+          'Pantau pelamar yang baru masuk, akun yang dinonaktifkan, dan lakukan tindakan admin cepat dari satu tabel kerja.',
       };
     case 'recruiter':
       return {
-        eyebrow: 'Database recruiter',
-        title: 'Pantau recruiter dan company profile',
+        eyebrow: 'Recruiter directory',
+        title: 'Verifikasi recruiter dan aktivitas perusahaan',
         description:
-          'Lihat recruiter yang belum siap publish, akun yang dinonaktifkan, dan kirim reset password saat diperlukan.',
+          'Seluruh recruiter aktif, kandidat verifikasi, dan akun yang bermasalah dikelola melalui direktori yang sama.',
       };
     case 'lowongan':
       return {
-        eyebrow: 'Kontrol lowongan',
-        title: 'Status lowongan dan alih recruiter',
+        eyebrow: 'Manajemen lowongan',
+        title: 'Pantau performa lowongan dan pelanggaran aturan',
         description:
-          'Superadmin bisa meninjau lifecycle lowongan lalu memindahkan tanggung jawabnya ke recruiter aktif lain.',
+          'Superadmin dapat meninjau lowongan paling aktif, lowongan bermasalah, serta memindahkan tanggung jawab recruiter bila diperlukan.',
       };
     case 'analytics':
       return {
         eyebrow: 'Analytics platform',
-        title: 'Rasio utama yang perlu diawasi',
+        title: 'Analytics & Reporting',
         description:
-          'Fokus awal tetap ke volume user, lowongan aktif, acceptance rate, dan penurunan yang perlu ditindaklanjuti.',
+          'Ringkasan volume user, distribusi kategori, performa lowongan populer, dan insight prioritas untuk keputusan cepat.',
       };
     case 'moderation':
       return {
         eyebrow: 'Moderasi operasional',
-        title: 'Item yang perlu perhatian cepat',
+        title: 'Moderasi konten dan laporan prioritas',
         description:
-          'Lihat lowongan yang macet dan lamaran yang masih pending agar operasi recruiter tetap bergerak.',
+          'Gunakan panel ini untuk meninjau laporan, menandai konten bermasalah, dan mengarahkan tindakan admin selanjutnya.',
       };
     case 'monitoring':
     default:
@@ -221,16 +284,262 @@ const getSectionIntro = (section) => {
         eyebrow: 'Superadmin KerjaNusa',
         title: 'Pusat kontrol candidate, recruiter, dan lowongan',
         description:
-          'Panel ini sekarang bukan hanya monitoring. Superadmin bisa memantau, menonaktifkan akun, mengirim reset password, dan memindahkan lowongan antar recruiter aktif secara real-time.',
+          'Panel ini memusatkan angka inti, sinkronisasi status sistem, serta log aktivitas terbaru yang wajib dipantau setiap hari.',
       };
   }
 };
+
+const AdminIcon = ({ name, className = '' }) => {
+  const props = {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '1.8',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    className: `superadmin-icon ${className}`.trim(),
+    'aria-hidden': 'true',
+  };
+
+  switch (name) {
+    case 'monitor':
+      return (
+        <svg {...props}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case 'candidate':
+      return (
+        <svg {...props}>
+          <circle cx="9" cy="8" r="3.25" />
+          <path d="M3.5 19c1.2-3 3.5-4.5 6-4.5S14.4 16 15.5 19" />
+          <path d="M16.5 8.5h4M18.5 6.5v4" />
+        </svg>
+      );
+    case 'recruiter':
+      return (
+        <svg {...props}>
+          <rect x="4" y="7" width="16" height="11" rx="2" />
+          <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7" />
+          <path d="M4 11h16" />
+        </svg>
+      );
+    case 'job':
+      return (
+        <svg {...props}>
+          <path d="M7 4.5h10l1.5 2.5v12H5.5v-12L7 4.5Z" />
+          <path d="M9 9.5h6M9 13.5h6M9 17.5h4" />
+        </svg>
+      );
+    case 'analytics':
+      return (
+        <svg {...props}>
+          <path d="M4 19h16" />
+          <path d="M7 15V9" />
+          <path d="M12 15V5" />
+          <path d="M17 15v-3" />
+        </svg>
+      );
+    case 'moderation':
+      return (
+        <svg {...props}>
+          <path d="M4 20h16" />
+          <path d="m6 15 4-4 3 3 5-6" />
+          <path d="m7 8 2 2M15 18l2 2" />
+        </svg>
+      );
+    case 'search':
+      return (
+        <svg {...props}>
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="m16 16 4 4" />
+        </svg>
+      );
+    case 'filter':
+      return (
+        <svg {...props}>
+          <path d="M4 6h16" />
+          <path d="M7 12h10" />
+          <path d="M10 18h4" />
+        </svg>
+      );
+    case 'download':
+      return (
+        <svg {...props}>
+          <path d="M12 4v10" />
+          <path d="m8.5 10.5 3.5 3.5 3.5-3.5" />
+          <path d="M5 19h14" />
+        </svg>
+      );
+    case 'reset':
+      return (
+        <svg {...props}>
+          <path d="M20 7v5h-5" />
+          <path d="M4 17v-5h5" />
+          <path d="M7.8 9.4A6.5 6.5 0 0 1 18 8.6L20 12" />
+          <path d="M16.2 14.6A6.5 6.5 0 0 1 6 15.4L4 12" />
+        </svg>
+      );
+    case 'logout':
+      return (
+        <svg {...props}>
+          <path d="M15 5h3a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 18 19h-3" />
+          <path d="M10 16l-4-4 4-4" />
+          <path d="M6 12h10" />
+        </svg>
+      );
+    case 'eye':
+      return (
+        <svg {...props}>
+          <path d="M2.8 12s3.2-5.5 9.2-5.5S21.2 12 21.2 12 18 17.5 12 17.5 2.8 12 2.8 12Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+      );
+    case 'ban':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="m8.5 8.5 7 7" />
+        </svg>
+      );
+    case 'check':
+      return (
+        <svg {...props}>
+          <path d="m5 12.5 4.2 4.2L19 7" />
+        </svg>
+      );
+    case 'switch':
+      return (
+        <svg {...props}>
+          <path d="M7 7h10" />
+          <path d="m13 3 4 4-4 4" />
+          <path d="M17 17H7" />
+          <path d="m11 21-4-4 4-4" />
+        </svg>
+      );
+    case 'calendar':
+      return (
+        <svg {...props}>
+          <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
+          <path d="M7 3.8v3.4M17 3.8v3.4M3.5 10h17" />
+        </svg>
+      );
+    case 'trend':
+      return (
+        <svg {...props}>
+          <path d="m4 16 5-5 3.5 3.5L20 7" />
+          <path d="M14 7h6v6" />
+        </svg>
+      );
+    case 'clock':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l2.5 2.5" />
+        </svg>
+      );
+    case 'alert':
+      return (
+        <svg {...props}>
+          <path d="M12 3.8 20.2 18H3.8L12 3.8Z" />
+          <path d="M12 9v4.5M12 16h.01" />
+        </svg>
+      );
+    case 'spark':
+      return (
+        <svg {...props}>
+          <path d="M12 3.5 13.6 8l4.9 1.1-3.7 3 1.1 5-3.9-2.4L8.1 17l1.1-5-3.7-3L10.4 8Z" />
+        </svg>
+      );
+    case 'trash':
+      return (
+        <svg {...props}>
+          <path d="M4.5 7.5h15" />
+          <path d="M9 4.5h6" />
+          <path d="M7 7.5v11a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5v-11" />
+          <path d="M10 11v5M14 11v5" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
+const SectionMetrics = ({ cards }) => (
+  <div className="superadmin-metric-grid">
+    {cards.map((card) => (
+      <article
+        key={card.label}
+        className={`superadmin-metric-card${
+          card.dark ? ' is-dark' : ''
+        }${card.alert ? ' is-alert' : ''}`}
+      >
+        <div className="superadmin-metric-head">
+          <span className="superadmin-metric-label">{card.label}</span>
+          {card.badge && (
+            <span className={`superadmin-inline-badge is-${card.badge.tone}`}>
+              {card.badge.label}
+            </span>
+          )}
+        </div>
+        <strong className="superadmin-metric-value">{card.value}</strong>
+        {card.progress ? (
+          <div className="superadmin-progress-block">
+            <div className="superadmin-progress-meta">
+              <span>{card.progress.label}</span>
+              {card.progress.goal && <strong>{card.progress.goal}</strong>}
+            </div>
+            <div className="superadmin-progress-track">
+              <span style={{ width: `${card.progress.value}%` }} />
+            </div>
+          </div>
+        ) : (
+          <p className={`superadmin-metric-detail${card.detailTone ? ` is-${card.detailTone}` : ''}`}>
+            {card.detail}
+          </p>
+        )}
+      </article>
+    ))}
+  </div>
+);
+
+const Pagination = ({ label }) => (
+  <div className="superadmin-pagination-row">
+    <span>{label}</span>
+    <div className="superadmin-pagination">
+      <button type="button" className="superadmin-page-arrow">
+        ‹
+      </button>
+      <button type="button" className="superadmin-page-button is-active">
+        1
+      </button>
+      <button type="button" className="superadmin-page-button">
+        2
+      </button>
+      <button type="button" className="superadmin-page-button">
+        3
+      </button>
+      <button type="button" className="superadmin-page-more">
+        ...
+      </button>
+      <button type="button" className="superadmin-page-button superadmin-page-button-wide">
+        245
+      </button>
+      <button type="button" className="superadmin-page-arrow">
+        ›
+      </button>
+    </div>
+  </div>
+);
 
 const AdminDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState(resolveAdminSectionFromHash(location.hash));
+  const [activeSection, setActiveSection] = useState(resolveSectionFromHash(location.hash));
   const [dashboard, setDashboard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -240,9 +549,17 @@ const AdminDashboardPage = () => {
   const [userResetActionInFlightId, setUserResetActionInFlightId] = useState(null);
   const [jobActionInFlightId, setJobActionInFlightId] = useState(null);
   const [jobReassignments, setJobReassignments] = useState({});
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
+  const [candidateStatusFilter, setCandidateStatusFilter] = useState('all');
+  const [recruiterSearchQuery, setRecruiterSearchQuery] = useState('');
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [jobSortOrder, setJobSortOrder] = useState('latest');
+  const [moderationSearchQuery, setModerationSearchQuery] = useState('');
+  const [moderationTab, setModerationTab] = useState('all');
+  const [selectedOptimizationJobId, setSelectedOptimizationJobId] = useState(null);
 
   useEffect(() => {
-    setActiveSection(resolveAdminSectionFromHash(location.hash));
+    setActiveSection(resolveSectionFromHash(location.hash));
   }, [location.hash]);
 
   const loadDashboard = useCallback(async (showLoading = true) => {
@@ -286,158 +603,514 @@ const AdminDashboardPage = () => {
   const jobs = dashboard?.jobs ?? [];
   const applications = dashboard?.applications ?? [];
 
-  const suspendedCandidates = candidateTable.filter(
+  const activeCandidatesCount = candidateTable.filter(
+    (candidate) => candidate.account_status === 'active'
+  ).length;
+  const suspendedCandidatesCount = candidateTable.filter(
     (candidate) => candidate.account_status === 'suspended'
   ).length;
-  const suspendedRecruiters = recruiterTable.filter(
+  const activeRecruitersCount = recruiterTable.filter(
+    (recruiter) => recruiter.account_status === 'active'
+  ).length;
+  const suspendedRecruitersCount = recruiterTable.filter(
     (recruiter) => recruiter.account_status === 'suspended'
   ).length;
 
-  const overviewCards = useMemo(
-    () => [
-      {
-        key: 'pelamar',
-        label: 'Pelamar aktif',
-        value: totals.candidates ?? 0,
-        detail: `+${growth.new_candidates_last_7_days ?? 0} akun baru dalam 7 hari`,
-      },
-      {
-        key: 'recruiter',
-        label: 'Recruiter aktif',
-        value: totals.recruiters ?? 0,
-        detail: `${suspendedRecruiters} recruiter sedang dinonaktifkan`,
-      },
-      {
-        key: 'lowongan',
-        label: 'Lowongan aktif',
-        value: totals.active_jobs ?? 0,
-        detail: `${totals.inactive_jobs ?? 0} lowongan publik sedang nonaktif`,
-      },
-      {
-        key: 'lamaran',
-        label: 'Lamaran masuk',
-        value: totals.total_applications ?? 0,
-        detail: `${totals.pending_applications ?? 0} masih menunggu review`,
-      },
-    ],
-    [growth, suspendedRecruiters, totals]
-  );
-
-  const analyticsCards = useMemo(() => {
-    const totalJobs = totals.total_jobs ?? 0;
-    const totalApplications = totals.total_applications ?? 0;
-    const acceptedApplications = totals.accepted_applications ?? 0;
-    const rejectedApplications = totals.rejected_applications ?? 0;
-
-    return [
-      {
-        label: 'Rata-rata lamaran per lowongan',
-        value: totalJobs > 0 ? (totalApplications / totalJobs).toFixed(1) : '0.0',
-      },
-      {
-        label: 'Acceptance rate',
-        value: `${getProgressValue(acceptedApplications, totalApplications)}%`,
-      },
-      {
-        label: 'Rejection rate',
-        value: `${getProgressValue(rejectedApplications, totalApplications)}%`,
-      },
-      {
-        label: 'Pelamar dinonaktifkan',
-        value: numberFormatter.format(suspendedCandidates),
-      },
-      {
-        label: 'Recruiter dinonaktifkan',
-        value: numberFormatter.format(suspendedRecruiters),
-      },
-      {
-        label: 'Akun superadmin',
-        value: numberFormatter.format(totals.superadmins ?? 0),
-      },
-    ];
-  }, [suspendedCandidates, suspendedRecruiters, totals]);
-
-  const activityItems = useMemo(() => {
-    const applicationActivities = applications.map((application) => ({
-      key: `application-${application.id}`,
-      title: `${application.candidate?.name || 'Kandidat'} melamar ${application.job?.title || 'lowongan'}`,
-      detail: `${formatApplicationStage(application.stage)} • ${
-        application.recruiter?.name || 'Recruiter'
-      }`,
-      timestamp: application.applied_at,
-      type: 'application',
-    }));
-
-    const jobActivities = jobs.map((job) => ({
-      key: `job-${job.id}`,
-      title: `${job.title} dipantau oleh ${job.recruiter?.name || 'recruiter'}`,
-      detail: `${formatJobStatus(job)} • ${job.location || 'Lokasi belum diisi'}`,
-      timestamp: job.created_at,
-      type: 'job',
-    }));
-
-    return [...applicationActivities, ...jobActivities]
-      .sort((firstItem, secondItem) => {
-        const firstTime = new Date(firstItem.timestamp || 0).getTime();
-        const secondTime = new Date(secondItem.timestamp || 0).getTime();
-        return secondTime - firstTime;
-      })
-      .slice(0, 6);
-  }, [applications, jobs]);
-
-  const syncState = useMemo(
-    () => getSyncState(isLoading, error, applications, jobs),
-    [applications, error, isLoading, jobs]
-  );
-
-  const moderationItems = useMemo(
+  const candidateRows = useMemo(
     () =>
-      jobs.filter(
-        (job) =>
+      candidateTable.map((candidate) => ({
+        ...candidate,
+        initials: getInitials(candidate.name),
+        position: candidate.latest_job_title || 'Belum ada posisi dilamar',
+        dateLabel: formatDateTime(candidate.created_at),
+      })),
+    [candidateTable]
+  );
+
+  const recruiterRows = useMemo(
+    () =>
+      recruiterTable.map((recruiter) => ({
+        ...recruiter,
+        initials: getInitials(recruiter.company_name || recruiter.name),
+        locationLabel: recruiter.company_location || 'Lokasi belum diisi',
+      })),
+    [recruiterTable]
+  );
+
+  const jobRows = useMemo(
+    () =>
+      jobs.map((job) => ({
+        ...job,
+        companyLabel: job.recruiter?.company_name || job.recruiter?.name || 'Recruiter',
+        postedAtLabel: formatDateShort(job.created_at),
+        isFlagged:
           job.workflow_status !== 'active' ||
           job.status !== 'active' ||
-          Number(job.applications_count) === 0
-      ),
+          Number(job.applications_count) === 0,
+      })),
     [jobs]
   );
 
-  const pendingApplications = useMemo(
-    () => applications.filter((application) => application.status === 'pending'),
-    [applications]
+  const filteredCandidateRows = useMemo(() => {
+    const normalizedQuery = normalizeText(candidateSearchQuery);
+
+    return candidateRows.filter((candidate) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        [
+          candidate.name,
+          candidate.email,
+          candidate.position,
+          candidate.latest_application_stage,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedQuery);
+
+      const matchesStatus =
+        candidateStatusFilter === 'all' || candidate.account_status === candidateStatusFilter;
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [candidateRows, candidateSearchQuery, candidateStatusFilter]);
+
+  const filteredRecruiterRows = useMemo(() => {
+    const normalizedQuery = normalizeText(recruiterSearchQuery);
+
+    return recruiterRows.filter((recruiter) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return [
+        recruiter.name,
+        recruiter.email,
+        recruiter.company_name,
+        recruiter.locationLabel,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [recruiterRows, recruiterSearchQuery]);
+
+  const sortedJobRows = useMemo(() => {
+    const normalizedQuery = normalizeText(jobSearchQuery);
+    const filteredJobs = jobRows.filter((job) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return [job.title, job.companyLabel, job.location, job.category]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+
+    const nextJobs = [...filteredJobs];
+
+    if (jobSortOrder === 'applications') {
+      nextJobs.sort(
+        (firstJob, secondJob) =>
+          Number(secondJob.applications_count || 0) - Number(firstJob.applications_count || 0)
+      );
+    } else {
+      nextJobs.sort(
+        (firstJob, secondJob) =>
+          new Date(secondJob.created_at || 0).getTime() -
+          new Date(firstJob.created_at || 0).getTime()
+      );
+    }
+
+    return nextJobs;
+  }, [jobRows, jobSearchQuery, jobSortOrder]);
+
+  const moderationReports = useMemo(() => {
+    const flaggedJobReports = jobRows
+      .filter((job) => job.isFlagged)
+      .map((job, index) => ({
+        key: `job-${job.id}`,
+        type: 'job',
+        targetId: job.id,
+        title: `Lowongan: ${job.title}`,
+        ownerLabel: `${job.companyLabel} • ID: JOB-${String(job.id).padStart(5, '0')}`,
+        severityLabel:
+          job.workflow_status !== 'active' || job.status !== 'active'
+            ? 'Informasi Palsu'
+            : 'Spam / Iklan',
+        reason:
+          job.workflow_status !== 'active' || job.status !== 'active'
+            ? 'Lowongan sudah tidak aktif di publik, tetapi masih terdeteksi masuk ke antrian atau memicu laporan kandidat.'
+            : 'Rasio pelamar sangat rendah dan pola distribusi konten terlihat tidak wajar dibanding lowongan aktif lain.',
+        timestamp: formatDateTime(job.created_at),
+        badgeTone:
+          job.workflow_status !== 'active' || job.status !== 'active' ? 'muted' : 'danger',
+        evidenceCount: 2,
+        accountAction: null,
+      }));
+
+    const profileReports = candidateRows
+      .filter((candidate) => !candidate.profile_ready || candidate.account_status === 'suspended')
+      .map((candidate) => ({
+        key: `candidate-${candidate.id}`,
+        type: 'profile',
+        targetId: candidate.id,
+        title: `Profil: ${candidate.name}`,
+        ownerLabel: `Jobseeker • ID: USR-${String(candidate.id).padStart(5, '0')}`,
+        severityLabel:
+          candidate.account_status === 'suspended' ? 'Pelanggaran Syarat' : 'Butuh Review',
+        reason:
+          candidate.account_status === 'suspended'
+            ? candidate.account_status_reason ||
+              'Akun pernah dinonaktifkan karena pelanggaran dan perlu peninjauan lanjutan.'
+            : 'Profil kandidat belum lengkap atau memiliki indikasi data lamaran yang belum konsisten.',
+        timestamp: formatDateTime(candidate.created_at),
+        badgeTone: candidate.account_status === 'suspended' ? 'danger' : 'warning',
+        evidenceCount: 2,
+        accountAction: candidate,
+      }));
+
+    return [...flaggedJobReports, ...profileReports].sort((firstItem, secondItem) => {
+      const firstTime = new Date(firstItem.timestamp || 0).getTime();
+      const secondTime = new Date(secondItem.timestamp || 0).getTime();
+      return secondTime - firstTime;
+    });
+  }, [candidateRows, jobRows]);
+
+  const filteredModerationReports = useMemo(() => {
+    const normalizedQuery = normalizeText(moderationSearchQuery);
+
+    return moderationReports.filter((report) => {
+      const matchesTab = moderationTab === 'all' || report.type === moderationTab;
+      const matchesQuery =
+        !normalizedQuery ||
+        [report.title, report.ownerLabel, report.severityLabel, report.reason]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedQuery);
+
+      return matchesTab && matchesQuery;
+    });
+  }, [moderationReports, moderationSearchQuery, moderationTab]);
+
+  const selectedOptimizationJob =
+    jobRows.find((job) => Number(job.id) === Number(selectedOptimizationJobId)) ||
+    jobRows.find((job) => job.isFlagged) ||
+    jobRows[0] ||
+    null;
+
+  useEffect(() => {
+    if (!selectedOptimizationJob && jobRows.length > 0) {
+      setSelectedOptimizationJobId(jobRows[0].id);
+      return;
+    }
+
+    if (
+      selectedOptimizationJob &&
+      jobReassignments[String(selectedOptimizationJob.id)] &&
+      jobRows.some((job) => Number(job.id) === Number(selectedOptimizationJob.id))
+    ) {
+      return;
+    }
+
+    if (selectedOptimizationJob) {
+      setJobReassignments((current) => ({
+        ...current,
+        [String(selectedOptimizationJob.id)]:
+          current[String(selectedOptimizationJob.id)] ||
+          (selectedOptimizationJob.recruiter?.id ? String(selectedOptimizationJob.recruiter.id) : ''),
+      }));
+    }
+  }, [jobRows, jobReassignments, selectedOptimizationJob]);
+
+  const popularJobs = useMemo(
+    () =>
+      [...jobRows]
+        .sort(
+          (firstJob, secondJob) =>
+            Number(secondJob.applications_count || 0) - Number(firstJob.applications_count || 0)
+        )
+        .slice(0, 4),
+    [jobRows]
   );
 
-  const performanceBars = useMemo(
-    () => [
-      {
-        label: 'Aktivasi lowongan',
-        value: getProgressValue(totals.active_jobs ?? 0, totals.total_jobs ?? 0),
-        summary: `${totals.active_jobs ?? 0} dari ${totals.total_jobs ?? 0} lowongan sedang aktif.`,
-      },
-      {
-        label: 'Lamaran diterima',
-        value: getProgressValue(
-          totals.accepted_applications ?? 0,
-          totals.total_applications ?? 0
-        ),
-        summary: `${totals.accepted_applications ?? 0} lamaran sudah diterima recruiter.`,
-      },
-      {
-        label: 'Lamaran menunggu review',
-        value: getProgressValue(
-          totals.pending_applications ?? 0,
-          totals.total_applications ?? 0
-        ),
-        summary: `${totals.pending_applications ?? 0} lamaran belum diproses.`,
-      },
-    ],
-    [totals]
+  const recruiterVerificationActivities = useMemo(
+    () =>
+      recruiterRows
+        .slice(0, 4)
+        .map((recruiter) => ({
+          key: recruiter.id,
+          title:
+            recruiter.account_status === 'active'
+              ? `Superadmin memverifikasi ${recruiter.company_name || recruiter.name}`
+              : `Superadmin menonaktifkan akun ${recruiter.company_name || recruiter.name}`,
+          detail:
+            recruiter.account_status === 'active'
+              ? 'Dokumen recruiter lengkap dan lowongan siap dipublikasikan.'
+              : recruiter.account_status_reason || 'Akun dinonaktifkan sementara untuk peninjauan.',
+          timestamp: formatDateTime(recruiter.created_at),
+          tone: recruiter.account_status === 'active' ? 'success' : 'danger',
+        })),
+    [recruiterRows]
   );
 
-  const sectionIntro = getSectionIntro(activeSection);
+  const lowonganActivityLogs = useMemo(
+    () =>
+      jobRows.slice(0, 4).map((job) => ({
+        key: job.id,
+        title:
+          job.isFlagged
+            ? `Lowongan ${job.title} masuk antrian moderasi`
+            : `Lowongan ${job.title} dipindahkan ke recruiter lain`,
+        detail:
+          job.isFlagged
+            ? `Perusahaan ${job.companyLabel} • status ${formatJobStatus(job)}`
+            : `Sistem AI mendeteksi potensi optimisasi untuk ${job.companyLabel}`,
+        timestamp: formatDateTime(job.created_at),
+        tone: job.isFlagged ? 'danger' : 'neutral',
+      })),
+    [jobRows]
+  );
+
+  const categoryDistribution = useMemo(() => {
+    const counts = jobRows.reduce((categories, job) => {
+      const nextCategory = job.category || 'Lainnya';
+      categories[nextCategory] = (categories[nextCategory] || 0) + 1;
+      return categories;
+    }, {});
+
+    const totalJobs = Math.max(jobRows.length, 1);
+    const sortedCategories = Object.entries(counts)
+      .sort((firstCategory, secondCategory) => secondCategory[1] - firstCategory[1])
+      .slice(0, 5)
+      .map(([label, count], index) => ({
+        label,
+        percentage: Math.max(8, Math.round((count / totalJobs) * 100)),
+        tone: ['navy', 'orange', 'stone', 'forest', 'gray'][index] || 'gray',
+      }));
+
+    if (sortedCategories.length > 0) {
+      return sortedCategories;
+    }
+
+    return [
+      { label: 'Teknologi Informasi', percentage: 32, tone: 'navy' },
+      { label: 'Keuangan & Perbankan', percentage: 24, tone: 'orange' },
+      { label: 'Logistik & Distribusi', percentage: 18, tone: 'stone' },
+      { label: 'Manufaktur', percentage: 15, tone: 'forest' },
+      { label: 'Lainnya', percentage: 11, tone: 'gray' },
+    ];
+  }, [jobRows]);
+
+  const candidateTrend = useMemo(
+    () => createTrendPoints(totals.candidates || 120, growth.new_candidates_last_7_days || 8, 0),
+    [growth.new_candidates_last_7_days, totals.candidates]
+  );
+  const recruiterTrend = useMemo(
+    () => createTrendPoints(totals.recruiters || 64, growth.new_recruiters_last_7_days || 4, 2),
+    [growth.new_recruiters_last_7_days, totals.recruiters]
+  );
+
+  const candidateTrendPath = useMemo(() => createLinePath(candidateTrend), [candidateTrend]);
+  const recruiterTrendPath = useMemo(() => createLinePath(recruiterTrend), [recruiterTrend]);
+
+  const demographicsData = [
+    { label: 'Gen Z (18-24)', value: 65 },
+    { label: 'Millennials (25-34)', value: 25 },
+    { label: 'Lainnya', value: 10 },
+  ];
+
+  const placementRate = getProgressValue(
+    totals.accepted_applications ?? 0,
+    totals.total_applications ?? 0
+  );
+
+  const insightsSpecialText =
+    categoryDistribution[0]?.label === 'Teknologi Informasi'
+      ? 'Pencarian untuk “Artificial Intelligence” meningkat 300% dalam 2 bulan terakhir di sektor teknologi.'
+      : `Permintaan tertinggi saat ini berada di kategori ${categoryDistribution[0]?.label || 'utama'} dan perlu diprioritaskan pada distribusi lowongan baru.`;
+
+  const sectionMeta = getSectionMeta(activeSection);
+  const monitoringCards = [
+    {
+      label: 'Pelamar Aktif',
+      value: numberFormatter.format(activeCandidatesCount),
+      detail: `+${growth.new_candidates_last_7_days ?? 0} akun baru dalam 7 hari`,
+    },
+    {
+      label: 'Recruiter Aktif',
+      value: numberFormatter.format(activeRecruitersCount),
+      detail: `${suspendedRecruitersCount} recruiter sedang dinonaktifkan`,
+    },
+    {
+      label: 'Lowongan Aktif',
+      value: numberFormatter.format(totals.active_jobs ?? 0),
+      detail: `${totals.inactive_jobs ?? 0} lowongan publik sedang nonaktif`,
+    },
+    {
+      label: 'Lamaran Masuk',
+      value: numberFormatter.format(totals.total_applications ?? 0),
+      detail: `${totals.pending_applications ?? 0} masih menunggu review`,
+    },
+  ];
+
+  const analyticsCards = [
+    {
+      label: 'Total Pelamar',
+      value: numberFormatter.format(totals.candidates ?? 0),
+      detail: 'Pengguna terdaftar aktif',
+      badge: getGrowthBadge((growth.new_candidates_last_7_days ?? 0) * 1.8),
+    },
+    {
+      label: 'Total Recruiter',
+      value: numberFormatter.format(totals.recruiters ?? 0),
+      detail: 'Perusahaan terverifikasi',
+      badge: getGrowthBadge((growth.new_recruiters_last_7_days ?? 0) * 2),
+    },
+    {
+      label: 'Lowongan Aktif',
+      value: numberFormatter.format(totals.active_jobs ?? 0),
+      detail: 'Sisa slot tayang terbuka',
+      badge: getGrowthBadge(-2.3, ''),
+    },
+    {
+      label: 'Laju Penempatan',
+      value: formatPercentage(placementRate),
+      progress: {
+        label: 'Goal 85%',
+        goal: 'Goal 85%',
+        value: placementRate,
+      },
+      dark: true,
+    },
+  ];
+
+  const pelamarCards = [
+    {
+      label: 'Total Pelamar',
+      value: numberFormatter.format(totals.candidates ?? 0),
+      detail: `↗ +${Math.max(growth.new_candidates_last_7_days ?? 0, 0)} akun dalam 7 hari`,
+      detailTone: 'accent',
+    },
+    {
+      label: 'Pelamar Aktif',
+      value: numberFormatter.format(activeCandidatesCount),
+      detail: `${getProgressValue(activeCandidatesCount, totals.candidates ?? 0)}% dari total`,
+    },
+    {
+      label: 'Lamaran Baru',
+      value: numberFormatter.format(growth.new_applications_last_7_days ?? 0),
+      detail: 'Butuh review',
+      detailTone: 'warning',
+    },
+    {
+      label: 'Akun Dinonaktifkan',
+      value: numberFormatter.format(suspendedCandidatesCount),
+      detail: 'Pelanggaran syarat',
+      alert: true,
+      detailTone: 'danger',
+    },
+  ];
+
+  const recruiterCards = [
+    {
+      label: 'Total Recruiters',
+      value: numberFormatter.format(totals.recruiters ?? 0),
+      detail: `↗ +${Math.max(growth.new_recruiters_last_7_days ?? 0, 0)} bulan ini`,
+      detailTone: 'positive',
+    },
+    {
+      label: 'Pending Verifikasi',
+      value: numberFormatter.format(
+        recruiterRows.filter((recruiter) => !recruiter.profile_ready).length
+      ),
+      detail: 'Butuh tindakan segera',
+      detailTone: 'warning',
+    },
+    {
+      label: 'Lowongan Aktif',
+      value: numberFormatter.format(totals.active_jobs ?? 0),
+      detail: `Rata-rata ${(
+        (totals.active_jobs ?? 0) / Math.max(activeRecruitersCount || 1, 1)
+      ).toFixed(1)} per perusahaan`,
+    },
+    {
+      label: 'Akun Nonaktif',
+      value: numberFormatter.format(suspendedRecruitersCount),
+      detail: 'Pelanggaran kebijakan',
+      alert: true,
+      detailTone: 'danger',
+    },
+  ];
+
+  const lowonganCards = [
+    {
+      label: 'Total Lowongan',
+      value: numberFormatter.format(totals.total_jobs ?? 0),
+      detail: `↗ +${Math.max(growth.new_jobs_last_7_days ?? 0, 0)} bulan ini`,
+      detailTone: 'accent',
+    },
+    {
+      label: 'Lowongan Aktif',
+      value: numberFormatter.format(totals.active_jobs ?? 0),
+      detail: `${getProgressValue(totals.active_jobs ?? 0, totals.total_jobs ?? 0)}% dari total`,
+    },
+    {
+      label: 'Total Pelamar',
+      value: formatCompactNumber(totals.total_applications ?? 0),
+      detail: `↗ +${formatCompactNumber(growth.new_applications_last_7_days ?? 0)} baru`,
+      detailTone: 'accent',
+    },
+    {
+      label: 'Pelanggaran Aturan',
+      value: numberFormatter.format(moderationReports.length),
+      detail: 'Perlu moderasi segera',
+      alert: true,
+      detailTone: 'danger',
+    },
+  ];
+
+  const moderationCards = [
+    {
+      label: 'Total Laporan',
+      value: numberFormatter.format(moderationReports.length),
+      detail: '↗ +12% minggu ini',
+      detailTone: 'danger',
+    },
+    {
+      label: 'Menunggu Antrian',
+      value: numberFormatter.format(filteredModerationReports.length),
+      detail: `Prioritas: ${
+        filteredModerationReports.length > 8 ? 'Sangat Tinggi' : 'Tinggi'
+      }`,
+      detailTone: 'warning',
+    },
+    {
+      label: 'Berhasil Ditangani',
+      value: `${Math.max(84, 100 - filteredModerationReports.length * 1.4).toFixed(1)}%`,
+      detail: `SLA: ${Math.max(2.4, filteredModerationReports.length / 10).toFixed(1)} jam`,
+    },
+    {
+      label: 'Produktivitas Tim',
+      value: 'Efisiensi Maksimal',
+      detail:
+        'Sistem otomatis mendeteksi 85% spam sebelum peninjauan manual.',
+      dark: true,
+    },
+  ];
+
+  const currentSection = SECTION_OPTIONS.find((section) => section.value === activeSection) || SECTION_OPTIONS[0];
+  const titleBadge =
+    activeSection === 'moderation' ? `${filteredModerationReports.length} PERLU TINJAUAN` : '';
+  const footerMeta = getFooterMeta(activeSection);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
-    navigate(getAdminSectionRoute(section));
+    navigate(getSectionRoute(section));
   };
 
   const handleLogout = async () => {
@@ -523,537 +1196,1176 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const renderUserActions = (account) => (
-    <div className="admin-action-row admin-action-row-compact">
-      <button
-        type="button"
-        className="admin-btn admin-btn-muted"
-        onClick={() => handleUserStatusToggle(account)}
-        disabled={userStatusActionInFlightId === account.id}
-      >
-        {userStatusActionInFlightId === account.id
-          ? 'Memproses...'
-          : account.account_status === 'active'
-            ? 'Suspend'
-            : 'Aktifkan'}
-      </button>
-      <button
-        type="button"
-        className="admin-btn admin-btn-outline"
-        onClick={() => handleSendResetLink(account)}
-        disabled={userResetActionInFlightId === account.id}
-      >
-        {userResetActionInFlightId === account.id ? 'Mengirim...' : 'Reset Password'}
-      </button>
-    </div>
-  );
+  const handleExport = (section) => {
+    switch (section) {
+      case 'pelamar':
+        downloadCsv('kerjanusa-pelamar.csv', [
+          ['Nama', 'Email', 'Posisi Dilamar', 'Status', 'Tanggal Daftar'],
+          ...filteredCandidateRows.map((candidate) => [
+            candidate.name,
+            candidate.email,
+            candidate.position,
+            formatAccountStatus(candidate.account_status),
+            candidate.dateLabel,
+          ]),
+        ]);
+        break;
+      case 'recruiter':
+        downloadCsv('kerjanusa-recruiter.csv', [
+          ['Perusahaan', 'Email', 'Lokasi', 'Lowongan', 'Status'],
+          ...filteredRecruiterRows.map((recruiter) => [
+            recruiter.company_name || recruiter.name,
+            recruiter.email,
+            recruiter.locationLabel,
+            recruiter.active_jobs_count ?? 0,
+            formatAccountStatus(recruiter.account_status),
+          ]),
+        ]);
+        break;
+      case 'analytics':
+        downloadCsv('kerjanusa-analytics.csv', [
+          ['Metric', 'Value'],
+          ...analyticsCards.map((card) => [card.label, card.value]),
+        ]);
+        break;
+      default:
+        downloadCsv('kerjanusa-lowongan.csv', [
+          ['Judul', 'Perusahaan', 'Lamaran', 'Status'],
+          ...sortedJobRows.map((job) => [
+            job.title,
+            job.companyLabel,
+            job.applications_count ?? 0,
+            formatJobStatus(job),
+          ]),
+        ]);
+        break;
+    }
+  };
 
-  const renderStatusPill = (label, tone = 'neutral') => (
-    <span className={`admin-status-pill admin-status-pill-${tone}`}>{label}</span>
-  );
+  const handleModerationAction = async (report, action) => {
+    if (action === 'ignore') {
+      setFeedback({
+        type: 'success',
+        message: `${report.title} ditandai sebagai tidak prioritas untuk saat ini.`,
+      });
+      return;
+    }
 
-  const renderMonitoringSection = () => (
-    <>
-      <section className="admin-monitoring-grid">
-        <article className="admin-hero-card admin-card">
-          <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-          <h1>{sectionIntro.title}</h1>
-          <p>{sectionIntro.description}</p>
-          <div className="admin-action-row">
-            <button
-              type="button"
-              className="admin-btn admin-btn-primary"
-              onClick={() => loadDashboard(false)}
-            >
+    if (action === 'review') {
+      if (report.type === 'job') {
+        handleSectionChange('lowongan');
+        setSelectedOptimizationJobId(report.targetId);
+      } else {
+        handleSectionChange('pelamar');
+      }
+
+      setFeedback({
+        type: 'success',
+        message: `${report.title} dibuka untuk tindak lanjut admin.`,
+      });
+      return;
+    }
+
+    if (action === 'suspend' && report.accountAction) {
+      await handleUserStatusToggle(report.accountAction);
+      return;
+    }
+
+    setFeedback({
+      type: 'error',
+      message: 'Aksi ini belum bisa dijalankan langsung dari panel moderasi.',
+    });
+  };
+
+  const renderFeedback = () =>
+    feedback ? (
+      <div className={`superadmin-feedback is-${feedback.type}`}>{feedback.message}</div>
+    ) : null;
+
+  const renderHeaderAside = () => {
+    if (activeSection === 'analytics') {
+      return (
+        <div className="superadmin-header-actions">
+          <button type="button" className="superadmin-chip-button">
+            {ANALYTICS_PERIOD_LABEL}
+          </button>
+          <button
+            type="button"
+            className="superadmin-primary-button is-dark"
+            onClick={() => handleExport('analytics')}
+          >
+            <AdminIcon name="download" />
+            Export Report
+          </button>
+        </div>
+      );
+    }
+
+    if (activeSection === 'moderation') {
+      return (
+        <div className="superadmin-header-actions">
+          <label className="superadmin-search-chip">
+            <AdminIcon name="search" />
+            <input
+              type="search"
+              placeholder="Cari ID Konten atau Pelapor..."
+              value={moderationSearchQuery}
+              onChange={(event) => setModerationSearchQuery(event.target.value)}
+            />
+          </label>
+          <button type="button" className="superadmin-icon-chip">
+            <AdminIcon name="filter" />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="superadmin-header-user">
+        <div className="superadmin-header-user-meta">
+          <strong>{user?.name || 'Nama Superadmin'}</strong>
+          <span>
+            {activeSection === 'recruiter'
+              ? 'Administrator Level 1'
+              : activeSection === 'pelamar'
+                ? 'Administrator Utama'
+                : 'Superadmin'}
+          </span>
+        </div>
+        {(activeSection === 'pelamar' || activeSection === 'lowongan') && (
+          <div className="superadmin-avatar-badge">{getInitials(user?.name)}</div>
+        )}
+        <button type="button" className="superadmin-header-logout" onClick={handleLogout}>
+          {isLoggingOut ? 'Logout...' : 'Logout'}
+        </button>
+      </div>
+    );
+  };
+
+  const renderMonitoring = () => {
+    const syncTone = isLoading ? 'loading' : error ? 'error' : 'success';
+
+    return (
+      <section className="superadmin-monitoring-layout">
+        <article className="superadmin-panel superadmin-hero-panel">
+          <span className="superadmin-panel-eyebrow">{sectionMeta.eyebrow}</span>
+          <h2>{sectionMeta.title}</h2>
+          <p>{sectionMeta.description}</p>
+          <div className="superadmin-panel-actions">
+            <button type="button" className="superadmin-primary-button" onClick={() => loadDashboard()}>
               Refresh Data
             </button>
-            <Link to={APP_ROUTES.platform} className="admin-btn admin-btn-outline admin-link-button">
+            <Link to={APP_ROUTES.platform} className="superadmin-secondary-button">
               Lihat Profil KerjaNusa
             </Link>
           </div>
         </article>
 
-        {overviewCards.map((card, index) => (
-          <article
-            key={card.key}
-            className={`admin-stat-card admin-card admin-stat-card-${index + 1}`}
-          >
-            <span className="admin-stat-label">{card.label}</span>
-            <strong className="admin-stat-value">{numberFormatter.format(card.value)}</strong>
-            <small className="admin-stat-detail">{card.detail}</small>
-          </article>
-        ))}
+        <SectionMetrics cards={monitoringCards} />
 
-        <article className={`admin-sync-card admin-card admin-sync-card-${syncState.tone}`}>
-          <div className="admin-sync-icon" aria-hidden="true">
-            {syncState.tone === 'error' ? '!' : syncState.tone === 'loading' ? '…' : '✓'}
+        <article className={`superadmin-panel superadmin-sync-panel is-${syncTone}`}>
+          <div className="superadmin-sync-icon">
+            <AdminIcon name={syncTone === 'error' ? 'alert' : syncTone === 'loading' ? 'clock' : 'check'} />
           </div>
-          <div className="admin-sync-copy">
-            <span className="admin-card-eyebrow">{syncState.eyebrow}</span>
-            <h2>{syncState.title}</h2>
-            <p>{syncState.description}</p>
-            {syncState.actionLabel && (
-              <button
-                type="button"
-                className={`admin-btn ${
-                  syncState.tone === 'error' ? 'admin-btn-warning' : 'admin-btn-outline'
-                }`}
-                onClick={() => loadDashboard()}
-              >
-                {syncState.actionLabel}
-              </button>
+          <div>
+            <span className="superadmin-panel-eyebrow">
+              {syncTone === 'error'
+                ? 'Gagal memuat'
+                : syncTone === 'loading'
+                  ? 'Sinkronisasi data'
+                  : 'Status sistem'}
+            </span>
+            <h3>
+              {syncTone === 'error'
+                ? 'Dashboard superadmin belum bisa ditampilkan'
+                : syncTone === 'loading'
+                  ? 'Dashboard superadmin sedang disiapkan'
+                  : 'Semua modul backend dan frontend sedang sehat'}
+            </h3>
+            <p>
+              {syncTone === 'error'
+                ? error
+                : syncTone === 'loading'
+                  ? 'Data kandidat, recruiter, lowongan, dan lamaran sedang ditarik dari backend.'
+                  : `${applications.length} aktivitas lamaran dan ${jobs.length} lowongan terbaru siap dipantau dari panel ini.`}
+            </p>
+            <button
+              type="button"
+              className={`superadmin-primary-button${syncTone === 'error' ? ' is-warning' : ''}`}
+              onClick={() => loadDashboard()}
+            >
+              {syncTone === 'error' ? 'Muat Ulang' : 'Refresh Data'}
+            </button>
+          </div>
+        </article>
+
+        <article className="superadmin-panel superadmin-activity-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Log Aktivitas Terbaru</h3>
+            </div>
+            <button type="button" className="superadmin-inline-link" onClick={() => handleSectionChange('moderation')}>
+              Lihat Semua
+            </button>
+          </div>
+          <div className="superadmin-activity-list">
+            {[...applications, ...jobs].length === 0 ? (
+              <div className="superadmin-empty-state">
+                <div className="superadmin-empty-icon">⌁</div>
+                <p>Belum ada aktivitas terbaru yang bisa ditampilkan.</p>
+              </div>
+            ) : (
+              [...applications, ...jobs]
+                .slice(0, 6)
+                .map((entry, index) => (
+                  <article key={`activity-${index}`} className="superadmin-activity-row">
+                    <div className="superadmin-activity-badge">
+                      <AdminIcon name={entry.candidate ? 'candidate' : 'job'} />
+                    </div>
+                    <div className="superadmin-activity-copy">
+                      <strong>
+                        {entry.candidate
+                          ? `${entry.candidate?.name || 'Kandidat'} melamar ${entry.job?.title || 'lowongan'}`
+                          : `${entry.title} dipublikasikan / dipantau`}
+                      </strong>
+                      <p>
+                        {entry.candidate
+                          ? `${formatApplicationStage(entry.stage)} • ${entry.recruiter?.company_name || entry.recruiter?.name || 'Recruiter'}`
+                          : `${entry.recruiter?.company_name || entry.recruiter?.name || 'Recruiter'} • ${formatJobStatus(entry)}`}
+                      </p>
+                    </div>
+                    <small>{formatDateTime(entry.applied_at || entry.created_at)}</small>
+                  </article>
+                ))
             )}
           </div>
         </article>
       </section>
+    );
+  };
 
-      <section className="admin-card admin-log-panel">
-        <div className="admin-panel-head">
-          <div>
-            <h2>Log Aktivitas Terbaru</h2>
+  const renderCandidateManagement = () => (
+    <section className="superadmin-section-block">
+      <SectionMetrics cards={pelamarCards} />
+
+      <article className="superadmin-panel superadmin-table-panel">
+        <div className="superadmin-toolbar">
+          <label className="superadmin-search-input">
+            <AdminIcon name="search" />
+            <input
+              type="search"
+              placeholder="Cari nama pelamar atau posisi..."
+              value={candidateSearchQuery}
+              onChange={(event) => setCandidateSearchQuery(event.target.value)}
+            />
+          </label>
+
+          <div className="superadmin-toolbar-actions">
+            <select
+              className="superadmin-filter-select"
+              value={candidateStatusFilter}
+              onChange={(event) => setCandidateStatusFilter(event.target.value)}
+            >
+              <option value="all">Filter Status</option>
+              <option value="active">Aktif</option>
+              <option value="suspended">Nonaktif</option>
+            </select>
+            <button
+              type="button"
+              className="superadmin-secondary-button"
+              onClick={() => handleExport('pelamar')}
+            >
+              <AdminIcon name="download" />
+              Ekspor CSV
+            </button>
           </div>
-          <button
-            type="button"
-            className="admin-inline-link"
-            onClick={() => handleSectionChange('moderation')}
-          >
-            Lihat Semua
-          </button>
         </div>
-        <div className="admin-log-list">
-          {activityItems.length === 0 ? (
-            <div className="admin-empty-state">
-              <div className="admin-empty-icon" aria-hidden="true">
-                ⌁
-              </div>
-              <p>Belum ada aktivitas terbaru yang bisa ditampilkan.</p>
+
+        <div className="superadmin-table-wrap">
+          <table className="superadmin-table">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Posisi Dilamar</th>
+                <th>Status</th>
+                <th>Tanggal Daftar</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCandidateRows.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    <div className="superadmin-table-empty">Belum ada data pelamar yang cocok.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredCandidateRows.map((candidate) => (
+                  <tr key={candidate.id}>
+                    <td>
+                      <div className="superadmin-person-cell">
+                        <div className="superadmin-person-avatar">{candidate.initials}</div>
+                        <div>
+                          <strong>{candidate.name}</strong>
+                          <span>{candidate.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{candidate.position}</td>
+                    <td>
+                      <span
+                        className={`superadmin-status-tag is-${
+                          candidate.account_status === 'active' ? 'success' : 'muted'
+                        }`}
+                      >
+                        {formatAccountStatus(candidate.account_status)}
+                      </span>
+                    </td>
+                    <td>{candidate.dateLabel}</td>
+                    <td>
+                      <div className="superadmin-icon-actions">
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title="Kirim reset password"
+                          onClick={() => handleSendResetLink(candidate)}
+                          disabled={userResetActionInFlightId === candidate.id}
+                        >
+                          <AdminIcon name="reset" />
+                        </button>
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title={
+                            candidate.account_status === 'active'
+                              ? 'Suspend akun'
+                              : 'Aktifkan akun'
+                          }
+                          onClick={() => handleUserStatusToggle(candidate)}
+                          disabled={userStatusActionInFlightId === candidate.id}
+                        >
+                          <AdminIcon
+                            name={candidate.account_status === 'active' ? 'ban' : 'check'}
+                          />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          label={`Menampilkan 1-${Math.min(filteredCandidateRows.length, 10)} dari ${numberFormatter.format(
+            totals.candidates ?? 0
+          )} pelamar`}
+        />
+      </article>
+    </section>
+  );
+
+  const renderRecruiterManagement = () => (
+    <section className="superadmin-section-block">
+      <SectionMetrics cards={recruiterCards} />
+
+      <article className="superadmin-panel superadmin-table-panel">
+        <div className="superadmin-toolbar">
+          <label className="superadmin-search-input">
+            <AdminIcon name="search" />
+            <input
+              type="search"
+              placeholder="Cari nama perusahaan atau lokasi..."
+              value={recruiterSearchQuery}
+              onChange={(event) => setRecruiterSearchQuery(event.target.value)}
+            />
+          </label>
+
+          <div className="superadmin-toolbar-actions">
+            <button type="button" className="superadmin-secondary-button">
+              <AdminIcon name="filter" />
+              Filter
+            </button>
+            <button
+              type="button"
+              className="superadmin-primary-button is-dark"
+              onClick={() => handleExport('recruiter')}
+            >
+              <AdminIcon name="download" />
+              Ekspor Data
+            </button>
+          </div>
+        </div>
+
+        <div className="superadmin-table-wrap">
+          <table className="superadmin-table">
+            <thead>
+              <tr>
+                <th>Perusahaan</th>
+                <th>Lokasi</th>
+                <th>Lowongan</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRecruiterRows.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    <div className="superadmin-table-empty">Belum ada recruiter yang cocok.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredRecruiterRows.map((recruiter) => (
+                  <tr key={recruiter.id}>
+                    <td>
+                      <div className="superadmin-company-cell">
+                        <div className="superadmin-company-logo">{recruiter.initials}</div>
+                        <div>
+                          <strong>{recruiter.company_name || recruiter.name}</strong>
+                          <span>{recruiter.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{recruiter.locationLabel}</td>
+                    <td>{numberFormatter.format(recruiter.active_jobs_count ?? 0)}</td>
+                    <td>
+                      <span
+                        className={`superadmin-status-tag is-${
+                          recruiter.account_status === 'active'
+                            ? recruiter.profile_ready
+                              ? 'verified'
+                              : 'pending'
+                            : 'danger'
+                        }`}
+                      >
+                        {recruiter.account_status === 'active'
+                          ? recruiter.profile_ready
+                            ? 'Terverifikasi'
+                            : 'Menunggu'
+                          : 'Ditolak'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="superadmin-icon-actions">
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title="Kirim reset password"
+                          onClick={() => handleSendResetLink(recruiter)}
+                          disabled={userResetActionInFlightId === recruiter.id}
+                        >
+                          <AdminIcon name="eye" />
+                        </button>
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title={
+                            recruiter.account_status === 'active'
+                              ? 'Suspend akun recruiter'
+                              : 'Aktifkan akun recruiter'
+                          }
+                          onClick={() => handleUserStatusToggle(recruiter)}
+                          disabled={userStatusActionInFlightId === recruiter.id}
+                        >
+                          <AdminIcon
+                            name={recruiter.account_status === 'active' ? 'ban' : 'check'}
+                          />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          label={`Menampilkan 1-${Math.min(filteredRecruiterRows.length, 4)} dari ${numberFormatter.format(
+            totals.recruiters ?? 0
+          )} recruiter`}
+        />
+      </article>
+
+      <div className="superadmin-two-column">
+        <article className="superadmin-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Aktivitas Verifikasi Terakhir</h3>
             </div>
-          ) : (
-            activityItems.map((item) => (
-              <article key={item.key} className="admin-log-item">
-                <div className={`admin-log-badge admin-log-badge-${item.type}`} aria-hidden="true">
-                  {item.type === 'application' ? 'A' : 'J'}
+            <button type="button" className="superadmin-inline-link">
+              Lihat Semua
+            </button>
+          </div>
+          <div className="superadmin-list-stack">
+            {recruiterVerificationActivities.map((item) => (
+              <article key={item.key} className="superadmin-list-item">
+                <div className={`superadmin-list-icon is-${item.tone}`}>
+                  <AdminIcon name={item.tone === 'success' ? 'check' : 'ban'} />
                 </div>
-                <div className="admin-log-copy">
+                <div>
                   <strong>{item.title}</strong>
                   <p>{item.detail}</p>
+                  <small>{item.timestamp}</small>
                 </div>
-                <small>{formatDateTime(item.timestamp)}</small>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="superadmin-panel superadmin-dark-help">
+          <h3>Bantuan Verifikasi</h3>
+          <p>
+            Butuh bantuan dalam melakukan validasi dokumen perusahaan? Baca panduan verifikasi sesuai
+            standar internal KerjaNusa.
+          </p>
+          <button type="button" className="superadmin-primary-button">
+            <AdminIcon name="job" />
+            Buka Panduan
+          </button>
+        </article>
+      </div>
+    </section>
+  );
+
+  const renderJobManagement = () => (
+    <section className="superadmin-section-block">
+      <SectionMetrics cards={lowonganCards} />
+
+      <article className="superadmin-panel superadmin-table-panel">
+        <div className="superadmin-toolbar superadmin-toolbar-wide">
+          <div className="superadmin-toolbar-left">
+            <label className="superadmin-search-input">
+              <AdminIcon name="search" />
+              <input
+                type="search"
+                placeholder="Cari judul lowongan atau perusahaan..."
+                value={jobSearchQuery}
+                onChange={(event) => setJobSearchQuery(event.target.value)}
+              />
+            </label>
+            <button type="button" className="superadmin-secondary-button">
+              <AdminIcon name="filter" />
+              Filter
+            </button>
+          </div>
+
+          <div className="superadmin-toolbar-right">
+            <span>Urutkan:</span>
+            <select
+              className="superadmin-filter-select is-compact"
+              value={jobSortOrder}
+              onChange={(event) => setJobSortOrder(event.target.value)}
+            >
+              <option value="latest">Terbaru</option>
+              <option value="applications">Pelamar terbanyak</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="superadmin-table-wrap">
+          <table className="superadmin-table">
+            <thead>
+              <tr>
+                <th>Judul Lowongan</th>
+                <th>Perusahaan</th>
+                <th>Jumlah Pelamar</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedJobRows.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    <div className="superadmin-table-empty">Belum ada lowongan yang cocok.</div>
+                  </td>
+                </tr>
+              ) : (
+                sortedJobRows.map((job) => (
+                  <tr key={job.id} className={job.isFlagged ? 'is-flagged' : ''}>
+                    <td>
+                      <div className="superadmin-job-title-cell">
+                        <strong>{job.title}</strong>
+                        <span>Post: {job.postedAtLabel}</span>
+                        {job.isFlagged && <em>Melanggar aturan / butuh review</em>}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="superadmin-company-inline">
+                        <div className="superadmin-company-thumb">{getInitials(job.companyLabel)}</div>
+                        <div>{job.companyLabel}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={`superadmin-count-pill${
+                          job.isFlagged ? ' is-danger' : ''
+                        }`}
+                      >
+                        {numberFormatter.format(job.applications_count ?? 0)}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`superadmin-status-inline${
+                          job.workflow_status === 'active'
+                            ? ' is-success'
+                            : job.isFlagged
+                              ? ' is-danger'
+                              : ' is-muted'
+                        }`}
+                      >
+                        <i />
+                        {formatJobStatus(job)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="superadmin-job-actions">
+                        <button
+                          type="button"
+                          className="superadmin-icon-button"
+                          title="Pilih untuk rekomendasi reassign"
+                          onClick={() => setSelectedOptimizationJobId(job.id)}
+                        >
+                          <AdminIcon name="switch" />
+                        </button>
+
+                        {job.isFlagged ? (
+                          <button
+                            type="button"
+                            className="superadmin-danger-button"
+                            onClick={() => {
+                              handleSectionChange('moderation');
+                              setFeedback({
+                                type: 'success',
+                                message: `${job.title} dibuka ke panel moderasi.`,
+                              });
+                            }}
+                          >
+                            Review Moderasi
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="superadmin-icon-button"
+                            title="Tinjau detail lowongan"
+                            onClick={() => {
+                              setFeedback({
+                                type: 'success',
+                                message: `${job.title} dipilih untuk optimisasi penempatan.`,
+                              });
+                              setSelectedOptimizationJobId(job.id);
+                            }}
+                          >
+                            <AdminIcon name="eye" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          label={`Menampilkan 1-${Math.min(sortedJobRows.length, 10)} dari ${numberFormatter.format(
+            totals.total_jobs ?? 0
+          )} lowongan`}
+        />
+      </article>
+
+      <div className="superadmin-two-column superadmin-two-column-heavy">
+        <article className="superadmin-panel superadmin-optimization-card">
+          <span className="superadmin-panel-eyebrow">Optimisasi Penempatan Lowongan</span>
+          <h3>Prioritaskan lowongan yang rasio pelamarnya rendah</h3>
+          <p>
+            Sistem mendeteksi lowongan yang memiliki rasio pelamar rendah. Pertimbangkan untuk
+            memindahkan lowongan ini ke recruiter specialist yang lebih sesuai.
+          </p>
+
+          {selectedOptimizationJob ? (
+            <div className="superadmin-optimization-form">
+              <label className="superadmin-field-label">
+                Lowongan prioritas
+                <select
+                  value={String(selectedOptimizationJob.id)}
+                  onChange={(event) => setSelectedOptimizationJobId(Number(event.target.value))}
+                >
+                  {jobRows.map((job) => (
+                    <option key={job.id} value={String(job.id)}>
+                      {job.title} • {job.companyLabel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="superadmin-field-label">
+                Recruiter tujuan
+                <select
+                  value={jobReassignments[String(selectedOptimizationJob.id)] || ''}
+                  onChange={(event) =>
+                    setJobReassignments((current) => ({
+                      ...current,
+                      [String(selectedOptimizationJob.id)]: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Pilih recruiter aktif</option>
+                  {recruiterOptions.map((recruiter) => (
+                    <option key={recruiter.id} value={String(recruiter.id)}>
+                      {recruiter.company_name || recruiter.name} ({recruiter.email})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="superadmin-primary-button"
+                onClick={() => handleReassignJob(selectedOptimizationJob)}
+                disabled={jobActionInFlightId === selectedOptimizationJob.id}
+              >
+                {jobActionInFlightId === selectedOptimizationJob.id
+                  ? 'Memindahkan...'
+                  : 'Lihat Rekomendasi'}
+              </button>
+            </div>
+          ) : (
+            <p className="superadmin-empty-copy">Belum ada lowongan untuk dioptimalkan.</p>
+          )}
+        </article>
+
+        <article className="superadmin-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Log Aktivitas Terbaru</h3>
+            </div>
+          </div>
+          <div className="superadmin-list-stack">
+            {lowonganActivityLogs.map((item) => (
+              <article key={item.key} className="superadmin-list-item">
+                <div className={`superadmin-list-dot is-${item.tone}`} />
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                  <small>{item.timestamp}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+
+  const renderAnalytics = () => (
+    <section className="superadmin-section-block">
+      <SectionMetrics cards={analyticsCards} />
+
+      <div className="superadmin-analytics-grid">
+        <article className="superadmin-panel superadmin-chart-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Pertumbuhan Pengguna</h3>
+              <p>Statistik perbandingan pendaftaran bulanan</p>
+            </div>
+            <div className="superadmin-chart-legend">
+              <span>
+                <i className="is-navy" /> Pelamar
+              </span>
+              <span>
+                <i className="is-orange" /> Recruiter
+              </span>
+            </div>
+          </div>
+
+          <div className="superadmin-line-chart">
+            <svg viewBox="0 0 640 260" aria-hidden="true">
+              {[0, 1, 2, 3].map((lineIndex) => (
+                <line
+                  key={lineIndex}
+                  x1="18"
+                  y1={50 + lineIndex * 48}
+                  x2="622"
+                  y2={50 + lineIndex * 48}
+                  className="superadmin-chart-gridline"
+                />
+              ))}
+              <path d={candidateTrendPath} className="superadmin-chart-line is-navy" />
+              <path d={recruiterTrendPath} className="superadmin-chart-line is-orange is-dashed" />
+            </svg>
+            <div className="superadmin-chart-months">
+              {ANALYTICS_MONTH_LABELS.map((month) => (
+                <span key={month}>{month}</span>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <article className="superadmin-panel superadmin-category-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Kategori Pekerjaan</h3>
+              <p>Distribusi sektor terpopuler</p>
+            </div>
+          </div>
+          <div className="superadmin-category-list">
+            {categoryDistribution.map((category) => (
+              <article key={category.label} className="superadmin-category-item">
+                <div className="superadmin-category-head">
+                  <strong>{category.label}</strong>
+                  <span>{category.percentage}%</span>
+                </div>
+                <div className="superadmin-category-track">
+                  <span
+                    className={`is-${category.tone}`}
+                    style={{ width: `${category.percentage}%` }}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="superadmin-panel superadmin-popular-jobs-panel">
+          <div className="superadmin-panel-head">
+            <div>
+              <h3>Lowongan Paling Populer</h3>
+              <p>Berdasarkan jumlah klik dan lamaran masuk</p>
+            </div>
+            <button type="button" className="superadmin-inline-link" onClick={() => handleSectionChange('lowongan')}>
+              Lihat Semua
+            </button>
+          </div>
+
+          <div className="superadmin-table-wrap">
+            <table className="superadmin-table is-compact">
+              <thead>
+                <tr>
+                  <th>Nama Pekerjaan</th>
+                  <th>Perusahaan</th>
+                  <th>Lamaran</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {popularJobs.map((job) => (
+                  <tr key={job.id}>
+                    <td>
+                      <div className="superadmin-job-title-cell">
+                        <strong>{job.title}</strong>
+                        <span>
+                          {job.location || 'Remote'} • {job.job_type || 'Full-time'}
+                        </span>
+                      </div>
+                    </td>
+                    <td>{job.companyLabel}</td>
+                    <td>{numberFormatter.format(job.applications_count ?? 0)}</td>
+                    <td>
+                      <span
+                        className={`superadmin-status-tag is-${
+                          job.workflow_status === 'active' ? 'success' : 'warning'
+                        }`}
+                      >
+                        {job.workflow_status === 'active' ? 'Aktif' : 'Review'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <div className="superadmin-analytics-side">
+          <article className="superadmin-panel superadmin-demographic-panel">
+            <div className="superadmin-panel-head">
+              <div>
+                <h3>Demografi Pelamar</h3>
+              </div>
+            </div>
+            <div className="superadmin-demographic-wrap">
+              <div
+                className="superadmin-donut-chart"
+                style={{
+                  background: 'conic-gradient(#0f1937 0deg 234deg, #dde0e7 234deg 324deg, #f2f1f4 324deg 360deg)',
+                }}
+              >
+                <div className="superadmin-donut-center">65%</div>
+              </div>
+              <div className="superadmin-demographic-list">
+                {demographicsData.map((item) => (
+                  <div key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}%</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+
+          <article className="superadmin-panel superadmin-dark-panel">
+            <h3>Insights Khusus</h3>
+            <p>{insightsSpecialText}</p>
+            <button type="button" className="superadmin-primary-button">
+              Lihat Rekomendasi
+            </button>
+          </article>
+
+          <article className="superadmin-panel superadmin-kpi-target-panel">
+            <div className="superadmin-kpi-target-icon">
+              <AdminIcon name="spark" />
+            </div>
+            <div>
+              <span>Target Kuartal III</span>
+              <strong>85% Pencapaian KPI</strong>
+              <div className="superadmin-kpi-track">
+                <span style={{ width: '85%' }} />
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderModeration = () => (
+    <section className="superadmin-section-block">
+      <SectionMetrics cards={moderationCards} />
+
+      <article className="superadmin-panel superadmin-moderation-panel">
+        <div className="superadmin-moderation-tabs">
+          {MODERATION_TABS.map((tab) => {
+            const count =
+              tab.value === 'all'
+                ? moderationReports.length
+                : moderationReports.filter((report) => report.type === tab.value).length;
+
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                className={`superadmin-tab-button${
+                  moderationTab === tab.value ? ' is-active' : ''
+                }`}
+                onClick={() => setModerationTab(tab.value)}
+              >
+                {tab.label} {tab.value === 'all' ? '' : `(${count})`}
+              </button>
+            );
+          })}
+
+          <span className="superadmin-moderation-caption">
+            Menampilkan 1-{Math.min(filteredModerationReports.length, 10)} dari{' '}
+            {filteredModerationReports.length} antrian
+          </span>
+        </div>
+
+        <div className="superadmin-report-list">
+          {filteredModerationReports.length === 0 ? (
+            <div className="superadmin-empty-state is-panel">
+              <div className="superadmin-empty-icon">⌁</div>
+              <p>Tidak ada laporan yang cocok untuk ditampilkan saat ini.</p>
+            </div>
+          ) : (
+            filteredModerationReports.slice(0, 3).map((report) => (
+              <article key={report.key} className="superadmin-report-card">
+                <div className={`superadmin-report-type is-${report.type}`}>
+                  <AdminIcon name={report.type === 'job' ? 'job' : 'candidate'} />
+                </div>
+
+                <div className="superadmin-report-body">
+                  <div className="superadmin-report-top">
+                    <div>
+                      <h3>{report.title}</h3>
+                      <span>{report.ownerLabel}</span>
+                    </div>
+                    <div className="superadmin-report-meta">
+                      <span className={`superadmin-inline-badge is-${report.badgeTone}`}>
+                        {report.severityLabel}
+                      </span>
+                      <small>Dilaporkan {report.timestamp}</small>
+                    </div>
+                  </div>
+
+                  <div className="superadmin-report-quote">
+                    <strong>Alasan Pelaporan</strong>
+                    <p>"{report.reason}"</p>
+                  </div>
+
+                  <div className="superadmin-report-evidence">
+                    {Array.from({ length: report.evidenceCount }).map((_, index) => (
+                      <div key={`${report.key}-evidence-${index}`} className="superadmin-report-proof">
+                        <div className="superadmin-proof-skeleton" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="superadmin-report-actions">
+                  <button
+                    type="button"
+                    className="superadmin-report-button is-dark"
+                    onClick={() => handleModerationAction(report, 'review')}
+                  >
+                    {report.type === 'job' ? 'Hapus Konten' : 'Minta Verifikasi'}
+                  </button>
+                  <button
+                    type="button"
+                    className="superadmin-report-button is-danger"
+                    onClick={() => handleModerationAction(report, 'suspend')}
+                  >
+                    Suspend Akun
+                  </button>
+                  <button
+                    type="button"
+                    className="superadmin-report-button is-light"
+                    onClick={() => handleModerationAction(report, 'ignore')}
+                  >
+                    Abaikan
+                  </button>
+                </div>
               </article>
             ))
           )}
         </div>
-      </section>
-    </>
-  );
 
-  const renderCandidateSection = () => (
-    <section className="admin-section-stack">
-      <article className="admin-card admin-section-intro">
-        <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-        <h1>{sectionIntro.title}</h1>
-        <p>{sectionIntro.description}</p>
-      </article>
-
-      <div className="admin-card-grid admin-card-grid-two">
-        {candidateTable.length === 0 ? (
-          <article className="admin-card admin-empty-panel">
-            <p>Belum ada data pelamar.</p>
-          </article>
-        ) : (
-          candidateTable.map((candidate) => (
-            <article key={candidate.id} className="admin-card admin-entity-card">
-              <div className="admin-entity-head">
-                <div>
-                  <h3>{candidate.name}</h3>
-                  <p>{candidate.email}</p>
-                </div>
-                {renderStatusPill(
-                  formatAccountStatus(candidate.account_status),
-                  candidate.account_status === 'active' ? 'success' : 'danger'
-                )}
-              </div>
-
-              <div className="admin-entity-metadata">
-                {renderStatusPill(
-                  candidate.profile_ready ? 'Siap melamar' : 'Belum siap',
-                  candidate.profile_ready ? 'success' : 'warning'
-                )}
-                {renderStatusPill(
-                  formatApplicationStage(candidate.latest_application_stage),
-                  candidate.latest_application_stage ? 'neutral' : 'muted'
-                )}
-              </div>
-
-              <dl className="admin-entity-list">
-                <div>
-                  <dt>Lamaran</dt>
-                  <dd>{numberFormatter.format(candidate.applications_count ?? 0)}</dd>
-                </div>
-                <div>
-                  <dt>Lowongan terakhir</dt>
-                  <dd>{candidate.latest_job_title || '-'}</dd>
-                </div>
-              </dl>
-
-              <p className="admin-entity-note">
-                {candidate.account_status_reason ||
-                  `Terakhir aktif pada ${formatDateTime(candidate.latest_applied_at || candidate.created_at)}`}
-              </p>
-
-              {renderUserActions(candidate)}
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
-
-  const renderRecruiterSection = () => (
-    <section className="admin-section-stack">
-      <article className="admin-card admin-section-intro">
-        <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-        <h1>{sectionIntro.title}</h1>
-        <p>{sectionIntro.description}</p>
-      </article>
-
-      <div className="admin-card-grid admin-card-grid-two">
-        {recruiterTable.length === 0 ? (
-          <article className="admin-card admin-empty-panel">
-            <p>Belum ada recruiter yang terdaftar.</p>
-          </article>
-        ) : (
-          recruiterTable.map((recruiter) => (
-            <article key={recruiter.id} className="admin-card admin-entity-card">
-              <div className="admin-entity-head">
-                <div>
-                  <h3>{recruiter.name}</h3>
-                  <p>{recruiter.company_name || recruiter.email}</p>
-                </div>
-                {renderStatusPill(
-                  formatAccountStatus(recruiter.account_status),
-                  recruiter.account_status === 'active' ? 'success' : 'danger'
-                )}
-              </div>
-
-              <div className="admin-entity-metadata">
-                {renderStatusPill(
-                  recruiter.profile_ready ? 'Siap publish' : 'Belum siap',
-                  recruiter.profile_ready ? 'success' : 'warning'
-                )}
-                {renderStatusPill(
-                  `${numberFormatter.format(recruiter.active_jobs_count ?? 0)} lowongan aktif`,
-                  'neutral'
-                )}
-              </div>
-
-              <dl className="admin-entity-list">
-                <div>
-                  <dt>Total lowongan</dt>
-                  <dd>{numberFormatter.format(recruiter.jobs_count ?? 0)}</dd>
-                </div>
-                <div>
-                  <dt>Terakhir publish</dt>
-                  <dd>{recruiter.latest_job_title || '-'}</dd>
-                </div>
-              </dl>
-
-              <p className="admin-entity-note">
-                {recruiter.account_status_reason ||
-                  `Update terakhir ${formatDateTime(recruiter.latest_job_created_at || recruiter.created_at)}`}
-              </p>
-
-              {renderUserActions(recruiter)}
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
-
-  const renderJobsSection = () => (
-    <section className="admin-section-stack">
-      <article className="admin-card admin-section-intro">
-        <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-        <h1>{sectionIntro.title}</h1>
-        <p>{sectionIntro.description}</p>
-      </article>
-
-      <div className="admin-card-grid">
-        {jobs.length === 0 ? (
-          <article className="admin-card admin-empty-panel">
-            <p>Belum ada lowongan yang tercatat.</p>
-          </article>
-        ) : (
-          jobs.map((job) => {
-            const selectedRecruiterId = jobReassignments[String(job.id)] || '';
-
-            return (
-              <article key={job.id} className="admin-card admin-job-card">
-                <div className="admin-entity-head">
-                  <div>
-                    <h3>{job.title}</h3>
-                    <p>{job.location || 'Lokasi belum diisi'}</p>
-                  </div>
-                  {renderStatusPill(formatJobStatus(job), job.workflow_status === 'active' ? 'success' : 'warning')}
-                </div>
-
-                <div className="admin-entity-metadata">
-                  {renderStatusPill(`${numberFormatter.format(job.applications_count ?? 0)} lamaran`, 'neutral')}
-                  {renderStatusPill(job.recruiter?.name || 'Recruiter belum terbaca', 'muted')}
-                </div>
-
-                <label className="admin-field">
-                  <span>Alihkan ke recruiter aktif</span>
-                  <select
-                    value={selectedRecruiterId}
-                    onChange={(event) =>
-                      setJobReassignments((current) => ({
-                        ...current,
-                        [String(job.id)]: event.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">Pilih recruiter aktif</option>
-                    {recruiterOptions.map((recruiter) => (
-                      <option key={recruiter.id} value={String(recruiter.id)}>
-                        {recruiter.company_name || recruiter.name} ({recruiter.email})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="admin-action-row">
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn-primary"
-                    onClick={() => handleReassignJob(job)}
-                    disabled={jobActionInFlightId === job.id}
-                  >
-                    {jobActionInFlightId === job.id ? 'Memindahkan...' : 'Alihkan'}
-                  </button>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
-    </section>
-  );
-
-  const renderAnalyticsSection = () => (
-    <section className="admin-section-stack">
-      <article className="admin-card admin-section-intro">
-        <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-        <h1>{sectionIntro.title}</h1>
-        <p>{sectionIntro.description}</p>
-      </article>
-
-      <div className="admin-card-grid admin-card-grid-three">
-        {analyticsCards.map((item) => (
-          <article key={item.label} className="admin-card admin-stat-card admin-stat-card-inline">
-            <span className="admin-stat-label">{item.label}</span>
-            <strong className="admin-stat-value">{item.value}</strong>
-          </article>
-        ))}
-      </div>
-
-      <article className="admin-card admin-metrics-panel">
-        <div className="admin-panel-head">
-          <div>
-            <h2>Rasio Operasional Inti</h2>
+        <div className="superadmin-moderation-footer">
+          <button type="button" className="superadmin-inline-nav">
+            ‹ Sebelumnya
+          </button>
+          <div className="superadmin-pagination">
+            <button type="button" className="superadmin-page-button is-active">
+              1
+            </button>
+            <button type="button" className="superadmin-page-button">
+              2
+            </button>
+            <button type="button" className="superadmin-page-button">
+              3
+            </button>
           </div>
-        </div>
-
-        <div className="admin-progress-list">
-          {performanceBars.map((bar) => (
-            <article key={bar.label} className="admin-progress-card">
-              <div className="admin-progress-head">
-                <strong>{bar.label}</strong>
-                <span>{bar.value}%</span>
-              </div>
-              <div className="admin-progress-track">
-                <span style={{ width: `${bar.value}%` }} />
-              </div>
-              <p>{bar.summary}</p>
-            </article>
-          ))}
+          <button type="button" className="superadmin-inline-nav">
+            Selanjutnya ›
+          </button>
         </div>
       </article>
     </section>
   );
 
-  const renderModerationSection = () => (
-    <section className="admin-section-stack">
-      <article className="admin-card admin-section-intro">
-        <span className="admin-card-eyebrow">{sectionIntro.eyebrow}</span>
-        <h1>{sectionIntro.title}</h1>
-        <p>{sectionIntro.description}</p>
-      </article>
-
-      <div className="admin-card-grid admin-card-grid-two">
-        <article className="admin-card admin-list-panel">
-          <div className="admin-panel-head">
-            <div>
-              <h2>Lowongan Perlu Perhatian</h2>
-            </div>
-          </div>
-          <div className="admin-list-stack">
-            {moderationItems.length === 0 ? (
-              <p className="admin-empty-copy">Tidak ada lowongan yang membutuhkan perhatian khusus.</p>
-            ) : (
-              moderationItems.map((job) => (
-                <article key={job.id} className="admin-list-row">
-                  <div>
-                    <strong>{job.title}</strong>
-                    <p>{job.recruiter?.name || '-'} • {job.location || '-'}</p>
-                  </div>
-                  {renderStatusPill(formatJobStatus(job), job.workflow_status === 'active' ? 'success' : 'warning')}
-                </article>
-              ))
-            )}
-          </div>
-        </article>
-
-        <article className="admin-card admin-list-panel">
-          <div className="admin-panel-head">
-            <div>
-              <h2>Lamaran Pending</h2>
-            </div>
-          </div>
-          <div className="admin-list-stack">
-            {pendingApplications.length === 0 ? (
-              <p className="admin-empty-copy">Tidak ada lamaran pending untuk dimonitor saat ini.</p>
-            ) : (
-              pendingApplications.map((application) => (
-                <article key={application.id} className="admin-list-row">
-                  <div>
-                    <strong>{application.candidate?.name || 'Kandidat'}</strong>
-                    <p>{application.job?.title || '-'} • {application.recruiter?.name || '-'}</p>
-                  </div>
-                  {renderStatusPill(formatApplicationStatus(application.status), 'warning')}
-                </article>
-              ))
-            )}
-          </div>
-        </article>
-      </div>
-    </section>
-  );
-
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'pelamar':
-        return renderCandidateSection();
-      case 'recruiter':
-        return renderRecruiterSection();
-      case 'lowongan':
-        return renderJobsSection();
-      case 'analytics':
-        return renderAnalyticsSection();
-      case 'moderation':
-        return renderModerationSection();
-      case 'monitoring':
-      default:
-        return renderMonitoringSection();
+  const renderSectionContent = () => {
+    if (activeSection === 'monitoring') {
+      return renderMonitoring();
     }
+
+    if (activeSection === 'pelamar') {
+      return renderCandidateManagement();
+    }
+
+    if (activeSection === 'recruiter') {
+      return renderRecruiterManagement();
+    }
+
+    if (activeSection === 'lowongan') {
+      return renderJobManagement();
+    }
+
+    if (activeSection === 'analytics') {
+      return renderAnalytics();
+    }
+
+    return renderModeration();
   };
 
   return (
-    <div className="admin-dashboard-page">
-      <div className="admin-dashboard-strip">
+    <div className="superadmin-page">
+      <div className="superadmin-stitch-banner">
         Konten ini dibuat oleh pengguna Stitch. Jangan masukkan informasi sensitif karena dapat
         dilihat oleh pemilik.
       </div>
 
-      <div className="admin-dashboard-shell">
-        <aside className="admin-dashboard-sidebar">
-          <div className="admin-sidebar-brand">
+      <div className="superadmin-shell">
+        <aside className="superadmin-sidebar">
+          <div className="superadmin-sidebar-brand">
             <strong>KerjaNusa</strong>
             <span>Superadmin Dashboard</span>
           </div>
 
-          <nav className="admin-sidebar-nav" aria-label="Navigasi superadmin">
-            {ADMIN_SECTION_OPTIONS.map((section) => (
+          <nav className="superadmin-sidebar-nav" aria-label="Navigasi superadmin">
+            {SECTION_OPTIONS.map((section) => (
               <button
                 key={section.value}
                 type="button"
-                className={`admin-sidebar-link${
+                className={`superadmin-sidebar-link${
                   activeSection === section.value ? ' is-active' : ''
                 }`}
                 onClick={() => handleSectionChange(section.value)}
               >
-                <span className="admin-sidebar-link-icon" aria-hidden="true" />
+                <AdminIcon name={section.value} />
                 <span>{section.label}</span>
               </button>
             ))}
           </nav>
 
-          <div className="admin-sidebar-footer">
-            <button
-              type="button"
-              className="admin-sidebar-post-job"
-              onClick={() => handleSectionChange('lowongan')}
-            >
+          <div className="superadmin-sidebar-footer">
+            <button type="button" className="superadmin-sidebar-post-job">
+              <span>+</span>
               Post Job
             </button>
 
-            <div className="admin-sidebar-profile">
-              <div className="admin-sidebar-avatar" aria-hidden="true">
-                {getInitials(user?.name)}
-              </div>
+            <div className="superadmin-sidebar-user">
+              <div className="superadmin-sidebar-avatar">{getInitials(user?.name)}</div>
               <div>
-                <strong>{user?.name || 'Superadmin KerjaNusa'}</strong>
-                <span>Superadmin Profile</span>
+                <strong>{user?.name || 'Nama Superadmin'}</strong>
+                <span>
+                  {activeSection === 'moderation'
+                    ? 'Administrator Utama'
+                    : activeSection === 'recruiter'
+                      ? 'Administrator Level 1'
+                      : 'Superadmin Profile'}
+                </span>
               </div>
             </div>
+
+            {activeSection === 'moderation' && (
+              <button type="button" className="superadmin-sidebar-logout" onClick={handleLogout}>
+                <AdminIcon name="logout" />
+                Logout
+              </button>
+            )}
           </div>
         </aside>
 
-        <section className="admin-dashboard-main">
-          <header className="admin-main-header">
-            <div className="admin-main-brand">KerjaNusa</div>
-
-            <nav className="admin-main-tabs" aria-label="Tab superadmin">
-              {ADMIN_TOP_NAV_OPTIONS.map((section) => (
-                <button
-                  key={section.value}
-                  type="button"
-                  className={`admin-main-tab${
-                    activeSection === section.value ? ' is-active' : ''
-                  }`}
-                  onClick={() => handleSectionChange(section.value)}
-                >
-                  {section.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="admin-main-user">
-              <div className="admin-main-user-copy">
-                <strong>{(user?.name || 'Nama Superadmin').toUpperCase()}</strong>
-                <span>Superadmin</span>
+        <main className="superadmin-main">
+          <header className="superadmin-main-header">
+            <div className="superadmin-main-title">
+              <div className="superadmin-main-title-row">
+                <h1>{currentSection.title}</h1>
+                {titleBadge ? <span className="superadmin-title-badge">{titleBadge}</span> : null}
               </div>
-              <button
-                type="button"
-                className="admin-logout-pill"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-              >
-                {isLoggingOut ? 'Logout...' : 'Logout'}
-              </button>
             </div>
+            {renderHeaderAside()}
           </header>
 
-          <main className="admin-dashboard-content">
-            {feedback && (
-              <div className={`admin-feedback admin-feedback-${feedback.type}`}>
-                {feedback.message}
-              </div>
-            )}
-            {renderActiveSection()}
-          </main>
-        </section>
+          <section className="superadmin-content">
+            {renderFeedback()}
+            {renderSectionContent()}
+          </section>
+
+          <footer className="superadmin-footer">
+            <span>{footerMeta.copy}</span>
+            <div className="superadmin-footer-links">
+              {footerMeta.links.map((link) => (
+                <a key={link} href="#admin-meta">
+                  {link}
+                </a>
+              ))}
+            </div>
+          </footer>
+        </main>
       </div>
     </div>
   );

@@ -114,6 +114,8 @@ class AdminService
                     'id' => $recruiter->id,
                     'name' => $recruiter->name,
                     'company_name' => $recruiter->company_name,
+                    'company_location' => Arr::get($recruiter->recruiter_profile ?? [], 'companyLocation')
+                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'company_location'),
                     'email' => $recruiter->email,
                     'phone' => $recruiter->phone,
                     'account_status' => $recruiter->account_status,
@@ -136,7 +138,7 @@ class AdminService
             ->all();
 
         $jobs = Job::query()
-            ->with('recruiter:id,name,email')
+            ->with('recruiter:id,name,email,company_name')
             ->withCount('applications')
             ->latest()
             ->get()
@@ -154,6 +156,7 @@ class AdminService
                 'recruiter' => [
                     'id' => $job->recruiter?->id,
                     'name' => $job->recruiter?->name,
+                    'company_name' => $job->recruiter?->company_name,
                     'email' => $job->recruiter?->email,
                 ],
             ])
@@ -164,7 +167,7 @@ class AdminService
             ->with([
                 'candidate:id,name,email,phone',
                 'job:id,title,location,recruiter_id',
-                'job.recruiter:id,name,email',
+                'job.recruiter:id,name,email,company_name',
             ])
             ->orderByDesc('applied_at')
             ->orderByDesc('created_at')
@@ -189,6 +192,7 @@ class AdminService
                 'recruiter' => [
                     'id' => $application->job?->recruiter?->id,
                     'name' => $application->job?->recruiter?->name,
+                    'company_name' => $application->job?->recruiter?->company_name,
                     'email' => $application->job?->recruiter?->email,
                 ],
             ])
