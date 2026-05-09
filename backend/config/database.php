@@ -2,6 +2,32 @@
 
 use Illuminate\Support\Str;
 
+$databaseUrl = env('DATABASE_URL');
+$databaseHost = env('DB_HOST');
+$databasePort = (string) env('DB_PORT', '');
+$databaseUsername = (string) env('DB_USERNAME', '');
+$defaultDatabaseConnection = env('DB_CONNECTION');
+
+if (!$defaultDatabaseConnection) {
+    if (is_string($databaseUrl) && str_starts_with($databaseUrl, 'postgres')) {
+        $defaultDatabaseConnection = 'pgsql';
+    } elseif (is_string($databaseUrl) && str_starts_with($databaseUrl, 'mysql')) {
+        $defaultDatabaseConnection = 'mysql';
+    } elseif (
+        is_string($databaseHost) &&
+        str_contains($databaseHost, '.supabase.com')
+    ) {
+        $defaultDatabaseConnection = 'pgsql';
+    } elseif (
+        $databasePort === '5432' &&
+        str_starts_with($databaseUsername, 'postgres')
+    ) {
+        $defaultDatabaseConnection = 'pgsql';
+    } else {
+        $defaultDatabaseConnection = 'sqlite';
+    }
+}
+
 return [
 
     /*
@@ -15,7 +41,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => $defaultDatabaseConnection,
 
     /*
     |--------------------------------------------------------------------------

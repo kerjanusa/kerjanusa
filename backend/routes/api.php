@@ -4,8 +4,10 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\JobController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +28,47 @@ Route::get('/', fn () => response()->json([
     'timestamp' => now()->toIso8601String(),
 ]));
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
+Route::get('/health/database', function () {
+    try {
+        DB::connection()->getPdo();
+        DB::select('select 1');
+
+        $requiredTables = [
+            'users',
+            'jobs',
+            'applications',
+            'password_reset_tokens',
+        ];
+
+        $tables = [];
+        $missingTables = [];
+
+        foreach ($requiredTables as $table) {
+            $exists = Schema::hasTable($table);
+            $tables[$table] = $exists;
+
+            if (!$exists) {
+                $missingTables[] = $table;
+            }
+        }
+
+        return response()->json([
+            'status' => empty($missingTables) ? 'ok' : 'warning',
+            'database' => empty($missingTables) ? 'ready' : 'schema_incomplete',
+            'connection' => config('database.default'),
+            'tables' => $tables,
+            'missing_tables' => $missingTables,
+        ], empty($missingTables) ? 200 : 500);
+    } catch (\Throwable $exception) {
+        return response()->json([
+            'status' => 'error',
+            'database' => 'unavailable',
+            'connection' => config('database.default'),
+            'message' => 'Database connection failed.',
+            'exception' => class_basename($exception),
+        ], 500);
+    }
+});
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
