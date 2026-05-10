@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import MonitoringIndonesiaMap from '../components/MonitoringIndonesiaMap.jsx';
+import { getLocationCoordinates } from '../data/locationCoordinates.js';
 import useAuth from '../hooks/useAuth.js';
 import AdminService from '../services/adminService.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
@@ -135,6 +137,18 @@ const downloadCsv = (filename, rows) => {
 };
 
 const normalizeText = (value = '') => String(value || '').trim().toLowerCase();
+
+const isMappableMonitoringLocation = (value = '') => {
+  const normalizedValue = normalizeText(value);
+
+  return (
+    Boolean(normalizedValue) &&
+    normalizedValue !== 'remote' &&
+    !normalizedValue.startsWith('lokasi belum')
+  );
+};
+
+const getMonitoringLocationLabel = (value = '') => String(value || '').trim();
 
 const buildLast7DaySeries = (items = []) => {
   const today = new Date();
@@ -612,18 +626,6 @@ const SectionMetrics = ({ cards }) => (
   </div>
 );
 
-const MonitoringIndonesiaMap = () => (
-  <div className="superadmin-monitoring-map-frame">
-    <img
-      className="superadmin-monitoring-map-image"
-      src="/indonesia-monitoring-map.webp"
-      alt=""
-      aria-hidden="true"
-      loading="lazy"
-    />
-  </div>
-);
-
 const Pagination = ({ label, page, totalItems, pageSize = PAGE_SIZE, onPageChange }) => {
   const totalPages = getTotalPages(totalItems, pageSize);
   const items = buildPaginationItems(page, totalPages);
@@ -702,6 +704,7 @@ const AdminDashboardPage = () => {
   const [moderationPage, setModerationPage] = useState(1);
   const [dismissedModerationKeys, setDismissedModerationKeys] = useState([]);
   const [selectedOptimizationJobId, setSelectedOptimizationJobId] = useState(null);
+  const [selectedMonitoringMapKey, setSelectedMonitoringMapKey] = useState('');
 
   useEffect(() => {
     setActiveSection(resolveSectionFromHash(location.hash));
@@ -1266,6 +1269,177 @@ const AdminDashboardPage = () => {
         .includes(normalizedQuery);
     });
   }, [monitoringActivityRows, monitoringSearchQuery]);
+
+  const monitoringLocationMap = useMemo(() => {
+    const pointsByCoordinates = new Map();
+    const unresolvedLocations = new Map();
+
+    const registerUnresolvedLocation = (locationLabel) => {
+      const nextLabel = getMonitoringLocationLabel(locationLabel);
+
+      if (nextLabel) {
+        unresolvedLocations.set(nextLabel, nextLabel);
+      }
+    };
+
+    const registerLocationSignal = (locationLabel, timestamp, applySignal) => {
+      if (!isMappableMonitoringLocation(locationLabel)) {
+        return;
+      }
+
+      const coordinates = getLocationCoordinates(locationLabel);
+
+      if (!coordinates) {
+        registerUnresolvedLocation(locationLabel);
+        return;
+      }
+
+      const pointKey = `${coordinates.latitude.toFixed(4)}:${coordinates.longitude.toFixed(4)}`;
+      const nextLabel = getMonitoringLocationLabel(locationLabel);
+      const entry =
+        pointsByCoordinates.get(pointKey) || {
+          key: pointKey,
+          label: nextLabel || 'Lokasi',
+          aliases: new Set(),
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          candidateInterestCount: 0,
+          candidateReviewCount: 0,
+          recruiterCount: 0,
+          recruiterReviewCount: 0,
+          jobCount: 0,
+          flaggedJobCount: 0,
+          applicationCount: 0,
+          lastUpdatedAt: null,
+        };
+
+      if (nextLabel) {
+        entry.aliases.add(nextLabel);
+      }
+
+      applySignal(entry);
+
+      if (timestamp) {
+        const nextTimestamp = new Date(timestamp).getTime();
+        const currentTimestamp = entry.lastUpdatedAt ? new Date(entry.lastUpdatedAt).getTime() : 0;
+
+        if (Number.isFinite(nextTimestamp) && nextTimestamp > currentTimestamp) {
+          entry.lastUpdatedAt = timestamp;
+        }
+      }
+
+      pointsByCoordinates.set(pointKey, entry);
+    };
+
+    candidateRows.forEach((candidate) => {
+      const uniqueLocations = Array.from(new Set(candidate.preferred_locations || []));
+
+      uniqueLocations.forEach((locationLabel) =>
+        registerLocationSignal(locationLabel, candidate.latest_applied_at || candidate.created_at, (entry) => {
+          entry.candidateInterestCount += 1;
+
+          if (candidate.adminStatus.key !== 'active') {
+            entry.candidateReviewCount += 1;
+          }
+        })
+      );
+    });
+
+    recruiterRows.forEach((recruiter) => {
+      registerLocationSignal(
+        recruiter.locationLabel,
+        recruiter.latest_job_created_at || recruiter.created_at,
+        (entry) => {
+          entry.recruiterCount += 1;
+
+          if (recruiter.adminStatus.key !== 'verified') {
+            entry.recruiterReviewCount += 1;
+          }
+        }
+      );
+    });
+
+    jobRows.forEach((job) => {
+      registerLocationSignal(job.location, job.created_at, (entry) => {
+        entry.jobCount += 1;
+
+        if (job.isFlagged) {
+          entry.flaggedJobCount += 1;
+        }
+      });
+    });
+
+    applications.forEach((application) => {
+      registerLocationSignal(application.job?.location, application.applied_at, (entry) => {
+        entry.applicationCount += 1;
+      });
+    });
+
+    const points = Array.from(pointsByCoordinates.values())
+      .map((point) => {
+        const aliases = Array.from(point.aliases).sort((firstLabel, secondLabel) => {
+          if (firstLabel.length !== secondLabel.length) {
+            return secondLabel.length - firstLabel.length;
+          }
+
+          return firstLabel.localeCompare(secondLabel, 'id');
+        });
+        const totalSignals =
+          point.candidateInterestCount +
+          point.recruiterCount +
+          point.jobCount +
+          point.applicationCount;
+        const reviewCount =
+          point.flaggedJobCount + point.candidateReviewCount + point.recruiterReviewCount;
+        const tone =
+          point.flaggedJobCount > 0 ? 'danger' : reviewCount > 0 ? 'warning' : 'success';
+        const activityScore =
+          point.applicationCount * 5 +
+          point.jobCount * 4 +
+          point.recruiterCount * 3 +
+          point.candidateInterestCount * 2 +
+          point.flaggedJobCount * 6;
+
+        return {
+          ...point,
+          label: aliases[0] || point.label,
+          aliases,
+          totalSignals,
+          reviewCount,
+          tone,
+          activityScore,
+        };
+      })
+      .sort((firstPoint, secondPoint) => {
+        if (secondPoint.activityScore !== firstPoint.activityScore) {
+          return secondPoint.activityScore - firstPoint.activityScore;
+        }
+
+        if (secondPoint.totalSignals !== firstPoint.totalSignals) {
+          return secondPoint.totalSignals - firstPoint.totalSignals;
+        }
+
+        return firstPoint.label.localeCompare(secondPoint.label, 'id');
+      });
+
+    return {
+      points,
+      unmappedLocations: Array.from(unresolvedLocations.keys()).sort((firstLabel, secondLabel) =>
+        firstLabel.localeCompare(secondLabel, 'id')
+      ),
+    };
+  }, [applications, candidateRows, jobRows, recruiterRows]);
+
+  useEffect(() => {
+    if (
+      selectedMonitoringMapKey &&
+      monitoringLocationMap.points.some((point) => point.key === selectedMonitoringMapKey)
+    ) {
+      return;
+    }
+
+    setSelectedMonitoringMapKey(monitoringLocationMap.points[0]?.key || '');
+  }, [monitoringLocationMap.points, selectedMonitoringMapKey]);
 
   const categoryDistribution = useMemo(() => {
     const counts = jobRows.reduce((categories, job) => {
@@ -2179,8 +2353,14 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="superadmin-monitoring-bodygrid">
-          <article className="superadmin-panel superadmin-monitoring-map-panel" aria-hidden="true">
-            <MonitoringIndonesiaMap />
+          <article className="superadmin-panel superadmin-monitoring-map-panel">
+            <MonitoringIndonesiaMap
+              points={monitoringLocationMap.points}
+              selectedPointKey={selectedMonitoringMapKey}
+              onSelectPoint={setSelectedMonitoringMapKey}
+              unmappedLocations={monitoringLocationMap.unmappedLocations}
+              formatDateTime={formatDateTime}
+            />
           </article>
 
           <article className="superadmin-panel superadmin-monitoring-logpanel">

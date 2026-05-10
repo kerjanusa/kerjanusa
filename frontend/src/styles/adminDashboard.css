@@ -913,8 +913,8 @@
 .superadmin-monitoring-map-panel {
   grid-column: 1;
   grid-row: 1;
-  min-height: 360px;
-  padding: 0;
+  min-height: 420px;
+  padding: 1rem;
 }
 
 .superadmin-monitoring-logpanel {
@@ -963,22 +963,350 @@
   padding: 1rem;
 }
 
-.superadmin-monitoring-map-frame {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  overflow: hidden;
-  background: #ffffff;
+.superadmin-monitoring-map-head {
+  margin-bottom: 0.95rem;
+  align-items: flex-start;
 }
 
-.superadmin-monitoring-map-image {
+.superadmin-monitoring-map-head p {
+  display: block;
+  max-width: 62ch;
+  margin-top: 0.4rem;
+  color: #6f7380;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.superadmin-monitoring-map-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.superadmin-monitoring-map-summary-chip {
+  display: grid;
+  gap: 0.14rem;
+  min-width: 112px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 12px;
+  background: #fcfbf8;
+}
+
+.superadmin-monitoring-map-summary-chip strong {
+  color: #1f2535;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.superadmin-monitoring-map-summary-chip span {
+  color: #7a8093;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.superadmin-monitoring-map-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 960 / 420;
+  overflow: hidden;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(243, 219, 155, 0.38) 0%, rgba(243, 219, 155, 0) 28%),
+    radial-gradient(circle at 82% 78%, rgba(184, 135, 48, 0.12) 0%, rgba(184, 135, 48, 0) 30%),
+    linear-gradient(180deg, #fffdfa 0%, #f8f1e5 100%);
+}
+
+.superadmin-monitoring-map-svg {
   width: 100%;
   height: 100%;
   display: block;
-  max-width: none;
-  object-fit: cover;
-  object-position: center center;
-  transform: scale(1.06);
+}
+
+.superadmin-monitoring-map-water {
+  fill: rgba(255, 250, 244, 0.95);
+}
+
+.superadmin-monitoring-map-grid line {
+  stroke: rgba(91, 35, 79, 0.06);
+  stroke-width: 1;
+}
+
+.superadmin-monitoring-map-land path,
+.superadmin-monitoring-map-land circle {
+  fill: rgba(78, 57, 48, 0.16);
+  stroke: rgba(88, 58, 50, 0.28);
+  stroke-width: 2;
+}
+
+.superadmin-monitoring-marker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.superadmin-monitoring-point {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.superadmin-monitoring-anchor,
+.superadmin-monitoring-marker-connector {
+  position: absolute;
+  pointer-events: none;
+}
+
+.superadmin-monitoring-anchor {
+  left: 0;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: #1f9d55;
+  box-shadow: 0 5px 10px rgba(38, 39, 54, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.superadmin-monitoring-anchor.is-warning {
+  background: #d7a53d;
+}
+
+.superadmin-monitoring-anchor.is-danger {
+  background: #cf2525;
+}
+
+.superadmin-monitoring-marker-connector {
+  left: 0;
+  top: 0;
+  width: var(--connector-length);
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(82, 63, 57, 0.32);
+  transform-origin: 0 50%;
+  transform: translateY(-50%) rotate(var(--connector-angle));
+}
+
+.superadmin-monitoring-marker {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--marker-size);
+  height: var(--marker-size);
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: #1f9d55;
+  color: #1f9d55;
+  box-shadow: 0 12px 22px rgba(38, 39, 54, 0.18);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(
+    calc(-50% + var(--marker-offset-x, 0px)),
+    calc(-50% + var(--marker-offset-y, 0px))
+  );
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.superadmin-monitoring-marker::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.18;
+}
+
+.superadmin-monitoring-marker:hover,
+.superadmin-monitoring-marker:focus-visible,
+.superadmin-monitoring-marker.is-selected {
+  transform: translate(
+      calc(-50% + var(--marker-offset-x, 0px)),
+      calc(-50% + var(--marker-offset-y, 0px))
+    )
+    scale(1.14);
+  box-shadow: 0 15px 26px rgba(38, 39, 54, 0.22);
+}
+
+.superadmin-monitoring-marker:focus-visible {
+  outline: none;
+}
+
+.superadmin-monitoring-marker.is-warning {
+  background: #d7a53d;
+  color: #d7a53d;
+}
+
+.superadmin-monitoring-marker.is-danger {
+  background: #cf2525;
+  color: #cf2525;
+}
+
+.superadmin-monitoring-marker-core {
+  position: relative;
+  z-index: 1;
+  width: 38%;
+  height: 38%;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.superadmin-monitoring-map-footer {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+}
+
+.superadmin-monitoring-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+
+.superadmin-monitoring-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #5d6478;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.superadmin-monitoring-map-legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.superadmin-monitoring-map-legend-item i.is-warning {
+  background: #d7a53d;
+}
+
+.superadmin-monitoring-map-legend-item i.is-danger {
+  background: #cf2525;
+}
+
+.superadmin-monitoring-map-legend-note {
+  color: #7a8093;
+  font-size: 0.75rem;
+}
+
+.superadmin-monitoring-map-detail {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 14px;
+  background: #fcfbf8;
+}
+
+.superadmin-monitoring-map-detail.is-warning {
+  background: #fffaf1;
+  border-color: rgba(201, 134, 23, 0.18);
+}
+
+.superadmin-monitoring-map-detail.is-danger {
+  background: #fff6f4;
+  border-color: rgba(207, 37, 37, 0.18);
+}
+
+.superadmin-monitoring-map-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.superadmin-monitoring-map-detail-kicker {
+  display: inline-block;
+  margin-bottom: 0.24rem;
+  color: #9c6a07;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.superadmin-monitoring-map-detail-head strong {
+  display: block;
+  color: #1f2535;
+  font-size: 1rem;
+}
+
+.superadmin-monitoring-map-detail-head p {
+  display: block;
+  margin-top: 0.28rem;
+  color: #70778a;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.superadmin-monitoring-map-detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.7rem;
+}
+
+.superadmin-monitoring-map-detail-metrics div {
+  padding: 0.75rem 0.82rem;
+  border: 1px solid rgba(15, 24, 48, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.superadmin-monitoring-map-detail-metrics span {
+  display: block;
+  color: #80869a;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.superadmin-monitoring-map-detail-metrics strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: #1f2535;
+  font-size: 1.04rem;
+  font-weight: 700;
+}
+
+.superadmin-monitoring-map-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  color: #767c8f;
+  font-size: 0.76rem;
+}
+
+.superadmin-monitoring-map-note {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #6b7184;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.superadmin-monitoring-map-note strong {
+  color: #1f2535;
+}
+
+.superadmin-monitoring-map-note.is-success {
+  border-color: rgba(22, 163, 74, 0.16);
+  background: #f7fbf8;
+  color: #23704b;
+}
+
+.superadmin-monitoring-map-note.is-warning {
+  border-color: rgba(201, 134, 23, 0.16);
+  background: #fffaf1;
+  color: #8e5f08;
 }
 
 .superadmin-monitoring-alertbox {
@@ -2813,6 +3141,10 @@
   .superadmin-monitoring-map-panel {
     min-height: 320px;
   }
+
+  .superadmin-monitoring-map-summary {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -2942,6 +3274,17 @@
   .superadmin-monitoring-map-panel {
     min-height: 280px;
   }
+
+  .superadmin-monitoring-map-detail-head,
+  .superadmin-monitoring-map-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .superadmin-monitoring-map-detail-meta {
+    flex-direction: column;
+    gap: 0.45rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2998,6 +3341,18 @@
 
   .superadmin-monitoring-map-panel {
     min-height: 220px;
+  }
+
+  .superadmin-monitoring-map-head p {
+    font-size: 0.78rem;
+  }
+
+  .superadmin-monitoring-map-detail {
+    padding: 0.88rem;
+  }
+
+  .superadmin-monitoring-map-detail-metrics {
+    grid-template-columns: 1fr 1fr;
   }
 
   .superadmin-table {
