@@ -1009,41 +1009,29 @@
 .superadmin-monitoring-map-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 960 / 420;
+  aspect-ratio: 1500 / 590;
   overflow: hidden;
   border: 1px solid rgba(15, 24, 48, 0.08);
   border-radius: 18px;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(243, 219, 155, 0.38) 0%, rgba(243, 219, 155, 0) 28%),
-    radial-gradient(circle at 82% 78%, rgba(184, 135, 48, 0.12) 0%, rgba(184, 135, 48, 0) 30%),
-    linear-gradient(180deg, #fffdfa 0%, #f8f1e5 100%);
+  background: #8fb2dc;
 }
 
-.superadmin-monitoring-map-svg {
+.superadmin-monitoring-map-image-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.superadmin-monitoring-map-image {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
-}
-
-.superadmin-monitoring-map-water {
-  fill: rgba(255, 250, 244, 0.95);
-}
-
-.superadmin-monitoring-map-grid line {
-  stroke: rgba(91, 35, 79, 0.06);
-  stroke-width: 1;
-}
-
-.superadmin-monitoring-map-land path,
-.superadmin-monitoring-map-land circle {
-  fill: rgba(78, 57, 48, 0.16);
-  stroke: rgba(88, 58, 50, 0.28);
-  stroke-width: 2;
+  object-fit: cover;
 }
 
 .superadmin-monitoring-marker-layer {
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
 }
 

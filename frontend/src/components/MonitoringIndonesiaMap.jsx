@@ -1,10 +1,10 @@
 const numberFormatter = new Intl.NumberFormat('id-ID');
 
 const MAP_VIEWBOX = {
-  width: 960,
-  height: 420,
-  paddingX: 34,
-  paddingY: 26,
+  width: 1500,
+  height: 590,
+  paddingX: 30,
+  paddingY: 10,
 };
 
 const MAP_BOUNDS = {
@@ -13,138 +13,6 @@ const MAP_BOUNDS = {
   minLatitude: -11.5,
   maxLatitude: 6.5,
 };
-
-const MAIN_ISLAND_POLYGONS = [
-  {
-    id: 'sumatra',
-    points: [
-      [95.0, 5.7],
-      [96.4, 5.1],
-      [97.9, 4.0],
-      [99.2, 2.6],
-      [100.6, 1.1],
-      [102.0, -0.7],
-      [103.0, -2.3],
-      [103.9, -4.2],
-      [104.1, -5.7],
-      [102.8, -5.8],
-      [101.2, -4.7],
-      [99.9, -3.2],
-      [98.6, -1.6],
-      [97.2, 0.5],
-      [96.0, 2.4],
-      [95.2, 4.2],
-    ],
-  },
-  {
-    id: 'java',
-    points: [
-      [104.9, -5.8],
-      [106.7, -5.9],
-      [108.8, -6.2],
-      [110.9, -6.7],
-      [112.9, -7.3],
-      [114.8, -7.9],
-      [113.8, -8.4],
-      [111.5, -8.5],
-      [109.1, -8.1],
-      [107.2, -7.6],
-      [105.4, -6.8],
-      [104.6, -6.1],
-    ],
-  },
-  {
-    id: 'kalimantan',
-    points: [
-      [108.0, 3.1],
-      [110.1, 4.1],
-      [112.8, 4.5],
-      [115.4, 3.7],
-      [117.2, 2.2],
-      [118.0, 0.1],
-      [117.5, -2.2],
-      [116.0, -3.8],
-      [113.6, -4.5],
-      [111.1, -4.2],
-      [109.1, -3.1],
-      [107.9, -1.0],
-      [107.6, 1.1],
-    ],
-  },
-  {
-    id: 'sulawesi',
-    points: [
-      [118.0, 1.5],
-      [119.9, 3.0],
-      [122.1, 3.9],
-      [123.8, 3.0],
-      [123.3, 1.2],
-      [122.2, 0.2],
-      [123.5, -0.9],
-      [124.9, -2.2],
-      [124.2, -3.8],
-      [122.6, -3.3],
-      [121.7, -1.8],
-      [120.9, -2.7],
-      [119.7, -4.3],
-      [118.7, -3.0],
-      [119.0, -1.4],
-      [118.1, 0.0],
-    ],
-  },
-  {
-    id: 'papua',
-    points: [
-      [131.0, -2.2],
-      [133.4, -1.4],
-      [136.5, -1.3],
-      [139.2, -1.9],
-      [141.0, -3.5],
-      [141.3, -5.8],
-      [140.2, -7.9],
-      [137.4, -8.7],
-      [134.0, -8.2],
-      [131.8, -6.8],
-      [130.9, -4.8],
-    ],
-  },
-  {
-    id: 'halmahera',
-    points: [
-      [127.0, 1.9],
-      [128.1, 2.2],
-      [129.0, 1.1],
-      [128.8, -0.2],
-      [127.9, -0.9],
-      [126.9, -0.1],
-      [126.8, 1.0],
-    ],
-  },
-  {
-    id: 'seram',
-    points: [
-      [128.6, -2.6],
-      [130.6, -2.7],
-      [131.7, -3.3],
-      [130.3, -3.9],
-      [128.7, -3.5],
-    ],
-  },
-];
-
-const SMALL_ISLANDS = [
-  { id: 'bali', longitude: 115.19, latitude: -8.45, radius: 4.4 },
-  { id: 'lombok', longitude: 116.32, latitude: -8.64, radius: 4.2 },
-  { id: 'sumbawa', longitude: 118.1, latitude: -8.72, radius: 4.8 },
-  { id: 'flores', longitude: 121.1, latitude: -8.69, radius: 5.3 },
-  { id: 'sumba', longitude: 119.8, latitude: -9.8, radius: 4.7 },
-  { id: 'timor', longitude: 124.3, latitude: -9.3, radius: 5.8 },
-  { id: 'ambon', longitude: 128.18, latitude: -3.69, radius: 4.1 },
-  { id: 'ternate', longitude: 127.4, latitude: 0.79, radius: 3.6 },
-  { id: 'biak', longitude: 136.08, latitude: -1.18, radius: 4.3 },
-  { id: 'bangka', longitude: 106.0, latitude: -2.13, radius: 4.2 },
-  { id: 'belitung', longitude: 108.0, latitude: -2.75, radius: 3.8 },
-];
 
 const statusLabelByTone = {
   success: 'Normal',
@@ -171,14 +39,6 @@ const projectGeoPoint = (latitude, longitude) => {
     y: MAP_VIEWBOX.paddingY + normalizedY * usableHeight,
   };
 };
-
-const buildPolygonPath = (points) =>
-  points
-    .map(([longitude, latitude], index) => {
-      const projected = projectGeoPoint(latitude, longitude);
-      return `${index === 0 ? 'M' : 'L'} ${projected.x.toFixed(2)} ${projected.y.toFixed(2)}`;
-    })
-    .join(' ') + ' Z';
 
 const getMarkerSize = (totalSignals) => {
   if (totalSignals >= 16) {
@@ -359,59 +219,19 @@ const MonitoringIndonesiaMap = ({
       </div>
 
       <div className="superadmin-monitoring-map-stage">
-        <svg
-          className="superadmin-monitoring-map-svg"
-          viewBox={`0 0 ${MAP_VIEWBOX.width} ${MAP_VIEWBOX.height}`}
+        <div
+          className="superadmin-monitoring-map-image-frame"
           role="img"
-          aria-label="Peta monitoring Indonesia dengan penanda kota"
+          aria-label="Peta Indonesia dengan penanda kota untuk monitoring"
         >
-          <rect
-            x="0"
-            y="0"
-            width={MAP_VIEWBOX.width}
-            height={MAP_VIEWBOX.height}
-            className="superadmin-monitoring-map-water"
+          <img
+            className="superadmin-monitoring-map-image"
+            src="/indonesia-monitoring-map.png"
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
           />
-
-          <g className="superadmin-monitoring-map-grid">
-            {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
-              <line
-                key={`vertical-${ratio}`}
-                x1={MAP_VIEWBOX.width * ratio}
-                y1="0"
-                x2={MAP_VIEWBOX.width * ratio}
-                y2={MAP_VIEWBOX.height}
-              />
-            ))}
-            {[0.25, 0.5, 0.75].map((ratio) => (
-              <line
-                key={`horizontal-${ratio}`}
-                x1="0"
-                y1={MAP_VIEWBOX.height * ratio}
-                x2={MAP_VIEWBOX.width}
-                y2={MAP_VIEWBOX.height * ratio}
-              />
-            ))}
-          </g>
-
-          <g className="superadmin-monitoring-map-land">
-            {MAIN_ISLAND_POLYGONS.map((polygon) => (
-              <path key={polygon.id} d={buildPolygonPath(polygon.points)} />
-            ))}
-            {SMALL_ISLANDS.map((island) => {
-              const projected = projectGeoPoint(island.latitude, island.longitude);
-
-              return (
-                <circle
-                  key={island.id}
-                  cx={projected.x}
-                  cy={projected.y}
-                  r={island.radius}
-                />
-              );
-            })}
-          </g>
-        </svg>
+        </div>
 
         <div className="superadmin-monitoring-marker-layer">
           {projectedPoints.map((point) => (

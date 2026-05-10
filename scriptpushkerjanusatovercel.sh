@@ -288,14 +288,21 @@ verify_backend_jobs() {
 
 wait_for_deploy() {
   local started_at now elapsed
+  local verification_target="deployment"
+  local timeout_label="deployment Vercel"
   started_at="$(date +%s)"
+
+  if [[ "${SKIP_PUSH:-0}" == "1" ]]; then
+    verification_target="endpoint live"
+    timeout_label="verifikasi endpoint live"
+  fi
 
   while true; do
     now="$(date +%s)"
     elapsed=$((now - started_at))
 
     echo ""
-    echo "==> Verifikasi deployment (${elapsed}s)"
+    echo "==> Verifikasi ${verification_target} (${elapsed}s)"
 
     local frontend_ok=0
     local backend_health_ok=0
@@ -324,7 +331,7 @@ wait_for_deploy() {
 
     if [[ "$elapsed" -ge "$DEPLOY_TIMEOUT_SECONDS" ]]; then
       echo ""
-      echo "Timeout menunggu deployment Vercel."
+      echo "Timeout menunggu ${timeout_label}."
 
       if [[ -s "$TMP_BACKEND_HEALTH_BODY" ]]; then
         print_backend_diagnostics "$TMP_BACKEND_HEALTH_BODY"
@@ -372,14 +379,28 @@ echo "==> Push ke GitHub kerjanusa"
 LATEST_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 
 echo ""
-echo "Push ke GitHub selesai."
-echo "Deployment Vercel dipicu via Git integration dari branch '$DEFAULT_BRANCH'."
+if [[ "${SKIP_PUSH:-0}" == "1" ]]; then
+  echo "Push ke GitHub dilewati (SKIP_PUSH=1)."
+  echo "Tidak ada deploy baru yang dipicu; script hanya memverifikasi endpoint live."
+else
+  echo "Push ke GitHub selesai."
+  echo "Deployment Vercel dipicu via Git integration dari branch '$DEFAULT_BRANCH'."
+fi
+
 echo "Frontend project: $FRONTEND_PROJECT_NAME -> $FRONTEND_URL"
 echo "Backend project: $BACKEND_PROJECT_NAME -> $BACKEND_URL"
-echo "Commit yang dipicu: $LATEST_COMMIT"
+if [[ "${SKIP_PUSH:-0}" == "1" ]]; then
+  echo "Commit lokal saat ini: $LATEST_COMMIT"
+else
+  echo "Commit yang dipicu: $LATEST_COMMIT"
+fi
 
 if [[ "$INITIAL_WAIT_SECONDS" -gt 0 ]]; then
-  echo "Menunggu $INITIAL_WAIT_SECONDS detik sebelum mulai verifikasi deployment..."
+  if [[ "${SKIP_PUSH:-0}" == "1" ]]; then
+    echo "Menunggu $INITIAL_WAIT_SECONDS detik sebelum mulai verifikasi endpoint live..."
+  else
+    echo "Menunggu $INITIAL_WAIT_SECONDS detik sebelum mulai verifikasi deployment..."
+  fi
   sleep "$INITIAL_WAIT_SECONDS"
 fi
 
