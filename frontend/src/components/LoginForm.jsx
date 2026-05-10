@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import PasswordField from './PasswordField';
 import '../styles/authForm.css';
 
 const LoginForm = ({
@@ -62,21 +63,17 @@ const LoginForm = ({
         {getFieldError('email') && <p className="field-error">{getFieldError('email')}</p>}
       </div>
 
-      <div className={`form-group${getFieldError('password') ? ' has-error' : ''}`}>
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="Ketik password"
-          value={password}
-          onChange={(e) => handlePasswordChange(e.target.value)}
-          required
-          disabled={isLoading}
-          aria-invalid={Boolean(getFieldError('password'))}
-        />
-        {getFieldError('password') && <p className="field-error">{getFieldError('password')}</p>}
-      </div>
+      <PasswordField
+        id="password"
+        label="Password"
+        value={password}
+        onChange={(e) => handlePasswordChange(e.target.value)}
+        error={getFieldError('password')}
+        autoComplete="current-password"
+        placeholder="Ketik password"
+        required
+        disabled={isLoading}
+      />
 
       <div className="auth-form-support">
         <label className="auth-form-remember" htmlFor="remember_device">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
+import PasswordField from './PasswordField';
 import '../styles/authForm.css';
 
 const normalizeRole = (role) => (role === 'candidate' ? 'candidate' : 'recruiter');
@@ -127,37 +128,30 @@ const RegisterForm = ({ onSuccess, defaultRole = 'recruiter' }) => {
       </div>
 
       <div className="form-grid">
-        <div className={`form-group${getFieldError('password') ? ' has-error' : ''}`}>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-            aria-invalid={Boolean(getFieldError('password'))}
-          />
-          {getFieldError('password') && <p className="field-error">{getFieldError('password')}</p>}
-        </div>
+        <PasswordField
+          id="password"
+          name="password"
+          label="Password"
+          value={formData.password}
+          onChange={handleChange}
+          error={getFieldError('password')}
+          autoComplete="new-password"
+          required
+          disabled={isLoading}
+        />
 
-        <div className={`form-group${getFieldError('password_confirmation') ? ' has-error' : ''}`}>
-          <label htmlFor="password_confirmation">Konfirmasi Password</label>
-          <input
-            id="password_confirmation"
-            name="password_confirmation"
-            type="password"
-            value={formData.password_confirmation}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-            aria-invalid={Boolean(getFieldError('password_confirmation'))}
-          />
-          {getFieldError('password_confirmation') && (
-            <p className="field-error">{getFieldError('password_confirmation')}</p>
-          )}
-        </div>
+        <PasswordField
+          id="password_confirmation"
+          name="password_confirmation"
+          label="Konfirmasi Password"
+          value={formData.password_confirmation}
+          onChange={handleChange}
+          error={getFieldError('password_confirmation')}
+          autoComplete="new-password"
+          required
+          disabled={isLoading}
+          visibilityLabel="konfirmasi password"
+        />
       </div>
 
       <button type="submit" className="btn btn-primary" disabled={isLoading}>

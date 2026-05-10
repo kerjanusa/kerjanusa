@@ -31,6 +31,58 @@
   color: #a1afc5;
 }
 
+.auth-form .password-input-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-form .password-input-shell input {
+  width: 100%;
+  padding-right: 3.5rem;
+}
+
+.auth-form .password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #8d776d;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.auth-form .password-visibility-toggle:hover {
+  background: rgba(91, 35, 79, 0.08);
+  color: var(--primary);
+}
+
+.auth-form .password-visibility-toggle:focus-visible {
+  outline: none;
+  background: rgba(91, 35, 79, 0.1);
+  box-shadow: 0 0 0 3px rgba(184, 135, 48, 0.22);
+  color: var(--primary);
+}
+
+.auth-form .password-visibility-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.auth-form .password-visibility-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
 .auth-form .form-group.has-error input,
 .auth-form .form-group.has-error select {
   border-color: rgba(194, 85, 108, 0.52);
@@ -133,6 +185,16 @@
     padding: 0.9rem 0.95rem;
   }
 
+  .auth-form .password-input-shell input {
+    padding-right: 3.25rem;
+  }
+
+  .auth-form .password-visibility-toggle {
+    right: 0.62rem;
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+
   .auth-form-support {
     align-items: center;
     gap: 0.8rem;
@@ -214,6 +276,21 @@
     padding: 0.8rem 0.9rem;
     border-radius: 0.8rem;
     font-size: 0.85rem;
+  }
+
+  .auth-form .password-input-shell input {
+    padding-right: 3rem;
+  }
+
+  .auth-form .password-visibility-toggle {
+    right: 0.55rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .auth-form .password-visibility-toggle svg {
+    width: 1rem;
+    height: 1rem;
   }
 
   .auth-form .field-error {

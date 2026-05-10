@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import PasswordField from '../components/PasswordField';
 import AuthService from '../services/authService.js';
 import { APP_ROUTES, getLoginRouteForRole } from '../utils/routeHelpers.js';
 import '../styles/auth.css';
@@ -202,51 +203,37 @@ const ResetPasswordPage = () => {
                   <input id="reset_password_email" type="email" value={email} readOnly disabled />
                 </div>
 
-                <div className={`form-group${getFieldError('password') ? ' has-error' : ''}`}>
-                  <label htmlFor="reset_password_new">Password baru</label>
-                  <input
-                    id="reset_password_new"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Masukkan password baru"
-                    value={password}
-                    onChange={(event) => {
-                      setPassword(event.target.value);
-                      clearFeedback();
-                    }}
-                    required
-                    disabled={isSubmitting}
-                    aria-invalid={Boolean(getFieldError('password'))}
-                  />
-                  {getFieldError('password') && (
-                    <p className="field-error">{getFieldError('password')}</p>
-                  )}
-                </div>
+                <PasswordField
+                  id="reset_password_new"
+                  label="Password baru"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    clearFeedback();
+                  }}
+                  error={getFieldError('password')}
+                  autoComplete="new-password"
+                  placeholder="Masukkan password baru"
+                  required
+                  disabled={isSubmitting}
+                  visibilityLabel="password baru"
+                />
 
-                <div
-                  className={`form-group${
-                    getFieldError('password_confirmation') ? ' has-error' : ''
-                  }`}
-                >
-                  <label htmlFor="reset_password_confirmation">Konfirmasi password baru</label>
-                  <input
-                    id="reset_password_confirmation"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Ulangi password baru"
-                    value={passwordConfirmation}
-                    onChange={(event) => {
-                      setPasswordConfirmation(event.target.value);
-                      clearFeedback();
-                    }}
-                    required
-                    disabled={isSubmitting}
-                    aria-invalid={Boolean(getFieldError('password_confirmation'))}
-                  />
-                  {getFieldError('password_confirmation') && (
-                    <p className="field-error">{getFieldError('password_confirmation')}</p>
-                  )}
-                </div>
+                <PasswordField
+                  id="reset_password_confirmation"
+                  label="Konfirmasi password baru"
+                  value={passwordConfirmation}
+                  onChange={(event) => {
+                    setPasswordConfirmation(event.target.value);
+                    clearFeedback();
+                  }}
+                  error={getFieldError('password_confirmation')}
+                  autoComplete="new-password"
+                  placeholder="Ulangi password baru"
+                  required
+                  disabled={isSubmitting}
+                  visibilityLabel="konfirmasi password baru"
+                />
 
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                   {isSubmitting ? 'Menyimpan...' : 'Simpan password baru'}
