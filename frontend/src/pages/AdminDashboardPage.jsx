@@ -2286,7 +2286,7 @@ const AdminDashboardPage = () => {
 
   const renderMonitoring = () => {
     return (
-      <section className="superadmin-monitoring-layout">
+      <section className="superadmin-section-block">
         <div className="superadmin-monitoring-toolbar">
           <div className="superadmin-monitoring-toolbar-left">
             <button type="button" className="superadmin-primary-button" onClick={() => loadDashboard()}>
@@ -2311,159 +2311,161 @@ const AdminDashboardPage = () => {
           </div>
         </div>
 
-        <div className="superadmin-monitoring-topgrid">
-          <div className="superadmin-monitoring-kpis">
-            <SectionMetrics cards={monitoringCards} />
+        <div className="superadmin-monitoring-layout">
+          <div className="superadmin-monitoring-primary">
+            <div className="superadmin-monitoring-kpis">
+              <SectionMetrics cards={monitoringCards} />
+            </div>
+
+            <article className="superadmin-panel superadmin-monitoring-map-panel">
+              <MonitoringIndonesiaMap
+                points={monitoringLocationMap.points}
+                selectedPointKey={selectedMonitoringMapKey}
+                onSelectPoint={setSelectedMonitoringMapKey}
+                unmappedLocations={monitoringLocationMap.unmappedLocations}
+                formatDateTime={formatDateTime}
+              />
+            </article>
+
+            <article className="superadmin-panel superadmin-monitoring-logpanel">
+              <div className="superadmin-panel-head">
+                <div>
+                  <h3>Log Aktivitas Terbaru</h3>
+                </div>
+                <div className="superadmin-monitoring-loghead">
+                  <label className="superadmin-search-input is-monitoring">
+                    <AdminIcon name="search" />
+                    <input
+                      type="search"
+                      placeholder="Cari aktivitas..."
+                      value={monitoringSearchQuery}
+                      onChange={(event) => setMonitoringSearchQuery(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="superadmin-inline-link"
+                    onClick={() => handleSectionChange('moderation')}
+                  >
+                    Semua
+                  </button>
+                </div>
+              </div>
+
+              <div className="superadmin-table-wrap">
+                <table className="superadmin-table superadmin-table-monitoring">
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>Entitas</th>
+                      <th>Aktivitas</th>
+                      <th>Status</th>
+                      <th>Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMonitoringActivityRows.length === 0 ? (
+                      <tr>
+                        <td colSpan="5">
+                          <div className="superadmin-empty-state is-panel">
+                            <div className="superadmin-empty-icon">⌁</div>
+                            <p>Belum ada data aktivitas.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMonitoringActivityRows.map((entry) => (
+                        <tr key={entry.key}>
+                          <td className="superadmin-cell-date">{formatDateShort(entry.timestamp)}</td>
+                          <td>{entry.entity}</td>
+                          <td>{entry.title}</td>
+                          <td>
+                            <span
+                              className={`superadmin-status-tag is-${
+                                entry.status === 'Aktif'
+                                  ? 'success'
+                                  : entry.status === 'Review'
+                                    ? 'warning'
+                                    : 'active-soft'
+                              }`}
+                            >
+                              {entry.status}
+                            </span>
+                          </td>
+                          <td>{entry.admin}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
           </div>
 
-          <article className="superadmin-panel superadmin-monitoring-health-panel">
-            <div className="superadmin-panel-head">
-              <div>
-                <h3>Alerts &amp; Health</h3>
+          <div className="superadmin-monitoring-sidebar">
+            <article className="superadmin-panel superadmin-monitoring-health-panel">
+              <div className="superadmin-panel-head">
+                <div>
+                  <h3>Alerts &amp; Health</h3>
+                </div>
               </div>
-            </div>
 
-            <div className={`superadmin-monitoring-alertbox is-${monitoringAlertSummary.tone}`}>
-              <strong>{monitoringAlertSummary.title}</strong>
-              <p>{monitoringAlertSummary.detail}</p>
-              <button type="button" onClick={monitoringAlertSummary.action}>
-                {monitoringAlertSummary.actionLabel}
-              </button>
-            </div>
-
-            <div className="superadmin-monitoring-healthlist">
-              {monitoringHealthCards.map((item) => (
-                <article key={item.label} className="superadmin-monitoring-healthrow">
-                  <div className="superadmin-monitoring-healthcopy">
-                    <span className="superadmin-monitoring-healthrow-label">{item.label}</span>
-                    <strong>{item.title}</strong>
-                    <small>{item.detail}</small>
-                  </div>
-                  <span className={`superadmin-inline-badge is-${item.status}`}>
-                    {item.status === 'danger'
-                      ? 'Issue'
-                      : item.status === 'warning'
-                        ? 'Review'
-                        : 'Healthy'}
-                  </span>
-                </article>
-              ))}
-            </div>
-          </article>
-        </div>
-
-        <div className="superadmin-monitoring-bodygrid">
-          <article className="superadmin-panel superadmin-monitoring-map-panel">
-            <MonitoringIndonesiaMap
-              points={monitoringLocationMap.points}
-              selectedPointKey={selectedMonitoringMapKey}
-              onSelectPoint={setSelectedMonitoringMapKey}
-              unmappedLocations={monitoringLocationMap.unmappedLocations}
-              formatDateTime={formatDateTime}
-            />
-          </article>
-
-          <article className="superadmin-panel superadmin-monitoring-logpanel">
-            <div className="superadmin-panel-head">
-              <div>
-                <h3>Log Aktivitas Terbaru</h3>
-              </div>
-              <div className="superadmin-monitoring-loghead">
-                <label className="superadmin-search-input is-monitoring">
-                  <AdminIcon name="search" />
-                  <input
-                    type="search"
-                    placeholder="Cari aktivitas..."
-                    value={monitoringSearchQuery}
-                    onChange={(event) => setMonitoringSearchQuery(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="superadmin-inline-link"
-                  onClick={() => handleSectionChange('moderation')}
-                >
-                  Semua
+              <div className={`superadmin-monitoring-alertbox is-${monitoringAlertSummary.tone}`}>
+                <strong>{monitoringAlertSummary.title}</strong>
+                <p>{monitoringAlertSummary.detail}</p>
+                <button type="button" onClick={monitoringAlertSummary.action}>
+                  {monitoringAlertSummary.actionLabel}
                 </button>
               </div>
-            </div>
 
-            <div className="superadmin-table-wrap">
-              <table className="superadmin-table superadmin-table-monitoring">
-                <thead>
-                  <tr>
-                    <th>Waktu</th>
-                    <th>Entitas</th>
-                    <th>Aktivitas</th>
-                    <th>Status</th>
-                    <th>Admin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMonitoringActivityRows.length === 0 ? (
-                    <tr>
-                      <td colSpan="5">
-                        <div className="superadmin-empty-state is-panel">
-                          <div className="superadmin-empty-icon">⌁</div>
-                          <p>Belum ada data aktivitas.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMonitoringActivityRows.map((entry) => (
-                      <tr key={entry.key}>
-                        <td className="superadmin-cell-date">{formatDateShort(entry.timestamp)}</td>
-                        <td>{entry.entity}</td>
-                        <td>{entry.title}</td>
-                        <td>
-                          <span
-                            className={`superadmin-status-tag is-${
-                              entry.status === 'Aktif'
-                                ? 'success'
-                                : entry.status === 'Review'
-                                  ? 'warning'
-                                  : 'active-soft'
-                            }`}
-                          >
-                            {entry.status}
-                          </span>
-                        </td>
-                        <td>{entry.admin}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <article className="superadmin-panel superadmin-monitoring-actions-panel">
-            <div className="superadmin-panel-head">
-              <div>
-                <h3>Quick Controls</h3>
-              </div>
-            </div>
-
-            <div className="superadmin-monitoring-control-list">
-              {monitoringQuickActions.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`superadmin-monitoring-control-item${item.tone ? ` is-${item.tone}` : ''}`}
-                  onClick={item.action}
-                >
-                  <span className="superadmin-monitoring-control-copy">
-                    <div>
-                      <small>{item.label}</small>
+              <div className="superadmin-monitoring-healthlist">
+                {monitoringHealthCards.map((item) => (
+                  <article key={item.label} className="superadmin-monitoring-healthrow">
+                    <div className="superadmin-monitoring-healthcopy">
+                      <span className="superadmin-monitoring-healthrow-label">{item.label}</span>
                       <strong>{item.title}</strong>
-                      <p>{item.detail}</p>
+                      <small>{item.detail}</small>
                     </div>
-                  </span>
-                  <span className="superadmin-monitoring-control-arrow">›</span>
-                </button>
-              ))}
-            </div>
-          </article>
+                    <span className={`superadmin-inline-badge is-${item.status}`}>
+                      {item.status === 'danger'
+                        ? 'Issue'
+                        : item.status === 'warning'
+                          ? 'Review'
+                          : 'Healthy'}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="superadmin-panel superadmin-monitoring-actions-panel">
+              <div className="superadmin-panel-head">
+                <div>
+                  <h3>Quick Controls</h3>
+                </div>
+              </div>
+
+              <div className="superadmin-monitoring-control-list">
+                {monitoringQuickActions.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className={`superadmin-monitoring-control-item${item.tone ? ` is-${item.tone}` : ''}`}
+                    onClick={item.action}
+                  >
+                    <span className="superadmin-monitoring-control-copy">
+                      <div>
+                        <small>{item.label}</small>
+                        <strong>{item.title}</strong>
+                        <p>{item.detail}</p>
+                      </div>
+                    </span>
+                    <span className="superadmin-monitoring-control-arrow">›</span>
+                  </button>
+                ))}
+              </div>
+            </article>
+          </div>
         </div>
       </section>
     );
