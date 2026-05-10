@@ -79,7 +79,14 @@ else
   git remote add "$REMOTE_NAME" "$REPO_URL"
 fi
 
-git branch -M "$DEFAULT_BRANCH"
+CURRENT_BRANCH="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+
+if [[ -z "$CURRENT_BRANCH" ]]; then
+  git checkout -B "$DEFAULT_BRANCH"
+elif [[ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]]; then
+  git branch -M "$DEFAULT_BRANCH"
+fi
+
 git add -A
 
 if git diff --cached --quiet; then
