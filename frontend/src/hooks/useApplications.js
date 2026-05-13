@@ -7,19 +7,27 @@ const useApplications = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const applyForJob = useCallback(async (jobId, coverLetter = '') => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await ApplicationService.applyForJob(jobId, coverLetter);
-      return response;
-    } catch (err) {
-      setError(err.message || 'Failed to apply for job');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const applyForJob = useCallback(
+    async (jobId, coverLetter = '', screeningAnswers = [], videoIntroUrl = '') => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await ApplicationService.applyForJob(
+          jobId,
+          coverLetter,
+          screeningAnswers,
+          videoIntroUrl
+        );
+        return response;
+      } catch (err) {
+        setError(err.message || 'Failed to apply for job');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   const getMyApplications = useCallback(async (page = 1, perPage = 15) => {
     setIsLoading(true);

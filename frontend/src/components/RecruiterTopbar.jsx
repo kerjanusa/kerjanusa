@@ -11,6 +11,7 @@ const RecruiterTopbar = ({
   isLoggingOut,
   user,
   companyProfile,
+  onPremiumClick,
 }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -52,6 +53,9 @@ const RecruiterTopbar = ({
     closeMobileMenu();
     onLogout?.();
   };
+
+  const recruiterPlanLabel = companyProfile?.plan?.label || 'Starter';
+  const recruiterCredit = Number(companyProfile?.kn_credit || 0);
 
   return (
     <>
@@ -108,12 +112,16 @@ const RecruiterTopbar = ({
             </nav>
 
             <div className="recruiter-topbar-actions">
-              <button type="button" className="recruiter-premium-button">
-                Fitur Premium
+              <button
+                type="button"
+                className="recruiter-premium-button"
+                onClick={onPremiumClick}
+              >
+                Paket {recruiterPlanLabel}
               </button>
               <div className="recruiter-credit-chip" aria-label="KerjaNusa Credit">
                 <span>KN Credit</span>
-                <strong>0</strong>
+                <strong>{recruiterCredit}</strong>
               </div>
               <div className="recruiter-profile-chip">
                 <span className="recruiter-profile-avatar" aria-hidden="true">

@@ -4,6 +4,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\RecruiterWorkspaceController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -135,6 +137,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::put('/change-password', [AuthController::class, 'changePassword']);
+    Route::get('/chat/threads', [MessageController::class, 'threads']);
+    Route::get('/chat/contacts', [MessageController::class, 'contacts']);
+    Route::get('/chat/conversations/{userId}', [MessageController::class, 'conversation']);
+    Route::post('/chat/messages', [MessageController::class, 'send']);
 
     Route::middleware('role:candidate')->group(function () {
         Route::post('/apply', [ApplicationController::class, 'store']);
@@ -145,6 +151,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:recruiter')->group(function () {
         Route::post('/jobs', [JobController::class, 'store']);
         Route::get('/my-jobs', [JobController::class, 'myJobs']);
+        Route::get('/recruiter/package', [RecruiterWorkspaceController::class, 'package']);
+        Route::put('/recruiter/package', [RecruiterWorkspaceController::class, 'updatePackage']);
+        Route::get('/recruiter/talent-search', [RecruiterWorkspaceController::class, 'talentSearch']);
     });
 
     Route::middleware('role:recruiter,superadmin')->group(function () {

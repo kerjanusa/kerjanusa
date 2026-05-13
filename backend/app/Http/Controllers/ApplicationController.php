@@ -24,6 +24,11 @@ class ApplicationController extends Controller
         $validated = $request->validate([
             'job_id' => 'required|integer|exists:jobs,id',
             'cover_letter' => 'nullable|string',
+            'screening_answers' => 'nullable|array',
+            'screening_answers.*.question_id' => 'nullable|string|max:100',
+            'screening_answers.*.question' => 'required_with:screening_answers|string|max:500',
+            'screening_answers.*.answer' => 'required_with:screening_answers|string|max:1000',
+            'video_intro_url' => 'nullable|url|max:2048',
         ]);
 
         $application = $this->applicationService->applyForJob(
@@ -50,7 +55,11 @@ class ApplicationController extends Controller
     public function myCandidateApplications(Request $request): JsonResponse
     {
         $perPage = (int)$request->query('per_page', 15);
-        $applications = $this->applicationService->getCandidateApplications($request->user()->id, $perPage);
+        $applications = $this->applicationService->getCandidateApplications(
+            $request->user()->id,
+            $perPage,
+            $request->user()
+        );
 
         return response()->json([
             'data' => $applications->items(),
@@ -83,7 +92,11 @@ class ApplicationController extends Controller
         }
 
         $perPage = (int)$request->query('per_page', 15);
-        $applications = $this->applicationService->getJobApplications($jobId, $perPage);
+        $applications = $this->applicationService->getJobApplications(
+            $jobId,
+            $perPage,
+            $request->user()
+        );
 
         return response()->json([
             'data' => $applications->items(),
@@ -182,7 +195,7 @@ class ApplicationController extends Controller
         }
 
         return response()->json([
-            'data' => $application,
+            'data' => $this->applicationService->presentApplication($application, $request->user()),
         ]);
     }
 

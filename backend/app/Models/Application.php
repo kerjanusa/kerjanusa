@@ -44,11 +44,14 @@ class Application extends Model
         'status',
         'stage',
         'cover_letter',
+        'screening_answers',
+        'video_intro_url',
         'applied_at',
     ];
 
     protected $casts = [
         'applied_at' => 'datetime',
+        'screening_answers' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -88,6 +88,10 @@ const enrichMockApplication = (application) => {
     ...application,
     job,
     candidate,
+    screening_answers: sanitizeScreeningAnswers(application.screening_answers || []),
+    screening_summary:
+      application.screening_summary || buildScreeningSummary(application, job),
+    video_intro_url: application.video_intro_url || '',
   };
 };
 
@@ -116,11 +120,37 @@ const getCurrentMockUser = () => {
   return storedUser ? JSON.parse(storedUser) : null;
 };
 
+const sanitizeScreeningAnswers = (answers = []) =>
+  (Array.isArray(answers) ? answers : [])
+    .map((answer) => ({
+      question_id: answer?.question_id || null,
+      question: String(answer?.question || '').trim(),
+      answer: String(answer?.answer || '').trim(),
+    }))
+    .filter((answer) => answer.question && answer.answer);
+
+const buildScreeningSummary = (application, job) => {
+  const questions = Array.isArray(job?.quiz_screening_questions) ? job.quiz_screening_questions : [];
+  const screeningAnswers = sanitizeScreeningAnswers(application?.screening_answers || []);
+  const positiveAnswers = screeningAnswers.filter(
+    (answer) => answer.answer.toLowerCase() === 'ya'
+  ).length;
+
+  return {
+    total_questions: questions.length,
+    answered_questions: screeningAnswers.length,
+    positive_answers: positiveAnswers,
+    completion_rate: questions.length
+      ? Math.round((screeningAnswers.length / questions.length) * 100)
+      : 0,
+  };
+};
+
 class ApplicationService {
   /**
    * Apply for job
    */
-  static async applyForJob(jobId, coverLetter = '') {
+  static async applyForJob(jobId, coverLetter = '', screeningAnswers = [], videoIntroUrl = '') {
     if (shouldUseMockData) {
       const currentUser = getCurrentMockUser();
 
@@ -137,6 +167,32 @@ class ApplicationService {
 
       if (!job || job.status === 'inactive') {
         throw { message: 'Lowongan ini tidak tersedia untuk dilamar.' };
+      }
+
+      const jobQuestions = Array.isArray(job.quiz_screening_questions)
+        ? job.quiz_screening_questions
+        : [];
+      const normalizedScreeningAnswers = sanitizeScreeningAnswers(screeningAnswers);
+      const answersByQuestionId = Object.fromEntries(
+        normalizedScreeningAnswers.map((answer) => [answer.question_id, answer])
+      );
+      const missingQuestions = jobQuestions
+        .filter((question) => (question.required ?? true) !== false)
+        .filter((question) => !answersByQuestionId[question.id]?.answer);
+
+      if (missingQuestions.length > 0) {
+        throw {
+          message: `Jawaban screening wajib diisi untuk: ${missingQuestions
+            .map((question) => question.title || question.question)
+            .join(', ')}.`,
+        };
+      }
+
+      if (
+        job.video_screening_requirement === 'required' &&
+        !String(videoIntroUrl || '').trim()
+      ) {
+        throw { message: 'Link video screening wajib diisi untuk lowongan ini.' };
       }
 
       const alreadyApplied = applications.some(
@@ -156,6 +212,14 @@ class ApplicationService {
         status: 'pending',
         stage: 'applied',
         cover_letter: coverLetter,
+        screening_answers: normalizedScreeningAnswers,
+        screening_summary: buildScreeningSummary(
+          {
+            screening_answers: normalizedScreeningAnswers,
+          },
+          job
+        ),
+        video_intro_url: String(videoIntroUrl || '').trim(),
         applied_at: new Date().toISOString(),
       };
 
@@ -171,6 +235,8 @@ class ApplicationService {
       const response = await apiClient.post('/apply', {
         job_id: jobId,
         cover_letter: coverLetter,
+        screening_answers: sanitizeScreeningAnswers(screeningAnswers),
+        video_intro_url: String(videoIntroUrl || '').trim() || null,
       });
       return response.data;
     } catch (error) {

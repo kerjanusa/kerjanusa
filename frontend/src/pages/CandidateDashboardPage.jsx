@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import InboxWorkspace from '../components/InboxWorkspace.jsx';
 import useApplications from '../hooks/useApplications.js';
 import useAuth from '../hooks/useAuth.js';
+import useChat from '../hooks/useChat.js';
 import useJobs from '../hooks/useJobs.js';
 import {
   formatCandidateApplicationStatus,
@@ -24,6 +26,7 @@ const CANDIDATE_SECTION_OPTIONS = [
   { value: 'profile', label: 'Profil Siap Lamar' },
   { value: 'jobs', label: 'Lowongan' },
   { value: 'applications', label: 'Lamaran Saya' },
+  { value: 'messages', label: 'Chat' },
 ];
 
 const resolveCandidateSectionFromHash = (hash) => {
@@ -37,6 +40,10 @@ const resolveCandidateSectionFromHash = (hash) => {
 
   if (hash === '#applications') {
     return 'applications';
+  }
+
+  if (hash === '#messages') {
+    return 'messages';
   }
 
   return 'overview';
@@ -85,6 +92,19 @@ const CandidateDashboardPage = () => {
     getMyApplications,
     withdrawApplication,
   } = useApplications();
+  const {
+    threads,
+    contacts,
+    messages,
+    isLoadingThreads,
+    isLoadingContacts,
+    isLoadingMessages,
+    isSendingMessage,
+    loadThreads,
+    loadContacts,
+    loadConversation,
+    sendMessage,
+  } = useChat();
   const [activeSection, setActiveSection] = useState(resolveCandidateSectionFromHash(location.hash));
   const [profile, setProfile] = useState(() => readCandidateProfile(user));
   const [feedback, setFeedback] = useState(null);
@@ -92,6 +112,9 @@ const CandidateDashboardPage = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [applicationBucket, setApplicationBucket] = useState('active');
   const [applicationActionInFlightId, setApplicationActionInFlightId] = useState(null);
+  const [selectedChatContact, setSelectedChatContact] = useState(null);
+  const [chatDraftMessage, setChatDraftMessage] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
 
   useEffect(() => {
     setActiveSection(resolveCandidateSectionFromHash(location.hash));
@@ -122,6 +145,15 @@ const CandidateDashboardPage = () => {
     });
     navigate(`${APP_ROUTES.candidateDashboard}${location.hash}`, { replace: true });
   }, [location.hash, location.state, navigate]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages') {
+      return;
+    }
+
+    loadThreads().catch(() => {});
+    loadContacts(chatSearchQuery).catch(() => {});
+  }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
 
   const completion = useMemo(() => getCandidateProfileCompletion(profile), [profile]);
   const activeApplications = useMemo(
@@ -297,6 +329,46 @@ const CandidateDashboardPage = () => {
       });
     } finally {
       setApplicationActionInFlightId(null);
+    }
+  };
+
+  const handleOpenConversation = async (contact) => {
+    if (!contact?.id) {
+      return;
+    }
+
+    setSelectedChatContact(contact);
+    setChatDraftMessage('');
+
+    try {
+      await loadConversation(contact.id);
+      handleSectionChange('messages');
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Percakapan belum berhasil dibuka.',
+      });
+    }
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!selectedChatContact?.id || !chatDraftMessage.trim()) {
+      return;
+    }
+
+    try {
+      await sendMessage({
+        recipient_id: selectedChatContact.id,
+        body: chatDraftMessage.trim(),
+      });
+      setChatDraftMessage('');
+      await loadThreads();
+      await loadConversation(selectedChatContact.id);
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Pesan belum berhasil dikirim.',
+      });
     }
   };
 
@@ -1130,6 +1202,42 @@ const CandidateDashboardPage = () => {
                           </div>
                         )}
 
+                        {application.screening_summary?.total_questions > 0 && (
+                          <div className="workspace-application-note">
+                            <strong>Screening yang Anda kirim</strong>
+                            <p>
+                              {application.screening_summary.answered_questions}/
+                              {application.screening_summary.total_questions} pertanyaan terjawab •{' '}
+                              {application.screening_summary.completion_rate}% lengkap
+                            </p>
+                          </div>
+                        )}
+
+                        {Array.isArray(application.screening_answers) &&
+                          application.screening_answers.length > 0 && (
+                            <div className="workspace-application-note">
+                              <strong>Jawaban screening</strong>
+                              <div className="workspace-inline-metadata">
+                                {application.screening_answers.map((answer) => (
+                                  <span key={`${application.id}-${answer.question_id || answer.question}`}>
+                                    {answer.question}: {answer.answer}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                        {application.video_intro_url && (
+                          <div className="workspace-application-note">
+                            <strong>Video screening</strong>
+                            <p>
+                              <a href={application.video_intro_url} target="_blank" rel="noreferrer">
+                                Buka link video yang Anda kirim
+                              </a>
+                            </p>
+                          </div>
+                        )}
+
                         <div className="workspace-action-row">
                           <button
                             type="button"
@@ -1138,6 +1246,15 @@ const CandidateDashboardPage = () => {
                           >
                             Cari Lowongan Serupa
                           </button>
+                          {application.job?.recruiter && (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={() => handleOpenConversation(application.job.recruiter)}
+                            >
+                              Chat Recruiter
+                            </button>
+                          )}
                           {isCandidateApplicationActive(application.status, application) && (
                             <button
                               type="button"
@@ -1159,6 +1276,29 @@ const CandidateDashboardPage = () => {
               )}
             </article>
           </section>
+        )}
+
+        {activeSection === 'messages' && (
+          <InboxWorkspace
+            title="Chat pelamar dengan recruiter dan superadmin"
+            description="Gunakan chat ini untuk konfirmasi registrasi, pertanyaan screening, atau menindaklanjuti lamaran yang sedang berjalan."
+            threads={threads}
+            contacts={contacts}
+            selectedContact={selectedChatContact}
+            selectedContactId={selectedChatContact?.id}
+            messages={messages}
+            draftMessage={chatDraftMessage}
+            onDraftMessageChange={setChatDraftMessage}
+            contactSearchQuery={chatSearchQuery}
+            onContactSearchQueryChange={setChatSearchQuery}
+            onSelectContact={handleOpenConversation}
+            onSendMessage={handleSendChatMessage}
+            isLoadingThreads={isLoadingThreads}
+            isLoadingContacts={isLoadingContacts}
+            isLoadingMessages={isLoadingMessages}
+            isSendingMessage={isSendingMessage}
+            emptyMessage="Pilih recruiter atau superadmin yang ingin Anda hubungi."
+          />
         )}
       </main>
     </div>

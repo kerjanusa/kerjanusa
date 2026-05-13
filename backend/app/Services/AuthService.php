@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthService
 {
+    public function __construct(private RecruiterPlanService $recruiterPlanService)
+    {
+    }
+
     private function trimToNull(?string $value): ?string
     {
         if ($value === null) {
@@ -23,14 +27,21 @@ class AuthService
      */
     public function register(array $data): User
     {
+        $role = $data['role'] ?? User::ROLE_CANDIDATE;
+
         return User::create([
             'name' => $data['name'],
             'company_name' => $this->trimToNull($data['company_name'] ?? null),
             'email' => User::normalizeEmail($data['email']),
             'password' => Hash::make($data['password']),
-            'role' => $data['role'] ?? User::ROLE_CANDIDATE,
+            'role' => $role,
             'account_status' => User::STATUS_ACTIVE,
             'phone' => User::normalizePhone($data['phone'] ?? null),
+            'recruiter_profile' => $role === User::ROLE_RECRUITER
+                ? $this->recruiterPlanService->normalizeRecruiterProfile(
+                    is_array($data['recruiter_profile'] ?? null) ? $data['recruiter_profile'] : []
+                )
+                : null,
         ]);
     }
 
@@ -96,9 +107,18 @@ class AuthService
         }
 
         if (array_key_exists('recruiter_profile', $data)) {
-            $nextData['recruiter_profile'] = is_array($data['recruiter_profile'])
-                ? $data['recruiter_profile']
-                : null;
+            $mergedProfile = [
+                ...(is_array($user->recruiter_profile) ? $user->recruiter_profile : []),
+                ...(is_array($data['recruiter_profile']) ? $data['recruiter_profile'] : []),
+            ];
+
+            $nextData['recruiter_profile'] = $this->recruiterPlanService->normalizeRecruiterProfile(
+                $mergedProfile
+            );
+        } elseif ($user->hasRole(User::ROLE_RECRUITER)) {
+            $nextData['recruiter_profile'] = $this->recruiterPlanService->normalizeRecruiterProfile(
+                is_array($user->recruiter_profile) ? $user->recruiter_profile : []
+            );
         }
 
         if (array_key_exists('profile_picture', $data)) {

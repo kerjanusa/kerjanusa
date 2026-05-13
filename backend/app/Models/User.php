@@ -104,6 +104,16 @@ class User extends Authenticatable
         return $this->hasMany(Application::class, 'candidate_id');
     }
 
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'recipient_id');
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->role === $role;

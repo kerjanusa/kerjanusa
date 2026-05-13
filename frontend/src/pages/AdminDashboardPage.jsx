@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import InboxWorkspace from '../components/InboxWorkspace.jsx';
 import MonitoringIndonesiaMap from '../components/MonitoringIndonesiaMap.jsx';
 import { getLocationCoordinates } from '../data/locationCoordinates.js';
 import useAuth from '../hooks/useAuth.js';
+import useChat from '../hooks/useChat.js';
 import AdminService from '../services/adminService.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/adminDashboard.css';
+import '../styles/workspace.css';
 
 const SECTION_OPTIONS = [
   { value: 'monitoring', label: 'Monitoring', title: 'Pusat Kontrol KerjaNusa', shortTitle: 'Monitoring', icon: 'monitor' },
@@ -14,6 +17,7 @@ const SECTION_OPTIONS = [
   { value: 'lowongan', label: 'Lowongan', title: 'Manajemen Lowongan', shortTitle: 'Lowongan', icon: 'job' },
   { value: 'analytics', label: 'Analytics', title: 'Analytics & Reporting', shortTitle: 'Analytics', icon: 'analytics' },
   { value: 'moderation', label: 'Moderasi', title: 'Moderasi Konten', shortTitle: 'Moderasi', icon: 'moderation' },
+  { value: 'messages', label: 'Chat', title: 'Inbox Superadmin', shortTitle: 'Chat', icon: 'message' },
 ];
 
 const MODERATION_TABS = [
@@ -464,6 +468,13 @@ const AdminIcon = ({ name, className = '' }) => {
           <path d="m7 8 2 2M15 18l2 2" />
         </svg>
       );
+    case 'message':
+      return (
+        <svg {...props}>
+          <path d="M5 6.5h14A1.5 1.5 0 0 1 20.5 8v8A1.5 1.5 0 0 1 19 17.5H9L5 20v-2.5H5A1.5 1.5 0 0 1 3.5 16V8A1.5 1.5 0 0 1 5 6.5Z" />
+          <path d="M7.5 10.5h8M7.5 13.5h5" />
+        </svg>
+      );
     case 'search':
       return (
         <svg {...props}>
@@ -675,6 +686,19 @@ const AdminDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const {
+    threads,
+    contacts,
+    messages,
+    isLoadingThreads,
+    isLoadingContacts,
+    isLoadingMessages,
+    isSendingMessage,
+    loadThreads,
+    loadContacts,
+    loadConversation,
+    sendMessage,
+  } = useChat();
   const [activeSection, setActiveSection] = useState(resolveSectionFromHash(location.hash));
   const [dashboard, setDashboard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -705,6 +729,9 @@ const AdminDashboardPage = () => {
   const [dismissedModerationKeys, setDismissedModerationKeys] = useState([]);
   const [selectedOptimizationJobId, setSelectedOptimizationJobId] = useState(null);
   const [selectedMonitoringMapKey, setSelectedMonitoringMapKey] = useState('');
+  const [selectedChatContact, setSelectedChatContact] = useState(null);
+  const [chatDraftMessage, setChatDraftMessage] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
 
   useEffect(() => {
     setActiveSection(resolveSectionFromHash(location.hash));
@@ -760,6 +787,15 @@ const AdminDashboardPage = () => {
     setModerationPage(1);
   }, [moderationSearchQuery, moderationTab]);
 
+  useEffect(() => {
+    if (activeSection !== 'messages') {
+      return;
+    }
+
+    loadThreads().catch(() => {});
+    loadContacts(chatSearchQuery).catch(() => {});
+  }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
+
   const totals = dashboard?.totals ?? {};
   const growth = dashboard?.growth ?? {};
   const candidateTable = dashboard?.candidate_table ?? [];
@@ -767,6 +803,7 @@ const AdminDashboardPage = () => {
   const recruiterOptions = dashboard?.recruiter_options ?? [];
   const jobs = dashboard?.jobs ?? [];
   const applications = dashboard?.applications ?? [];
+  const screeningOverview = dashboard?.screening_overview ?? {};
 
   const activeCandidatesCount = candidateTable.filter(
     (candidate) => candidate.account_status === 'active'
@@ -1999,6 +2036,46 @@ const AdminDashboardPage = () => {
     navigate(APP_ROUTES.landing, { replace: true });
   };
 
+  const handleOpenConversation = async (contact) => {
+    if (!contact?.id) {
+      return;
+    }
+
+    setSelectedChatContact(contact);
+    setChatDraftMessage('');
+
+    try {
+      await loadConversation(contact.id);
+      handleSectionChange('messages');
+    } catch (chatError) {
+      setFeedback({
+        type: 'error',
+        message: chatError?.message || 'Percakapan belum berhasil dibuka.',
+      });
+    }
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!selectedChatContact?.id || !chatDraftMessage.trim()) {
+      return;
+    }
+
+    try {
+      await sendMessage({
+        recipient_id: selectedChatContact.id,
+        body: chatDraftMessage.trim(),
+      });
+      setChatDraftMessage('');
+      await loadThreads();
+      await loadConversation(selectedChatContact.id);
+    } catch (chatError) {
+      setFeedback({
+        type: 'error',
+        message: chatError?.message || 'Pesan belum berhasil dikirim.',
+      });
+    }
+  };
+
   const handleUserStatusToggle = async (account) => {
     const targetStatus = account.account_status === 'active' ? 'suspended' : 'active';
 
@@ -2465,6 +2542,76 @@ const AdminDashboardPage = () => {
                 ))}
               </div>
             </article>
+
+            <article className="superadmin-panel">
+              <div className="superadmin-panel-head">
+                <div>
+                  <h3>Registrasi & Screening</h3>
+                </div>
+              </div>
+
+              <div className="superadmin-list-stack">
+                <article className="superadmin-list-item">
+                  <div className="superadmin-list-dot is-warning" />
+                  <div>
+                    <strong>Profil kandidat belum selesai</strong>
+                    <p>
+                      {numberFormatter.format(
+                        screeningOverview.candidate_profiles_incomplete ?? 0
+                      )}{' '}
+                      akun perlu dilengkapi sebelum siap discreening.
+                    </p>
+                  </div>
+                </article>
+                <article className="superadmin-list-item">
+                  <div className="superadmin-list-dot is-success" />
+                  <div>
+                    <strong>Video screening masuk</strong>
+                    <p>
+                      {numberFormatter.format(
+                        screeningOverview.applications_with_video_screening ?? 0
+                      )}{' '}
+                      lamaran sudah mengirim video intro.
+                    </p>
+                  </div>
+                </article>
+                <article className="superadmin-list-item">
+                  <div className="superadmin-list-dot is-active-soft" />
+                  <div>
+                    <strong>Jawaban screening terkumpul</strong>
+                    <p>
+                      {numberFormatter.format(
+                        screeningOverview.applications_with_screening_answers ?? 0
+                      )}{' '}
+                      lamaran punya jawaban screening.
+                    </p>
+                  </div>
+                </article>
+                <article className="superadmin-list-item">
+                  <div className="superadmin-list-dot is-danger" />
+                  <div>
+                    <strong>Lowongan aktif belum di-notice recruiter</strong>
+                    <p>
+                      {numberFormatter.format(
+                        screeningOverview.jobs_waiting_recruiter_notice ?? 0
+                      )}{' '}
+                      lowongan aktif belum bergerak.
+                    </p>
+                  </div>
+                </article>
+              </div>
+
+              <div className="superadmin-detail-block">
+                <label>Distribusi Paket Recruiter</label>
+                <div className="workspace-inline-metadata">
+                  {(screeningOverview.recruiter_plan_distribution || []).map((item) => (
+                    <span key={item.plan_code}>
+                      {item.label}: {numberFormatter.format(item.total || 0)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </article>
           </div>
         </div>
       </section>
@@ -2892,6 +3039,14 @@ const AdminDashboardPage = () => {
                 <div>
                   <label>Fokus Hiring</label>
                   <strong>{selectedRecruiter.hiringFocusLabel}</strong>
+                </div>
+                <div>
+                  <label>Paket Recruiter</label>
+                  <strong>{selectedRecruiter.label || 'Starter'}</strong>
+                </div>
+                <div>
+                  <label>KN Credit</label>
+                  <strong>{numberFormatter.format(selectedRecruiter.kn_credit ?? 0)}</strong>
                 </div>
                 <div>
                   <label>Lowongan Terakhir</label>
@@ -3554,6 +3709,29 @@ const AdminDashboardPage = () => {
     </section>
   );
 
+  const renderMessages = () => (
+    <InboxWorkspace
+      title="Inbox superadmin untuk kandidat dan recruiter"
+      description="Gunakan inbox ini untuk menangani pertanyaan registrasi perusahaan, screening kandidat, laporan lowongan, dan tindak lanjut operasional yang perlu eskalasi admin."
+      threads={threads}
+      contacts={contacts}
+      selectedContact={selectedChatContact}
+      selectedContactId={selectedChatContact?.id}
+      messages={messages}
+      draftMessage={chatDraftMessage}
+      onDraftMessageChange={setChatDraftMessage}
+      contactSearchQuery={chatSearchQuery}
+      onContactSearchQueryChange={setChatSearchQuery}
+      onSelectContact={handleOpenConversation}
+      onSendMessage={handleSendChatMessage}
+      isLoadingThreads={isLoadingThreads}
+      isLoadingContacts={isLoadingContacts}
+      isLoadingMessages={isLoadingMessages}
+      isSendingMessage={isSendingMessage}
+      emptyMessage="Pilih recruiter atau kandidat yang ingin Anda bantu."
+    />
+  );
+
   const renderSectionContent = () => {
     if (activeSection === 'monitoring') {
       return renderMonitoring();
@@ -3573,6 +3751,10 @@ const AdminDashboardPage = () => {
 
     if (activeSection === 'analytics') {
       return renderAnalytics();
+    }
+
+    if (activeSection === 'messages') {
+      return renderMessages();
     }
 
     return renderModeration();

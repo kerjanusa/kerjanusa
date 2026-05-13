@@ -658,6 +658,25 @@ const getCreateJobErrorMessage = (error) => {
   return error?.message || 'Gagal membuat lowongan. Periksa kembali isi form Anda.';
 };
 
+const buildScreeningQuestionPayload = (selectedQuestions, customQuestions) => [
+  ...selectedQuestions.map((question) => ({
+    id: question.id,
+    type: 'single-choice',
+    title: question.title,
+    question: question.question,
+    answers: question.answers,
+    required: true,
+  })),
+  ...customQuestions.map((question, index) => ({
+    id: `custom-question-${index + 1}`,
+    type: 'text',
+    title: `Pertanyaan Tambahan ${index + 1}`,
+    question: question.trim(),
+    answers: [],
+    required: true,
+  })),
+];
+
 const RecruiterJobCreatePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -1444,6 +1463,10 @@ const RecruiterJobCreatePage = () => {
         interview_type: formData.interview_type,
         interview_note: formData.interview_note.trim(),
         video_screening_requirement: formData.video_screening_requirement,
+        quiz_screening_questions: buildScreeningQuestionPayload(
+          selectedScreeningQuestions,
+          customQuizQuestions
+        ),
         workflow_status: publishMode === 'publish' ? 'active' : 'draft',
         status: publishMode === 'publish' ? 'active' : 'inactive',
       });
@@ -1489,6 +1512,7 @@ const RecruiterJobCreatePage = () => {
         isLoggingOut={isLoggingOut}
         user={user}
         companyProfile={companyProfile}
+        onPremiumClick={() => handleTopbarSectionNavigate('package')}
       />
 
       <main className="recruiter-dashboard-shell recruiter-job-create-shell">

@@ -1,0 +1,228 @@
+import '../styles/workspace.css';
+import '../styles/collaboration.css';
+
+const formatMessageTime = (value) => {
+  if (!value) {
+    return '-';
+  }
+
+  try {
+    return new Date(value).toLocaleString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '-';
+  }
+};
+
+const resolveContactLabel = (contact) => {
+  if (!contact) {
+    return 'Kontak';
+  }
+
+  if (contact.role === 'recruiter') {
+    return contact.company_name || contact.name || 'Recruiter';
+  }
+
+  if (contact.role === 'superadmin') {
+    return 'Superadmin KerjaNusa';
+  }
+
+  return contact.name || 'Pelamar';
+};
+
+const InboxWorkspace = ({
+  title,
+  description,
+  threads,
+  contacts,
+  selectedContact,
+  selectedContactId,
+  messages,
+  draftMessage,
+  onDraftMessageChange,
+  contactSearchQuery,
+  onContactSearchQueryChange,
+  onSelectContact,
+  onSendMessage,
+  isLoadingThreads,
+  isLoadingContacts,
+  isLoadingMessages,
+  isSendingMessage,
+  emptyMessage = 'Pilih percakapan untuk mulai berdiskusi.',
+}) => {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!selectedContactId || !draftMessage.trim()) {
+      return;
+    }
+
+    onSendMessage?.();
+  };
+
+  return (
+    <section className="workspace-section-stack">
+      <article className="workspace-panel" data-reveal>
+        <div className="workspace-panel-heading">
+          <div>
+            <span className="workspace-section-label">Komunikasi</span>
+            <h2>{title}</h2>
+          </div>
+          <p>{description}</p>
+        </div>
+      </article>
+
+      <div className="collaboration-grid">
+        <article className="workspace-panel collaboration-sidebar" data-reveal data-reveal-delay="50ms">
+          <div className="collaboration-sidebar-block">
+            <div className="collaboration-sidebar-header">
+              <strong>Thread Terbaru</strong>
+              <span>{threads.length}</span>
+            </div>
+            {isLoadingThreads ? (
+              <p className="workspace-muted-text">Memuat percakapan...</p>
+            ) : threads.length === 0 ? (
+              <p className="workspace-muted-text">Belum ada percakapan aktif.</p>
+            ) : (
+              <div className="collaboration-thread-list">
+                {threads.map((thread) => (
+                  <button
+                    key={`thread-${thread.contact?.id}`}
+                    type="button"
+                    className={`collaboration-thread-card${
+                      Number(selectedContactId) === Number(thread.contact?.id) ? ' is-active' : ''
+                    }`}
+                    onClick={() => onSelectContact?.(thread.contact)}
+                  >
+                    <div className="collaboration-thread-card-top">
+                      <strong>{resolveContactLabel(thread.contact)}</strong>
+                      <span>{formatMessageTime(thread.updated_at)}</span>
+                    </div>
+                    <p>{thread.last_message}</p>
+                    <small>
+                      {thread.unread_count > 0
+                        ? `${thread.unread_count} pesan belum dibaca`
+                        : 'Sudah terbaca'}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="collaboration-sidebar-block">
+            <div className="collaboration-sidebar-header">
+              <strong>Kontak yang Bisa Dihubungi</strong>
+              <span>{contacts.length}</span>
+            </div>
+            <input
+              type="search"
+              className="collaboration-search"
+              placeholder="Cari nama, email, atau perusahaan..."
+              value={contactSearchQuery}
+              onChange={(event) => onContactSearchQueryChange?.(event.target.value)}
+            />
+
+            {isLoadingContacts ? (
+              <p className="workspace-muted-text">Memuat kontak...</p>
+            ) : contacts.length === 0 ? (
+              <p className="workspace-muted-text">Belum ada kontak yang tersedia.</p>
+            ) : (
+              <div className="collaboration-contact-list">
+                {contacts.map((contact) => (
+                  <button
+                    key={`contact-${contact.id}`}
+                    type="button"
+                    className={`collaboration-contact-chip${
+                      Number(selectedContactId) === Number(contact.id) ? ' is-active' : ''
+                    }`}
+                    onClick={() => onSelectContact?.(contact)}
+                  >
+                    <strong>{resolveContactLabel(contact)}</strong>
+                    <span>{contact.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </article>
+
+        <article className="workspace-panel collaboration-chat-panel" data-reveal data-reveal-delay="110ms">
+          <div className="collaboration-chat-header">
+            <div>
+              <span className="workspace-section-label">Percakapan</span>
+              <h2>{resolveContactLabel(selectedContact)}</h2>
+            </div>
+            {selectedContact?.email && <p>{selectedContact.email}</p>}
+          </div>
+
+          <div className="collaboration-message-list">
+            {!selectedContactId ? (
+              <div className="collaboration-empty-state">
+                <p>{emptyMessage}</p>
+              </div>
+            ) : isLoadingMessages ? (
+              <div className="collaboration-empty-state">
+                <p>Memuat isi percakapan...</p>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="collaboration-empty-state">
+                <p>Belum ada pesan. Mulai percakapan dari panel bawah.</p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <article
+                  key={message.id}
+                  className={`collaboration-message-bubble${
+                    message.is_mine ? ' is-mine' : ' is-theirs'
+                  }`}
+                >
+                  <div className="collaboration-message-meta">
+                    <strong>{message.is_mine ? 'Anda' : resolveContactLabel(message.sender)}</strong>
+                    <span>{formatMessageTime(message.created_at)}</span>
+                  </div>
+                  {message.job?.title && (
+                    <small className="collaboration-message-job">{message.job.title}</small>
+                  )}
+                  <p>{message.body}</p>
+                </article>
+              ))
+            )}
+          </div>
+
+          <form className="collaboration-composer" onSubmit={handleSubmit}>
+            <textarea
+              rows="4"
+              placeholder={
+                selectedContactId
+                  ? 'Tulis pesan ke kontak ini...'
+                  : 'Pilih kontak terlebih dahulu sebelum mengirim pesan.'
+              }
+              value={draftMessage}
+              onChange={(event) => onDraftMessageChange?.(event.target.value)}
+              disabled={!selectedContactId || isSendingMessage}
+            />
+            <div className="collaboration-composer-actions">
+              <small>
+                Chat ini dipakai untuk koordinasi registrasi, screening, dan tindak lanjut hiring.
+              </small>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!selectedContactId || !draftMessage.trim() || isSendingMessage}
+              >
+                {isSendingMessage ? 'Mengirim...' : 'Kirim Pesan'}
+              </button>
+            </div>
+          </form>
+        </article>
+      </div>
+    </section>
+  );
+};
+
+export default InboxWorkspace;

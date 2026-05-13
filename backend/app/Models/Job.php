@@ -92,6 +92,7 @@ class Job extends Model
         'interview_type',
         'interview_note',
         'video_screening_requirement',
+        'quiz_screening_questions',
         'status',
         'workflow_status',
     ];
@@ -100,6 +101,7 @@ class Job extends Model
         'salary_min' => 'integer',
         'salary_max' => 'integer',
         'openings_count' => 'integer',
+        'quiz_screening_questions' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

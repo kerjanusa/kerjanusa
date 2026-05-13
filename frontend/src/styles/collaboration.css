@@ -1,0 +1,335 @@
+.collaboration-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.collaboration-sidebar,
+.collaboration-chat-panel,
+.talent-card {
+  min-width: 0;
+}
+
+.collaboration-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.collaboration-sidebar-block {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.collaboration-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.collaboration-sidebar-header strong {
+  color: var(--primary-dark);
+}
+
+.collaboration-sidebar-header span {
+  color: var(--gray-500);
+  font-size: 0.82rem;
+}
+
+.collaboration-search {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.82rem 0.92rem;
+  border: 1px solid rgba(91, 35, 79, 0.14);
+  border-radius: 0.95rem;
+  background: #fff;
+}
+
+.collaboration-thread-list,
+.collaboration-contact-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.collaboration-thread-card,
+.collaboration-contact-chip {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.95rem;
+  border: 1px solid rgba(91, 35, 79, 0.1);
+  border-radius: 1rem;
+  background: rgba(255, 252, 248, 0.96);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.collaboration-thread-card:hover,
+.collaboration-thread-card.is-active,
+.collaboration-contact-chip:hover,
+.collaboration-contact-chip.is-active {
+  transform: translateY(-1px);
+  border-color: rgba(184, 135, 48, 0.28);
+  box-shadow: 0 18px 30px rgba(46, 22, 44, 0.08);
+}
+
+.collaboration-thread-card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.collaboration-thread-card strong,
+.collaboration-contact-chip strong,
+.collaboration-chat-header h2,
+.talent-card h2 {
+  color: var(--primary-dark);
+}
+
+.collaboration-thread-card p,
+.collaboration-contact-chip span,
+.collaboration-thread-card small,
+.collaboration-message-bubble p,
+.talent-card p,
+.talent-document-note span {
+  color: var(--gray-600);
+}
+
+.collaboration-chat-panel {
+  display: grid;
+  grid-template-rows: auto minmax(320px, 1fr) auto;
+  gap: 1rem;
+}
+
+.collaboration-chat-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.collaboration-chat-header h2 {
+  margin: 0.45rem 0 0;
+  font-size: 1.5rem;
+}
+
+.collaboration-chat-header p {
+  margin: 0;
+  color: var(--gray-500);
+}
+
+.collaboration-message-list {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  max-height: 38rem;
+  padding-right: 0.2rem;
+  overflow-y: auto;
+}
+
+.collaboration-empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 14rem;
+  border: 1px dashed rgba(91, 35, 79, 0.16);
+  border-radius: 1.15rem;
+  background: rgba(255, 251, 246, 0.76);
+  text-align: center;
+}
+
+.collaboration-empty-state p {
+  max-width: 32ch;
+  color: var(--gray-500);
+}
+
+.collaboration-message-bubble {
+  max-width: min(100%, 42rem);
+  padding: 1rem 1.05rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(91, 35, 79, 0.08);
+}
+
+.collaboration-message-bubble.is-mine {
+  justify-self: end;
+  background: linear-gradient(135deg, #f6e7b6 0%, #f9efd6 100%);
+}
+
+.collaboration-message-bubble.is-theirs {
+  justify-self: start;
+  background: rgba(255, 252, 248, 0.98);
+}
+
+.collaboration-message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.collaboration-message-meta strong,
+.talent-document-note strong {
+  color: var(--primary-dark);
+}
+
+.collaboration-message-meta span,
+.collaboration-message-job {
+  color: var(--gray-500);
+  font-size: 0.78rem;
+}
+
+.collaboration-composer {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.collaboration-composer textarea,
+.talent-filter-grid input,
+.talent-filter-grid select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(91, 35, 79, 0.14);
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.collaboration-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.collaboration-composer-actions small {
+  color: var(--gray-500);
+  line-height: 1.6;
+}
+
+.talent-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.talent-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.talent-card-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.talent-card-heading h2 {
+  margin: 0.45rem 0 0;
+  font-size: 1.45rem;
+}
+
+.talent-grade-chip {
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(91, 35, 79, 0.08);
+  color: var(--primary-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.talent-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.8rem;
+  margin-top: 1rem;
+}
+
+.talent-meta-grid span {
+  color: var(--gray-600);
+  font-size: 0.9rem;
+}
+
+.talent-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.talent-skill-chip {
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(184, 135, 48, 0.12);
+  color: var(--primary-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.talent-document-note {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 1rem;
+}
+
+.talent-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.talent-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.talent-pagination .page-btn {
+  min-width: 2.6rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(91, 35, 79, 0.14);
+  border-radius: 0.9rem;
+  background: rgba(255, 252, 247, 0.96);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.talent-pagination .page-btn.active {
+  background: linear-gradient(135deg, #f4dea4 0%, var(--secondary) 55%, #b88730 100%);
+  border-color: rgba(184, 135, 48, 0.28);
+}
+
+@media (max-width: 1024px) {
+  .collaboration-grid,
+  .talent-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .talent-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .collaboration-composer-actions,
+  .collaboration-chat-header,
+  .talent-card-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .talent-filter-grid,
+  .talent-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

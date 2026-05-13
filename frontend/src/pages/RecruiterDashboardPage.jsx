@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import InboxWorkspace from '../components/InboxWorkspace.jsx';
 import RecruiterTopbar from '../components/RecruiterTopbar.jsx';
+import TalentSearchPanel from '../components/TalentSearchPanel.jsx';
 import useApplications from '../hooks/useApplications.js';
 import useAuth from '../hooks/useAuth.js';
+import useChat from '../hooks/useChat.js';
 import useJobs from '../hooks/useJobs.js';
+import RecruiterWorkspaceService from '../services/recruiterWorkspaceService.js';
 import { readCandidateProfile } from '../utils/candidateFlow.js';
 import {
   APPLICATION_STAGE_OPTIONS,
@@ -24,6 +28,7 @@ import {
   saveJobWorkflowStatus,
   saveRecruiterCompanyProfile,
 } from '../utils/recruiterFlow.js';
+import { formatRecruiterPlanDocuments } from '../utils/recruiterPlans.js';
 import { formatExperienceLevel, formatWorkMode } from '../utils/jobFormatters.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/workspace.css';
@@ -70,10 +75,26 @@ const formatDateTime = (value) => {
 const formatPlural = (count, singularLabel, pluralLabel = singularLabel) =>
   `${count} ${count === 1 ? singularLabel : pluralLabel}`;
 
+const resolveContactLabel = (contact) => {
+  if (!contact) {
+    return 'Kontak';
+  }
+
+  if (contact.role === 'recruiter') {
+    return contact.company_name || contact.name || 'Recruiter';
+  }
+
+  if (contact.role === 'superadmin') {
+    return 'Superadmin KerjaNusa';
+  }
+
+  return contact.name || 'Kandidat';
+};
+
 const RecruiterDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, getCurrentUser } = useAuth();
   const {
     jobs,
     isLoading: isLoadingJobs,
@@ -89,6 +110,19 @@ const RecruiterDashboardPage = () => {
     getJobApplications,
     updateApplicationStatus,
   } = useApplications();
+  const {
+    threads,
+    contacts,
+    messages,
+    isLoadingThreads,
+    isLoadingContacts,
+    isLoadingMessages,
+    isSendingMessage,
+    loadThreads,
+    loadContacts,
+    loadConversation,
+    sendMessage,
+  } = useChat();
   const [activeSection, setActiveSection] = useState(resolveRecruiterSectionFromHash(location.hash));
   const [companyProfile, setCompanyProfile] = useState(() => readRecruiterCompanyProfile(user));
   const [feedback, setFeedback] = useState(null);
@@ -101,6 +135,25 @@ const RecruiterDashboardPage = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [jobActionInFlightId, setJobActionInFlightId] = useState(null);
   const [applicationActionInFlightId, setApplicationActionInFlightId] = useState(null);
+  const [packageOverview, setPackageOverview] = useState({
+    current: companyProfile.plan || null,
+    catalog: [],
+  });
+  const [isLoadingPackage, setIsLoadingPackage] = useState(false);
+  const [isSavingPackage, setIsSavingPackage] = useState(false);
+  const [talentFilters, setTalentFilters] = useState({
+    query: '',
+    location: '',
+    skill: '',
+    grade: '',
+    experience_type: '',
+  });
+  const [talentCandidates, setTalentCandidates] = useState([]);
+  const [talentPagination, setTalentPagination] = useState(null);
+  const [isLoadingTalent, setIsLoadingTalent] = useState(false);
+  const [selectedChatContact, setSelectedChatContact] = useState(null);
+  const [chatDraftMessage, setChatDraftMessage] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
 
   useEffect(() => {
     setActiveSection(resolveRecruiterSectionFromHash(location.hash));
@@ -109,6 +162,13 @@ const RecruiterDashboardPage = () => {
   useEffect(() => {
     setCompanyProfile(readRecruiterCompanyProfile(user));
   }, [user]);
+
+  useEffect(() => {
+    setPackageOverview((currentOverview) => ({
+      current: companyProfile.plan || currentOverview.current,
+      catalog: currentOverview.catalog,
+    }));
+  }, [companyProfile]);
 
   useEffect(() => {
     if (user?.role === 'recruiter') {
@@ -169,6 +229,76 @@ const RecruiterDashboardPage = () => {
 
     getJobApplications(selectedJobId, 1, 100);
   }, [getJobApplications, selectedJobId]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPackage = async () => {
+      if (user?.role !== 'recruiter') {
+        return;
+      }
+
+      setIsLoadingPackage(true);
+
+      try {
+        const packageData = await RecruiterWorkspaceService.getPackageOverview();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPackageOverview(packageData);
+      } catch {
+        if (isMounted) {
+          setPackageOverview((currentOverview) => ({
+            current: companyProfile.plan || currentOverview.current,
+            catalog: currentOverview.catalog,
+          }));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingPackage(false);
+        }
+      }
+    };
+
+    loadPackage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [companyProfile.plan, user?.id, user?.role]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages') {
+      return;
+    }
+
+    loadThreads().catch(() => {});
+    loadContacts(chatSearchQuery).catch(() => {});
+  }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
+
+  useEffect(() => {
+    if (activeSection !== 'talent' || talentCandidates.length > 0) {
+      return;
+    }
+
+    const loadTalent = async () => {
+      setIsLoadingTalent(true);
+
+      try {
+        const result = await RecruiterWorkspaceService.searchTalent(talentFilters, 1, 12);
+        setTalentCandidates(result.data || []);
+        setTalentPagination(result.pagination || null);
+      } catch {
+        // Surface error through manual search action to avoid noisy first load feedback.
+      } finally {
+        setIsLoadingTalent(false);
+      }
+    };
+
+    loadTalent();
+  }, [activeSection, talentCandidates.length, talentFilters]);
 
   const selectedJob = useMemo(
     () => recruiterJobs.find((job) => Number(job.id) === Number(selectedJobId)) || null,
@@ -428,6 +558,99 @@ const RecruiterDashboardPage = () => {
     }
   };
 
+  const runTalentSearch = async (page = 1) => {
+    setIsLoadingTalent(true);
+
+    try {
+      const result = await RecruiterWorkspaceService.searchTalent(talentFilters, page, 12);
+      setTalentCandidates(result.data || []);
+      setTalentPagination(result.pagination || null);
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Talent search belum berhasil dijalankan.',
+      });
+    } finally {
+      setIsLoadingTalent(false);
+    }
+  };
+
+  const handleTalentFilterChange = (field, value) => {
+    setTalentFilters((currentFilters) => ({
+      ...currentFilters,
+      [field]: value,
+    }));
+  };
+
+  const handleOpenConversation = async (contact) => {
+    if (!contact?.id) {
+      return;
+    }
+
+    setSelectedChatContact(contact);
+    setChatDraftMessage('');
+
+    try {
+      await loadConversation(contact.id);
+      handleSectionChange('messages');
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Percakapan belum berhasil dibuka.',
+      });
+    }
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!selectedChatContact?.id || !chatDraftMessage.trim()) {
+      return;
+    }
+
+    try {
+      await sendMessage({
+        recipient_id: selectedChatContact.id,
+        body: chatDraftMessage.trim(),
+        job_id:
+          selectedChatContact.role === 'candidate' && selectedJobId
+            ? Number(selectedJobId)
+            : undefined,
+      });
+      setChatDraftMessage('');
+      await loadThreads();
+      await loadConversation(selectedChatContact.id);
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Pesan belum berhasil dikirim.',
+      });
+    }
+  };
+
+  const handlePackageChange = async (planCode) => {
+    setIsSavingPackage(true);
+
+    try {
+      const response = await RecruiterWorkspaceService.updatePackage(planCode);
+      const refreshedUser = await getCurrentUser();
+      setCompanyProfile(readRecruiterCompanyProfile(response.user || refreshedUser || user));
+      setPackageOverview({
+        current: response.current,
+        catalog: response.catalog || packageOverview.catalog,
+      });
+      setFeedback({
+        type: 'success',
+        message: `Paket recruiter sekarang ${response.current?.label || 'Starter'}.`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Paket recruiter belum berhasil diperbarui.',
+      });
+    } finally {
+      setIsSavingPackage(false);
+    }
+  };
+
   const overviewCards = [
     {
       label: 'Profil company',
@@ -445,9 +668,11 @@ const RecruiterDashboardPage = () => {
       detail: `${dashboardMetrics.hiredCandidates} kandidat sudah hired`,
     },
     {
-      label: 'Pipeline hari ini',
-      value: `${candidateStageCounts.screening + candidateStageCounts.shortlisted}`,
-      detail: 'Kandidat berada di screening dan shortlist',
+      label: 'Paket recruiter',
+      value: packageOverview.current?.label || companyProfile.plan?.label || 'Starter',
+      detail: formatRecruiterPlanDocuments(
+        packageOverview.current?.code || companyProfile.plan_code
+      ),
     },
   ];
 
@@ -462,6 +687,7 @@ const RecruiterDashboardPage = () => {
         isLoggingOut={isLoggingOut}
         user={user}
         companyProfile={companyProfile}
+        onPremiumClick={() => handleSectionChange('package')}
       />
 
       <main className="workspace-shell workspace-main recruiter-flow-shell">
@@ -1054,6 +1280,32 @@ const RecruiterDashboardPage = () => {
                           </div>
                         )}
 
+                        {application.screening_summary?.total_questions > 0 && (
+                          <div className="workspace-application-note">
+                            <strong>Ringkasan screening</strong>
+                            <p>
+                              {application.screening_summary.answered_questions}/
+                              {application.screening_summary.total_questions} terjawab •{' '}
+                              {application.screening_summary.positive_answers} jawaban "Ya" •{' '}
+                              {application.screening_summary.completion_rate}% lengkap
+                            </p>
+                          </div>
+                        )}
+
+                        {Array.isArray(application.screening_answers) &&
+                          application.screening_answers.length > 0 && (
+                            <div className="workspace-application-note">
+                              <strong>Jawaban screening</strong>
+                              <div className="workspace-inline-metadata">
+                                {application.screening_answers.map((answer) => (
+                                  <span key={`${application.id}-${answer.question_id || answer.question}`}>
+                                    {answer.question}: {answer.answer}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                         <div className="workspace-tag-list">
                           {topSkills.length > 0 ? (
                             topSkills.map((skill) => (
@@ -1075,6 +1327,28 @@ const RecruiterDashboardPage = () => {
                             {application.candidateProfile.certificateFiles.length}
                           </span>
                         </div>
+
+                        {application.candidate?.document_access?.notice && (
+                          <div className="workspace-application-note">
+                            <strong>Akses berkas sesuai paket</strong>
+                            <p>{application.candidate.document_access.notice}</p>
+                          </div>
+                        )}
+
+                        {application.video_intro_url && (
+                          <div className="workspace-application-note">
+                            <strong>Video screening kandidat</strong>
+                            <p>
+                              <a
+                                href={application.video_intro_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Buka video screening
+                              </a>
+                            </p>
+                          </div>
+                        )}
 
                         <div className="workspace-action-row recruiter-flow-job-actions">
                           <select
@@ -1098,6 +1372,13 @@ const RecruiterDashboardPage = () => {
                           >
                             Hubungi Kandidat
                           </a>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => handleOpenConversation(application.candidate)}
+                          >
+                            Chat di Platform
+                          </button>
                         </div>
                       </article>
                     );
@@ -1105,6 +1386,137 @@ const RecruiterDashboardPage = () => {
                 </div>
               )}
             </article>
+          </section>
+        )}
+
+        {activeSection === 'talent' && (
+          <TalentSearchPanel
+            plan={packageOverview.current || companyProfile.plan}
+            filters={talentFilters}
+            onFilterChange={handleTalentFilterChange}
+            onSearch={() => runTalentSearch(1)}
+            onPageChange={runTalentSearch}
+            results={talentCandidates}
+            pagination={talentPagination}
+            isLoading={isLoadingTalent}
+            onMessageCandidate={(candidate) =>
+              handleOpenConversation({
+                id: candidate.id,
+                name: candidate.name,
+                role: 'candidate',
+                email: candidate.email,
+              })
+            }
+          />
+        )}
+
+        {activeSection === 'messages' && (
+          <InboxWorkspace
+            title="Chat recruiter dengan kandidat dan superadmin"
+            description="Gunakan percakapan ini untuk follow up registrasi perusahaan, koordinasi screening, dan tindak lanjut hiring tanpa keluar dari platform."
+            threads={threads}
+            contacts={contacts}
+            selectedContact={selectedChatContact}
+            selectedContactId={selectedChatContact?.id}
+            messages={messages}
+            draftMessage={chatDraftMessage}
+            onDraftMessageChange={setChatDraftMessage}
+            contactSearchQuery={chatSearchQuery}
+            onContactSearchQueryChange={setChatSearchQuery}
+            onSelectContact={handleOpenConversation}
+            onSendMessage={handleSendChatMessage}
+            isLoadingThreads={isLoadingThreads}
+            isLoadingContacts={isLoadingContacts}
+            isLoadingMessages={isLoadingMessages}
+            isSendingMessage={isSendingMessage}
+            emptyMessage="Pilih kandidat atau superadmin yang ingin Anda hubungi."
+          />
+        )}
+
+        {activeSection === 'package' && (
+          <section className="workspace-section-stack">
+            <article className="workspace-panel" data-reveal>
+              <div className="workspace-panel-heading">
+                <div>
+                  <span className="workspace-section-label">Paket Recruiter</span>
+                  <h2>Atur batas fitur sesuai kebutuhan hiring</h2>
+                </div>
+                <p>
+                  Paket memengaruhi jumlah lowongan aktif, hasil talent search yang terbuka, dan
+                  jumlah berkas kandidat yang bisa dilihat recruiter.
+                </p>
+              </div>
+
+              <div className="workspace-candidate-highlight-grid">
+                <article className="workspace-subcard">
+                  <div className="workspace-subcard-heading">
+                    <strong>Paket aktif</strong>
+                    <span>{packageOverview.current?.label || companyProfile.plan?.label || 'Starter'}</span>
+                  </div>
+                  <p>
+                    {packageOverview.current?.description ||
+                      companyProfile.plan?.description ||
+                      'Paket recruiter aktif mengatur akses talent search dan berkas kandidat.'}
+                  </p>
+                </article>
+
+                <article className="workspace-subcard">
+                  <div className="workspace-subcard-heading">
+                    <strong>KN Credit</strong>
+                    <span>{companyProfile.kn_credit || 0}</span>
+                  </div>
+                  <p>
+                    Credit ditampilkan sebagai penanda akun. Saat ini credit ikut terbaca di paket
+                    recruiter aktif.
+                  </p>
+                </article>
+              </div>
+            </article>
+
+            <div className="workspace-card-list">
+              {(packageOverview.catalog || []).map((plan) => {
+                const isActivePlan =
+                  (packageOverview.current?.code || companyProfile.plan_code) === plan.code;
+
+                return (
+                  <article key={plan.code} className="workspace-panel" data-reveal>
+                    <div className="workspace-subcard-heading">
+                      <div>
+                        <strong>{plan.label}</strong>
+                        <span>{isActivePlan ? 'Paket aktif' : 'Siap dipilih'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className={isActivePlan ? 'btn btn-outline' : 'btn btn-primary'}
+                        onClick={() => handlePackageChange(plan.code)}
+                        disabled={isSavingPackage || isActivePlan}
+                      >
+                        {isSavingPackage && isActivePlan
+                          ? 'Menyimpan...'
+                          : isActivePlan
+                            ? 'Sedang Dipakai'
+                            : 'Gunakan Paket'}
+                      </button>
+                    </div>
+
+                    <p>{plan.description}</p>
+
+                    <div className="workspace-inline-metadata">
+                      <span>
+                        Lowongan aktif:{' '}
+                        {plan.job_limit === null ? 'Tanpa batas' : `${plan.job_limit} lowongan`}
+                      </span>
+                      <span>Talent search: {plan.talent_result_limit} kandidat</span>
+                      <span>
+                        Berkas kandidat: {formatRecruiterPlanDocuments(plan.code)}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {isLoadingPackage && <div className="loading">Memuat paket recruiter...</div>}
           </section>
         )}
       </main>

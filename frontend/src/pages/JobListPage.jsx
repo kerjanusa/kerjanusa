@@ -64,6 +64,15 @@ const getLocationPermissionErrorMessage = (errorCode) => {
   }
 };
 
+const buildInitialScreeningAnswers = (job) =>
+  Array.isArray(job?.quiz_screening_questions)
+    ? job.quiz_screening_questions.map((question) => ({
+        question_id: question.id,
+        question: question.question,
+        answer: '',
+      }))
+    : [];
+
 /**
  * Halaman daftar lowongan publik dengan filter pencarian, dropdown lokasi, dan pagination.
  */
@@ -94,6 +103,8 @@ const JobListPage = () => {
   const [appliedJobIds, setAppliedJobIds] = React.useState(new Set());
   const [isLoadingAppliedJobs, setIsLoadingAppliedJobs] = React.useState(false);
   const [applicationCoverLetter, setApplicationCoverLetter] = React.useState('');
+  const [applicationScreeningAnswers, setApplicationScreeningAnswers] = React.useState([]);
+  const [applicationVideoIntroUrl, setApplicationVideoIntroUrl] = React.useState('');
   const [applicationFeedback, setApplicationFeedback] = React.useState(null);
   const locationDropdownRef = React.useRef(null);
   const hasRestoredApplyIntentRef = React.useRef(false);
@@ -223,6 +234,8 @@ const JobListPage = () => {
     clearCandidateApplyIntent();
     setSelectedJob(matchingJob);
     setApplicationCoverLetter('');
+    setApplicationScreeningAnswers(buildInitialScreeningAnswers(matchingJob));
+    setApplicationVideoIntroUrl('');
     setApplicationFeedback(null);
   }, [
     appliedJobIds,
@@ -391,6 +404,8 @@ const JobListPage = () => {
   const closeApplyModal = React.useCallback(() => {
     setSelectedJob(null);
     setApplicationCoverLetter('');
+    setApplicationScreeningAnswers([]);
+    setApplicationVideoIntroUrl('');
     setApplicationFeedback(null);
   }, []);
 
@@ -437,10 +452,33 @@ const JobListPage = () => {
 
       setSelectedJob(job);
       setApplicationCoverLetter('');
+      setApplicationScreeningAnswers(buildInitialScreeningAnswers(job));
+      setApplicationVideoIntroUrl('');
       setApplicationFeedback(null);
     },
     [appliedJobIds, candidateCompletion, currentPage, filters, navigate, selectedLocation, user]
   );
+
+  const handleScreeningAnswerChange = React.useCallback((questionId, questionText, answerValue) => {
+    setApplicationScreeningAnswers((currentAnswers) => {
+      const nextAnswers = [...currentAnswers];
+      const existingIndex = nextAnswers.findIndex(
+        (answer) => String(answer.question_id) === String(questionId)
+      );
+      const nextAnswer = {
+        question_id: questionId,
+        question: questionText,
+        answer: answerValue,
+      };
+
+      if (existingIndex >= 0) {
+        nextAnswers[existingIndex] = nextAnswer;
+        return nextAnswers;
+      }
+
+      return [...nextAnswers, nextAnswer];
+    });
+  }, []);
 
   const handleApplySubmit = async (event) => {
     event.preventDefault();
@@ -458,7 +496,12 @@ const JobListPage = () => {
     }
 
     try {
-      await applyForJob(selectedJob.id, applicationCoverLetter.trim());
+      await applyForJob(
+        selectedJob.id,
+        applicationCoverLetter.trim(),
+        applicationScreeningAnswers,
+        applicationVideoIntroUrl.trim()
+      );
       setAppliedJobIds((currentIds) => new Set([...currentIds, Number(selectedJob.id)]));
       closeApplyModal();
       navigate(`${APP_ROUTES.candidateDashboard}#applications`, {
@@ -518,6 +561,9 @@ const JobListPage = () => {
   const activeVideoScreeningLabel = formatVideoScreeningRequirement(
     selectedJob?.video_screening_requirement
   );
+  const screeningQuestions = Array.isArray(selectedJob?.quiz_screening_questions)
+    ? selectedJob.quiz_screening_questions
+    : [];
   const profileReadyMessage = candidateCompletion.isReady
     ? 'Profil Anda sudah siap dipakai untuk apply instan.'
     : `Lengkapi ${candidateCompletion.missingRequiredItems.length} komponen inti agar bisa melamar.`;
@@ -547,6 +593,15 @@ const JobListPage = () => {
             </button>
           </div>
         )}
+
+        <div className="job-security-banner">
+          <strong>Keamanan KerjaNusa</strong>
+          <p>
+            Waspadai lowongan kerja penipuan. Jangan kirim uang, OTP, atau data sensitif di luar
+            alur resmi KerjaNusa. Jika ada hal mencurigakan, gunakan chat dengan recruiter atau
+            superadmin dari dalam platform.
+          </p>
+        </div>
 
         <div className="filter-group">
           <input
@@ -794,6 +849,75 @@ const JobListPage = () => {
 
               {activeVideoScreeningLabel && (
                 <p className="job-apply-video-screening-note">{activeVideoScreeningLabel}</p>
+              )}
+
+              {screeningQuestions.length > 0 && (
+                <div className="job-apply-screening-stack">
+                  <strong>Pertanyaan screening</strong>
+                  {screeningQuestions.map((question) => {
+                    const currentAnswer =
+                      applicationScreeningAnswers.find(
+                        (answer) => String(answer.question_id) === String(question.id)
+                      )?.answer || '';
+
+                    return (
+                      <div key={question.id} className="job-apply-screening-card">
+                        <span>{question.question}</span>
+                        {Array.isArray(question.answers) && question.answers.length > 0 ? (
+                          <div className="job-apply-screening-choice-row">
+                            {question.answers.map((answerOption) => (
+                              <label key={`${question.id}-${answerOption}`}>
+                                <input
+                                  type="radio"
+                                  name={`screening-${question.id}`}
+                                  checked={currentAnswer === answerOption}
+                                  onChange={() =>
+                                    handleScreeningAnswerChange(
+                                      question.id,
+                                      question.question,
+                                      answerOption
+                                    )
+                                  }
+                                />
+                                <span>{answerOption}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <textarea
+                            rows="3"
+                            placeholder="Tulis jawaban Anda..."
+                            value={currentAnswer}
+                            onChange={(event) =>
+                              handleScreeningAnswerChange(
+                                question.id,
+                                question.question,
+                                event.target.value
+                              )
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {selectedJob?.video_screening_requirement && (
+                <label className="job-apply-field">
+                  <span>
+                    Link video screening
+                    {selectedJob.video_screening_requirement === 'required'
+                      ? ' (wajib)'
+                      : ' (opsional)'}
+                  </span>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={applicationVideoIntroUrl}
+                    onChange={(event) => setApplicationVideoIntroUrl(event.target.value)}
+                  />
+                </label>
               )}
 
               <label className="job-apply-field">

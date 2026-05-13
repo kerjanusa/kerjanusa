@@ -249,7 +249,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $request->user(),
+            'user' => $request->user()->fresh(),
         ]);
     }
 

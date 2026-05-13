@@ -6,6 +6,7 @@ use App\Models\Job;
 use App\Models\User;
 use App\Services\AdminService;
 use App\Services\JobService;
+use App\Services\RecruiterPlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -16,6 +17,7 @@ class AdminController extends Controller
     public function __construct(
         private AdminService $adminService,
         private JobService $jobService,
+        private RecruiterPlanService $recruiterPlanService,
     )
     {
     }
@@ -52,6 +54,8 @@ class AdminController extends Controller
             'account_status_reason' => 'nullable|string|max:1000',
             'verification_status' => ['nullable', Rule::in(['pending', 'verified'])],
             'verification_notes' => 'nullable|string|max:1000',
+            'plan_code' => ['nullable', Rule::in(collect($this->recruiterPlanService->getPlanCatalog())->pluck('code')->all())],
+            'kn_credit' => 'nullable|integer|min:0',
         ]);
 
         $nextAccountStatus = $validated['account_status'] ?? $user->account_status;
@@ -93,7 +97,17 @@ class AdminController extends Controller
                     : null;
             }
 
-            $user->recruiter_profile = $recruiterProfile;
+            if (array_key_exists('plan_code', $validated) && filled($validated['plan_code'])) {
+                $recruiterProfile['plan_code'] = $validated['plan_code'];
+            }
+
+            if (array_key_exists('kn_credit', $validated)) {
+                $recruiterProfile['kn_credit'] = max(0, (int) ($validated['kn_credit'] ?? 0));
+            }
+
+            $user->recruiter_profile = $this->recruiterPlanService->normalizeRecruiterProfile(
+                $recruiterProfile
+            );
         }
 
         $user->save();

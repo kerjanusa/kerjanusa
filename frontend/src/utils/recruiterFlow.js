@@ -1,3 +1,5 @@
+import { mergeRecruiterPlanData } from './recruiterPlans.js';
+
 const RECRUITER_COMPANY_PROFILE_STORAGE_PREFIX = 'recruiter_company_profile';
 const RECRUITER_JOB_WORKFLOW_STORAGE_KEY = 'recruiter_job_workflow_state';
 const RECRUITER_APPLICATION_STAGE_STORAGE_KEY = 'recruiter_application_stage_state';
@@ -7,6 +9,9 @@ export const RECRUITER_SECTION_OPTIONS = [
   { value: 'company', label: 'Profil Company' },
   { value: 'jobs', label: 'Lowongan' },
   { value: 'candidates', label: 'Kandidat' },
+  { value: 'talent', label: 'Talent Search' },
+  { value: 'messages', label: 'Chat' },
+  { value: 'package', label: 'Paket' },
 ];
 
 export const RECRUITER_JOB_WORKFLOW_OPTIONS = [
@@ -37,6 +42,8 @@ const createRecruiterCompanyProfile = (user) => ({
   companyDescription: '',
   website: '',
   hiringFocus: '',
+  plan_code: 'starter',
+  kn_credit: 0,
 });
 
 const mergeRecruiterCompanyProfile = (user, savedProfile) => {
@@ -46,13 +53,13 @@ const mergeRecruiterCompanyProfile = (user, savedProfile) => {
     return baseProfile;
   }
 
-  return {
+  return mergeRecruiterPlanData({
     ...baseProfile,
     ...savedProfile,
     recruiterName: savedProfile.recruiterName || user?.name || '',
     companyName: savedProfile.companyName || user?.company_name || '',
     phone: savedProfile.phone || user?.phone || '',
-  };
+  });
 };
 
 const readStoredJson = (storageKey, fallbackValue) => {

@@ -15,6 +15,9 @@ const normalizeMockJob = (job) => ({
   interview_type: job.interview_type || 'onsite',
   interview_note: job.interview_note || '',
   video_screening_requirement: job.video_screening_requirement || 'optional',
+  quiz_screening_questions: Array.isArray(job.quiz_screening_questions)
+    ? job.quiz_screening_questions
+    : [],
 });
 
 const getStoredMockUsers = () => {
@@ -41,7 +44,11 @@ const hydrateMockRecruiter = (job, users = []) => {
     ...job,
     recruiter: {
       ...(job.recruiter || {}),
+      id: recruiterUser?.id || job.recruiter?.id || job.recruiter_id,
       name: recruiterName,
+      role: recruiterUser?.role || 'recruiter',
+      email: recruiterUser?.email || job.recruiter?.email || '',
+      company_name: recruiterUser?.company_name || recruiterName,
     },
   };
 };
@@ -229,6 +236,9 @@ class JobService {
         interview_type: data.interview_type || 'onsite',
         interview_note: data.interview_note || '',
         video_screening_requirement: data.video_screening_requirement || 'optional',
+        quiz_screening_questions: Array.isArray(data.quiz_screening_questions)
+          ? data.quiz_screening_questions
+          : [],
         status: data.status || 'active',
         applications_count: 0,
       };

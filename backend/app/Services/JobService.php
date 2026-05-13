@@ -4,11 +4,17 @@ namespace App\Services;
 
 use App\Models\Job;
 use App\Models\Application;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class JobService
 {
+    public function __construct(private RecruiterPlanService $recruiterPlanService)
+    {
+    }
+
     /**
      * Keep the public active/inactive status in sync with the richer recruiter workflow status.
      */
@@ -47,7 +53,7 @@ class JobService
      */
     public function getJobById(int $jobId): ?Job
     {
-        return Job::with(['recruiter', 'applications'])->find($jobId);
+        return Job::with('recruiter')->find($jobId);
     }
 
     /**
@@ -55,6 +61,7 @@ class JobService
      */
     public function createJob(int $recruiterId, array $data): Job
     {
+        $recruiter = User::findOrFail($recruiterId);
         $data['recruiter_id'] = $recruiterId;
         $data['workflow_status'] = $data['workflow_status'] ?? $this->mapStatusToWorkflow(
             $data['status'] ?? Job::STATUS_ACTIVE
@@ -63,6 +70,31 @@ class JobService
 
         if (array_key_exists('workflow_status', $data)) {
             $data['status'] = $this->mapWorkflowToStatus($data['workflow_status']);
+        }
+
+        $data['quiz_screening_questions'] = $this->sanitizeScreeningQuestions(
+            $data['quiz_screening_questions'] ?? []
+        );
+
+        if (($data['workflow_status'] ?? Job::WORKFLOW_ACTIVE) === Job::WORKFLOW_ACTIVE) {
+            $currentActiveJobs = Job::query()
+                ->where('recruiter_id', $recruiterId)
+                ->where('workflow_status', Job::WORKFLOW_ACTIVE)
+                ->count();
+
+            if (!$this->recruiterPlanService->canPublishAdditionalJob($recruiter, $currentActiveJobs)) {
+                $plan = $this->recruiterPlanService->getRecruiterPlanContext($recruiter);
+
+                throw ValidationException::withMessages([
+                    'workflow_status' => [
+                        sprintf(
+                            'Paket %s hanya mengizinkan %d lowongan aktif. Upgrade paket atau nonaktifkan lowongan lama.',
+                            $plan['label'],
+                            $plan['job_limit']
+                        ),
+                    ],
+                ]);
+            }
         }
 
         return Job::create($data);
@@ -83,6 +115,39 @@ class JobService
             $data['status'] = $this->mapWorkflowToStatus($data['workflow_status']);
         } elseif (array_key_exists('status', $data)) {
             $data['workflow_status'] = $this->mapStatusToWorkflow($data['status']);
+        }
+
+        if (array_key_exists('quiz_screening_questions', $data)) {
+            $data['quiz_screening_questions'] = $this->sanitizeScreeningQuestions(
+                $data['quiz_screening_questions'] ?? []
+            );
+        }
+
+        $nextWorkflowStatus = $data['workflow_status'] ?? $job->workflow_status;
+
+        if ($nextWorkflowStatus === Job::WORKFLOW_ACTIVE && $job->workflow_status !== Job::WORKFLOW_ACTIVE) {
+            $recruiter = User::find($job->recruiter_id);
+
+            if ($recruiter) {
+                $currentActiveJobs = Job::query()
+                    ->where('recruiter_id', $job->recruiter_id)
+                    ->where('workflow_status', Job::WORKFLOW_ACTIVE)
+                    ->count();
+
+                if (!$this->recruiterPlanService->canPublishAdditionalJob($recruiter, $currentActiveJobs)) {
+                    $plan = $this->recruiterPlanService->getRecruiterPlanContext($recruiter);
+
+                    throw ValidationException::withMessages([
+                        'workflow_status' => [
+                            sprintf(
+                                'Paket %s hanya mengizinkan %d lowongan aktif. Upgrade paket atau nonaktifkan lowongan lama.',
+                                $plan['label'],
+                                $plan['job_limit']
+                            ),
+                        ],
+                    ]);
+                }
+            }
         }
 
         return $job->update($data);
@@ -208,5 +273,29 @@ class JobService
     private function countApplicationsByStatus(Job $job, string $status): int
     {
         return $job->applications()->where('status', $status)->count();
+    }
+
+    private function sanitizeScreeningQuestions(array $questions): array
+    {
+        return collect($questions)
+            ->filter(fn ($question) => is_array($question) && filled($question['question'] ?? null))
+            ->map(function (array $question, int $index) {
+                return [
+                    'id' => filled($question['id'] ?? null)
+                        ? (string) $question['id']
+                        : sprintf('question-%d', $index + 1),
+                    'type' => $question['type'] ?? 'text',
+                    'title' => trim((string) ($question['title'] ?? $question['question'] ?? 'Pertanyaan screening')),
+                    'question' => trim((string) ($question['question'] ?? '')),
+                    'answers' => collect($question['answers'] ?? [])
+                        ->map(fn ($answer) => trim((string) $answer))
+                        ->filter()
+                        ->values()
+                        ->all(),
+                    'required' => (bool) ($question['required'] ?? true),
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

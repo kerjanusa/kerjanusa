@@ -6,10 +6,15 @@ use App\Models\Application;
 use App\Models\Job;
 use App\Models\User;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AdminService
 {
+    public function __construct(private RecruiterPlanService $recruiterPlanService)
+    {
+    }
+
     private function extractProfileReadiness(array $profile, array $requiredKeys): bool
     {
         foreach ($requiredKeys as $key) {
@@ -106,6 +111,22 @@ class AdminService
             'candidates' => (int) ($userAggregates->candidates ?? 0),
             'recruiters' => (int) ($userAggregates->recruiters ?? 0),
             'superadmins' => (int) ($userAggregates->superadmins ?? 0),
+            'active_candidates' => (int) User::query()
+                ->where('role', User::ROLE_CANDIDATE)
+                ->where('account_status', User::STATUS_ACTIVE)
+                ->count(),
+            'inactive_candidates' => (int) User::query()
+                ->where('role', User::ROLE_CANDIDATE)
+                ->where('account_status', User::STATUS_SUSPENDED)
+                ->count(),
+            'active_recruiters' => (int) User::query()
+                ->where('role', User::ROLE_RECRUITER)
+                ->where('account_status', User::STATUS_ACTIVE)
+                ->count(),
+            'inactive_recruiters' => (int) User::query()
+                ->where('role', User::ROLE_RECRUITER)
+                ->where('account_status', User::STATUS_SUSPENDED)
+                ->count(),
             'total_jobs' => (int) ($jobAggregates->total_jobs ?? 0),
             'active_jobs' => (int) ($jobAggregates->active_jobs ?? 0),
             'inactive_jobs' => (int) ($jobAggregates->inactive_jobs ?? 0),
@@ -271,6 +292,7 @@ class AdminService
                 ]);
 
                 return [
+                    ...$this->recruiterPlanService->getRecruiterPlanContext($recruiter),
                     'id' => $recruiter->id,
                     'name' => $recruiter->name,
                     'company_name' => $recruiter->company_name,
@@ -321,6 +343,8 @@ class AdminService
                 'jobs.workflow_status',
                 'jobs.job_type',
                 'jobs.experience_level',
+                'jobs.video_screening_requirement',
+                'jobs.quiz_screening_questions',
                 'jobs.created_at',
                 DB::raw('COALESCE(application_totals.applications_count, 0) as applications_count'),
                 'recruiters.id as recruiter_id',
@@ -330,24 +354,32 @@ class AdminService
             ])
             ->latest()
             ->get()
-            ->map(fn ($job) => [
-                'id' => $job->id,
-                'title' => $job->title,
-                'category' => $job->category,
-                'location' => $job->location,
-                'status' => $job->status,
-                'workflow_status' => $job->workflow_status,
-                'job_type' => $job->job_type,
-                'experience_level' => $job->experience_level,
-                'applications_count' => (int) ($job->applications_count ?? 0),
-                'created_at' => optional($job->created_at)->toIso8601String(),
-                'recruiter' => [
-                    'id' => $job->recruiter_id,
-                    'name' => $job->recruiter_name,
-                    'company_name' => $job->recruiter_company_name,
-                    'email' => $job->recruiter_email,
-                ],
-            ])
+            ->map(function ($job) {
+                $screeningQuestions = is_array($job->quiz_screening_questions ?? null)
+                    ? $job->quiz_screening_questions
+                    : json_decode($job->quiz_screening_questions ?? '[]', true);
+
+                return [
+                    'id' => $job->id,
+                    'title' => $job->title,
+                    'category' => $job->category,
+                    'location' => $job->location,
+                    'status' => $job->status,
+                    'workflow_status' => $job->workflow_status,
+                    'job_type' => $job->job_type,
+                    'experience_level' => $job->experience_level,
+                    'video_screening_requirement' => $job->video_screening_requirement ?? 'optional',
+                    'screening_questions_count' => count(is_array($screeningQuestions) ? $screeningQuestions : []),
+                    'applications_count' => (int) ($job->applications_count ?? 0),
+                    'created_at' => optional($job->created_at)->toIso8601String(),
+                    'recruiter' => [
+                        'id' => $job->recruiter_id,
+                        'name' => $job->recruiter_name,
+                        'company_name' => $job->recruiter_company_name,
+                        'email' => $job->recruiter_email,
+                    ],
+                ];
+            })
             ->values()
             ->all();
 
@@ -359,6 +391,8 @@ class AdminService
                 'applications.id',
                 'applications.status',
                 'applications.stage',
+                'applications.video_intro_url',
+                'applications.screening_answers',
                 DB::raw('COALESCE(applications.applied_at, applications.created_at) as applied_at'),
                 'candidates.id as candidate_id',
                 'candidates.name as candidate_name',
@@ -375,35 +409,70 @@ class AdminService
             ->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC')
             ->orderByDesc('applications.id')
             ->get()
-            ->map(fn ($application) => [
-                'id' => $application->id,
-                'status' => $application->status,
-                'stage' => $application->stage,
-                'applied_at' => $application->applied_at,
-                'candidate' => [
-                    'id' => $application->candidate_id,
-                    'name' => $application->candidate_name,
-                    'email' => $application->candidate_email,
-                    'phone' => $application->candidate_phone,
-                ],
-                'job' => [
-                    'id' => $application->job_id,
-                    'title' => $application->job_title,
-                    'location' => $application->job_location,
-                ],
-                'recruiter' => [
-                    'id' => $application->recruiter_id,
-                    'name' => $application->recruiter_name,
-                    'company_name' => $application->recruiter_company_name,
-                    'email' => $application->recruiter_email,
-                ],
-            ])
+            ->map(function ($application) {
+                $screeningAnswers = is_array($application->screening_answers ?? null)
+                    ? $application->screening_answers
+                    : json_decode($application->screening_answers ?? '[]', true);
+
+                return [
+                    'id' => $application->id,
+                    'status' => $application->status,
+                    'stage' => $application->stage,
+                    'applied_at' => $application->applied_at,
+                    'has_video_intro' => filled($application->video_intro_url ?? null),
+                    'screening_answers_count' => count(is_array($screeningAnswers) ? $screeningAnswers : []),
+                    'candidate' => [
+                        'id' => $application->candidate_id,
+                        'name' => $application->candidate_name,
+                        'email' => $application->candidate_email,
+                        'phone' => $application->candidate_phone,
+                    ],
+                    'job' => [
+                        'id' => $application->job_id,
+                        'title' => $application->job_title,
+                        'location' => $application->job_location,
+                    ],
+                    'recruiter' => [
+                        'id' => $application->recruiter_id,
+                        'name' => $application->recruiter_name,
+                        'company_name' => $application->recruiter_company_name,
+                        'email' => $application->recruiter_email,
+                    ],
+                ];
+            })
             ->values()
             ->all();
+
+        $screeningOverview = [
+            'candidate_profiles_incomplete' => collect($candidateTable)
+                ->where('profile_ready', false)
+                ->count(),
+            'applications_with_video_screening' => Application::query()
+                ->whereNotNull('video_intro_url')
+                ->count(),
+            'applications_with_screening_answers' => Application::query()
+                ->whereNotNull('screening_answers')
+                ->count(),
+            'jobs_waiting_recruiter_notice' => Job::query()
+                ->where('workflow_status', Job::WORKFLOW_ACTIVE)
+                ->where('created_at', '<=', now()->subDays(3))
+                ->whereDoesntHave('applications')
+                ->count(),
+            'recruiter_plan_distribution' => collect($recruiterTable)
+                ->groupBy('code')
+                ->map(fn (Collection $items, string $planCode) => [
+                    'plan_code' => $planCode,
+                    'label' => $items->first()['label'] ?? strtoupper($planCode),
+                    'total' => $items->count(),
+                ])
+                ->values()
+                ->all(),
+        ];
 
         return [
             'totals' => $totals,
             'growth' => $growth,
+            'screening_overview' => $screeningOverview,
             'candidate_table' => $candidateTable,
             'recruiter_table' => $recruiterTable,
             'recruiter_options' => collect($recruiterTable)
