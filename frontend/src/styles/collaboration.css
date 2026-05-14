@@ -116,6 +116,20 @@
   padding: 0.82rem 0.95rem;
 }
 
+.collaboration-contact-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: var(--primary-dark) !important;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 1;
+}
+
 .collaboration-thread-card:hover,
 .collaboration-thread-card.is-active,
 .collaboration-contact-chip:hover,

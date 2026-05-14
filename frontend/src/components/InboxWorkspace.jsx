@@ -222,14 +222,21 @@ const InboxWorkspace = ({
                       Number(selectedContactId) === Number(contact.id) ? ' is-active' : ''
                     }`}
                     onClick={() => onSelectContact?.(contact)}
+                    title={resolveContactLabel(contact)}
                   >
-                    <strong className="collaboration-card-title">
-                      {resolveContactLabel(contact)}
-                    </strong>
-                    {!compactLayout && (
-                      <span className="collaboration-card-email">
-                        {resolveContactSecondaryText(contact)}
-                      </span>
+                    {compactLayout ? (
+                      <strong className="collaboration-contact-label">
+                        {resolveContactLabel(contact)}
+                      </strong>
+                    ) : (
+                      <>
+                        <strong className="collaboration-card-title">
+                          {resolveContactLabel(contact)}
+                        </strong>
+                        <span className="collaboration-card-email">
+                          {resolveContactSecondaryText(contact)}
+                        </span>
+                      </>
                     )}
                   </button>
                 ))}
