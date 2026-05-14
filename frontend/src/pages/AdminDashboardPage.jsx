@@ -2436,7 +2436,7 @@ const AdminDashboardPage = () => {
 
   const renderMonitoring = () => {
     return (
-      <section className="superadmin-section-block">
+      <section className="superadmin-section-block superadmin-monitoring-section">
         <div className="superadmin-monitoring-toolbar">
           <div className="superadmin-monitoring-toolbar-left">
             <button type="button" className="superadmin-primary-button" onClick={() => loadDashboard()}>
@@ -2624,7 +2624,7 @@ const AdminDashboardPage = () => {
               </div>
             </article>
 
-            <article className="superadmin-panel">
+            <article className="superadmin-panel superadmin-monitoring-screening-panel">
               <div className="superadmin-panel-head">
                 <div>
                   <h3>Registrasi & Screening</h3>

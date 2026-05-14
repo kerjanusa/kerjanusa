@@ -622,6 +622,10 @@
   gap: 1.2rem;
 }
 
+.superadmin-monitoring-section {
+  gap: 1.2rem;
+}
+
 .superadmin-monitoring-overview,
 .superadmin-monitoring-health-panel,
 .superadmin-monitoring-actions-panel,
@@ -866,6 +870,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
+  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.05);
 }
 
 .superadmin-monitoring-toolbar-left,
@@ -917,24 +926,33 @@
 .superadmin-monitoring-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) 280px;
-  gap: 1rem;
+  gap: 1.15rem;
   align-items: start;
 }
 
 .superadmin-monitoring-primary,
 .superadmin-monitoring-sidebar {
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
   align-content: start;
+}
+
+.superadmin-monitoring-kpis .superadmin-metric-grid {
+  gap: 1rem;
 }
 
 .superadmin-monitoring-map-panel {
   min-height: 0;
-  padding: 1rem;
+  padding: 1.1rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
   box-shadow: 0 18px 38px rgba(17, 24, 39, 0.06);
 }
 
 .superadmin-monitoring-logpanel {
+  padding: 1.1rem 1.15rem 1.15rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
   box-shadow: 0 14px 30px rgba(17, 24, 39, 0.05);
 }
 
@@ -949,6 +967,9 @@
 .superadmin-monitoring-kpis .superadmin-metric-card {
   min-height: 118px;
   padding: 1rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffaf8);
+  box-shadow: 0 12px 30px rgba(15, 24, 48, 0.05);
 }
 
 .superadmin-monitoring-kpis .superadmin-metric-detail {
@@ -973,12 +994,16 @@
 
 .superadmin-monitoring-health-panel,
 .superadmin-monitoring-logpanel,
-.superadmin-monitoring-actions-panel {
-  padding: 1rem;
+.superadmin-monitoring-actions-panel,
+.superadmin-monitoring-screening-panel {
+  padding: 1.05rem 1.1rem;
 }
 
 .superadmin-monitoring-health-panel,
-.superadmin-monitoring-actions-panel {
+.superadmin-monitoring-actions-panel,
+.superadmin-monitoring-screening-panel {
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
   box-shadow: 0 14px 28px rgba(17, 24, 39, 0.05);
 }
 
@@ -1011,6 +1036,7 @@
   border: 1px solid rgba(15, 24, 48, 0.08);
   border-radius: 12px;
   background: #fcfbf8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .superadmin-monitoring-map-summary-chip strong {
@@ -1211,6 +1237,7 @@
   border: 1px solid rgba(15, 24, 48, 0.08);
   border-radius: 14px;
   background: #fcfbf8;
+  box-shadow: 0 8px 18px rgba(15, 24, 48, 0.04);
 }
 
 .superadmin-monitoring-map-detail.is-warning {
@@ -1323,6 +1350,7 @@
   border: 1px solid rgba(207, 31, 31, 0.16);
   border-radius: 10px;
   background: #fff7f6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 .superadmin-monitoring-alertbox strong {
@@ -1385,6 +1413,7 @@
   border: 1px solid rgba(15, 24, 48, 0.08);
   border-radius: 10px;
   background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 24, 48, 0.035);
 }
 
 .superadmin-monitoring-healthrow-label {
@@ -1414,18 +1443,31 @@
 }
 
 .superadmin-search-input.is-monitoring {
-  width: min(100%, 240px);
+  width: min(100%, 260px);
   min-height: 40px;
   padding: 0 0.9rem;
 }
 
+.superadmin-table-monitoring {
+  min-width: 100%;
+}
+
 .superadmin-table-monitoring thead th {
+  background: linear-gradient(180deg, #faf4f7, #f6eef2);
+  color: #867a8b;
   font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .superadmin-table-monitoring tbody td {
   font-size: 0.86rem;
+  border-top-color: rgba(15, 24, 48, 0.06);
+}
+
+.superadmin-table-monitoring tbody tr:hover td {
+  background: rgba(251, 247, 250, 0.82);
 }
 
 .superadmin-table-monitoring .superadmin-empty-state {
@@ -1437,6 +1479,15 @@
   border: 0;
   text-align: left;
   cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.superadmin-monitoring-control-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 24, 48, 0.06);
 }
 
 .superadmin-monitoring-control-copy {
