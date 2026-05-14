@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import '../styles/workspace.css';
 import '../styles/collaboration.css';
 
@@ -52,8 +53,23 @@ const InboxWorkspace = ({
   isLoadingContacts,
   isLoadingMessages,
   isSendingMessage,
+  compactLayout = false,
   emptyMessage = 'Pilih percakapan untuk mulai berdiskusi.',
 }) => {
+  const messageListRef = useRef(null);
+
+  useEffect(() => {
+    if (!selectedContactId || !messageListRef.current) {
+      return;
+    }
+
+    const nextFrame = window.requestAnimationFrame(() => {
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(nextFrame);
+  }, [messages, selectedContactId]);
+
   const handleSubmit = (event) => {
     event.preventDefault();
 
@@ -65,18 +81,24 @@ const InboxWorkspace = ({
   };
 
   return (
-    <section className="workspace-section-stack">
-      <article className="workspace-panel" data-reveal>
-        <div className="workspace-panel-heading">
-          <div>
-            <span className="workspace-section-label">Komunikasi</span>
-            <h2>{title}</h2>
+    <section
+      className={`workspace-section-stack${
+        compactLayout ? ' collaboration-workspace-app' : ''
+      }`}
+    >
+      {!compactLayout && (
+        <article className="workspace-panel" data-reveal>
+          <div className="workspace-panel-heading">
+            <div>
+              <span className="workspace-section-label">Komunikasi</span>
+              <h2>{title}</h2>
+            </div>
+            <p>{description}</p>
           </div>
-          <p>{description}</p>
-        </div>
-      </article>
+        </article>
+      )}
 
-      <div className="collaboration-grid">
+      <div className={`collaboration-grid${compactLayout ? ' is-app-layout' : ''}`}>
         <article className="workspace-panel collaboration-sidebar" data-reveal data-reveal-delay="50ms">
           <div className="collaboration-sidebar-block">
             <div className="collaboration-sidebar-header">
@@ -99,11 +121,15 @@ const InboxWorkspace = ({
                     onClick={() => onSelectContact?.(thread.contact)}
                   >
                     <div className="collaboration-thread-card-top">
-                      <strong>{resolveContactLabel(thread.contact)}</strong>
-                      <span>{formatMessageTime(thread.updated_at)}</span>
+                      <strong className="collaboration-card-title">
+                        {resolveContactLabel(thread.contact)}
+                      </strong>
+                      <span className="collaboration-card-timestamp">
+                        {formatMessageTime(thread.updated_at)}
+                      </span>
                     </div>
-                    <p>{thread.last_message}</p>
-                    <small>
+                    <p className="collaboration-card-preview">{thread.last_message}</p>
+                    <small className="collaboration-card-caption">
                       {thread.unread_count > 0
                         ? `${thread.unread_count} pesan belum dibaca`
                         : 'Sudah terbaca'}
@@ -147,8 +173,10 @@ const InboxWorkspace = ({
                     }`}
                     onClick={() => onSelectContact?.(contact)}
                   >
-                    <strong>{resolveContactLabel(contact)}</strong>
-                    <span>{contact.email}</span>
+                    <strong className="collaboration-card-title">
+                      {resolveContactLabel(contact)}
+                    </strong>
+                    <span className="collaboration-card-email">{contact.email}</span>
                   </button>
                 ))}
               </div>
@@ -162,10 +190,16 @@ const InboxWorkspace = ({
               <span className="workspace-section-label">Percakapan</span>
               <h2>{resolveContactLabel(selectedContact)}</h2>
             </div>
-            {selectedContact?.email && <p>{selectedContact.email}</p>}
+            {selectedContact?.email ? (
+              <p className="collaboration-chat-contact-meta">{selectedContact.email}</p>
+            ) : (
+              <p className="collaboration-chat-contact-meta is-placeholder">
+                Pilih percakapan untuk mulai menangani pesan masuk.
+              </p>
+            )}
           </div>
 
-          <div className="collaboration-message-list">
+          <div className="collaboration-message-list" ref={messageListRef}>
             {!selectedContactId ? (
               <div className="collaboration-empty-state">
                 <p>{emptyMessage}</p>

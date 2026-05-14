@@ -824,6 +824,27 @@ const AdminDashboardPage = () => {
     }
   }, [activeSection, chatSearchQuery, user?.email, user?.name]);
 
+  useEffect(() => {
+    if (activeSection !== 'messages' || selectedChatContact?.id) {
+      return;
+    }
+
+    const fallbackContact = threads[0]?.contact || contacts[0];
+
+    if (!fallbackContact?.id) {
+      return;
+    }
+
+    setSelectedChatContact(fallbackContact);
+    loadConversation(fallbackContact.id).catch(() => {});
+  }, [
+    activeSection,
+    contacts,
+    loadConversation,
+    selectedChatContact?.id,
+    threads,
+  ]);
+
   const totals = dashboard?.totals ?? {};
   const growth = dashboard?.growth ?? {};
   const candidateTable = dashboard?.candidate_table ?? [];
@@ -3788,6 +3809,7 @@ const AdminDashboardPage = () => {
       isLoadingContacts={isLoadingContacts}
       isLoadingMessages={isLoadingMessages}
       isSendingMessage={isSendingMessage}
+      compactLayout
       emptyMessage="Pilih recruiter atau kandidat yang ingin Anda bantu."
     />
   );
@@ -3878,7 +3900,11 @@ const AdminDashboardPage = () => {
             {renderHeaderAside()}
           </header>
 
-          <section className="superadmin-content">
+          <section
+            className={`superadmin-content${
+              activeSection === 'messages' ? ' is-chat-mode' : ''
+            }`}
+          >
             {renderFeedback()}
             {renderSectionContent()}
           </section>
