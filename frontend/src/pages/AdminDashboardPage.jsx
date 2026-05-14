@@ -2700,12 +2700,12 @@ const AdminDashboardPage = () => {
   };
 
   const renderCandidateManagement = () => (
-    <section className="superadmin-section-block superadmin-candidate-section">
-      <div className="superadmin-candidate-metrics-wrap">
+    <section className="superadmin-section-block superadmin-entity-section superadmin-candidate-section">
+      <div className="superadmin-section-metrics-wrap superadmin-candidate-metrics-wrap">
         <SectionMetrics cards={pelamarCards} />
       </div>
 
-      <article className="superadmin-panel superadmin-table-panel is-candidate superadmin-candidate-table-card">
+      <article className="superadmin-panel superadmin-table-panel is-candidate superadmin-management-table-card superadmin-candidate-table-card">
         <div className="superadmin-toolbar superadmin-toolbar-compact superadmin-candidate-toolbar">
           <label className="superadmin-search-input superadmin-candidate-search">
             <AdminIcon name="search" />
@@ -2835,7 +2835,7 @@ const AdminDashboardPage = () => {
       </article>
 
       <div className="superadmin-two-column superadmin-candidate-bottom">
-        <article className="superadmin-panel superadmin-candidate-detail-panel">
+        <article className="superadmin-panel superadmin-management-side-panel superadmin-candidate-detail-panel">
           {selectedCandidate ? (
             <div className="superadmin-candidate-profile-card">
               <div className="superadmin-candidate-profile-head">
@@ -2914,7 +2914,7 @@ const AdminDashboardPage = () => {
           )}
         </article>
 
-        <article className="superadmin-panel superadmin-candidate-queue-panel">
+        <article className="superadmin-panel superadmin-management-side-panel superadmin-candidate-queue-panel">
           <div className="superadmin-panel-head">
             <div>
               <h3>Antrian Review Pelamar</h3>
@@ -2962,10 +2962,12 @@ const AdminDashboardPage = () => {
   );
 
   const renderRecruiterManagement = () => (
-    <section className="superadmin-section-block">
-      <SectionMetrics cards={recruiterCards} />
+    <section className="superadmin-section-block superadmin-entity-section superadmin-recruiter-section">
+      <div className="superadmin-section-metrics-wrap">
+        <SectionMetrics cards={recruiterCards} />
+      </div>
 
-      <article className="superadmin-panel superadmin-table-panel">
+      <article className="superadmin-panel superadmin-table-panel superadmin-management-table-card">
         <div className="superadmin-toolbar">
           <label className="superadmin-search-input">
             <AdminIcon name="search" />
@@ -3106,7 +3108,7 @@ const AdminDashboardPage = () => {
       </article>
 
       <div className="superadmin-two-column">
-        <article className="superadmin-panel">
+        <article className="superadmin-panel superadmin-management-side-panel">
           <div className="superadmin-panel-head">
             <div>
               <h3>Detail Recruiter</h3>
@@ -3211,7 +3213,7 @@ const AdminDashboardPage = () => {
           )}
         </article>
 
-        <article className="superadmin-panel">
+        <article className="superadmin-panel superadmin-management-side-panel">
           <div className="superadmin-panel-head">
             <div>
               <h3>Aktivitas Verifikasi Terakhir</h3>
@@ -3244,10 +3246,12 @@ const AdminDashboardPage = () => {
   );
 
   const renderJobManagement = () => (
-    <section className="superadmin-section-block">
-      <SectionMetrics cards={lowonganCards} />
+    <section className="superadmin-section-block superadmin-entity-section superadmin-job-section">
+      <div className="superadmin-section-metrics-wrap">
+        <SectionMetrics cards={lowonganCards} />
+      </div>
 
-      <article className="superadmin-panel superadmin-table-panel">
+      <article className="superadmin-panel superadmin-table-panel superadmin-management-table-card">
         <div className="superadmin-toolbar superadmin-toolbar-wide">
           <div className="superadmin-toolbar-left">
             <label className="superadmin-search-input">
@@ -3401,7 +3405,7 @@ const AdminDashboardPage = () => {
       </article>
 
       <div className="superadmin-two-column superadmin-two-column-heavy">
-        <article className="superadmin-panel superadmin-optimization-card">
+        <article className="superadmin-panel superadmin-management-side-panel superadmin-optimization-card">
           <span className="superadmin-panel-eyebrow">Optimisasi Penempatan Lowongan</span>
           <h3>Prioritaskan lowongan yang rasio pelamarnya rendah</h3>
           <p>
@@ -3459,7 +3463,7 @@ const AdminDashboardPage = () => {
           )}
         </article>
 
-        <article className="superadmin-panel">
+        <article className="superadmin-panel superadmin-management-side-panel">
           <div className="superadmin-panel-head">
             <div>
               <h3>Log Aktivitas Terbaru</h3>
@@ -3483,7 +3487,7 @@ const AdminDashboardPage = () => {
   );
 
   const renderAnalytics = () => (
-    <section className="superadmin-section-block">
+    <section className="superadmin-section-block superadmin-analytics-section">
       <div className="superadmin-analytics-metrics">
         {analyticsCards.map((card) => (
           <article
@@ -3691,10 +3695,12 @@ const AdminDashboardPage = () => {
   );
 
   const renderModeration = () => (
-    <section className="superadmin-section-block">
-      <SectionMetrics cards={moderationCards} />
+    <section className="superadmin-section-block superadmin-entity-section superadmin-moderation-section">
+      <div className="superadmin-section-metrics-wrap">
+        <SectionMetrics cards={moderationCards} />
+      </div>
 
-      <article className="superadmin-panel superadmin-moderation-panel">
+      <article className="superadmin-panel superadmin-moderation-panel superadmin-moderation-card">
         <div className="superadmin-moderation-tabs">
           {MODERATION_TABS.map((tab) => {
             const count =

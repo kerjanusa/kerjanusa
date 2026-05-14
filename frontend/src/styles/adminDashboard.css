@@ -2304,6 +2304,230 @@
   margin-top: 1rem;
 }
 
+.superadmin-entity-section {
+  gap: 1.2rem;
+}
+
+.superadmin-section-metrics-wrap .superadmin-metric-grid {
+  gap: 1rem;
+}
+
+.superadmin-entity-section .superadmin-metric-card {
+  min-height: 118px;
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffaf8);
+  box-shadow: 0 12px 30px rgba(15, 24, 48, 0.05);
+}
+
+.superadmin-entity-section .superadmin-metric-head {
+  align-items: flex-start;
+}
+
+.superadmin-entity-section .superadmin-metric-label {
+  color: #8c90a0;
+  font-size: 0.71rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.superadmin-entity-section .superadmin-metric-value {
+  margin-top: 0.74rem;
+  color: #251b30;
+}
+
+.superadmin-entity-section .superadmin-metric-detail {
+  display: block;
+  margin-top: 0.4rem;
+  color: #8a8592;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.superadmin-management-table-card,
+.superadmin-management-side-panel,
+.superadmin-moderation-card,
+.superadmin-analytics-section .superadmin-panel {
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(15, 24, 48, 0.06);
+}
+
+.superadmin-management-table-card {
+  padding: 1.15rem 1.2rem 1.2rem;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
+}
+
+.superadmin-management-table-card .superadmin-toolbar {
+  padding-bottom: 0.95rem;
+}
+
+.superadmin-management-table-card .superadmin-table-wrap {
+  border-color: rgba(15, 24, 48, 0.08);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.superadmin-management-table-card .superadmin-table thead th {
+  background: linear-gradient(180deg, #faf4f7, #f6eef2);
+  color: #867a8b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.superadmin-management-table-card .superadmin-table tbody td {
+  border-top-color: rgba(15, 24, 48, 0.06);
+}
+
+.superadmin-management-table-card .superadmin-table tbody tr:hover td {
+  background: rgba(251, 247, 250, 0.82);
+}
+
+.superadmin-management-table-card .superadmin-table tbody tr.is-selected td {
+  background: rgba(255, 246, 232, 0.92);
+}
+
+.superadmin-management-side-panel {
+  padding: 1.25rem 1.35rem;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
+}
+
+.superadmin-management-side-panel .superadmin-panel-head {
+  margin-bottom: 0.95rem;
+}
+
+.superadmin-management-side-panel .superadmin-detail-card {
+  gap: 1.15rem;
+}
+
+.superadmin-management-side-panel .superadmin-list-stack {
+  gap: 0.95rem;
+}
+
+.superadmin-management-side-panel .superadmin-list-item {
+  padding: 0.95rem 0;
+}
+
+.superadmin-management-side-panel .superadmin-detail-block,
+.superadmin-management-side-panel .superadmin-detail-grid div {
+  padding: 0.9rem 0.95rem;
+  border: 1px solid rgba(15, 24, 48, 0.06);
+  border-radius: 12px;
+  background: #fcfbfd;
+}
+
+.superadmin-management-side-panel .superadmin-detail-block p {
+  color: #3f4757;
+}
+
+.superadmin-recruiter-section .superadmin-company-cell strong,
+.superadmin-job-section .superadmin-job-title-cell strong {
+  color: #1f1730;
+}
+
+.superadmin-recruiter-section .superadmin-company-cell span,
+.superadmin-job-section .superadmin-job-title-cell span {
+  color: #7a7582;
+}
+
+.superadmin-recruiter-section .superadmin-icon-actions,
+.superadmin-job-section .superadmin-job-actions {
+  gap: 0.35rem;
+}
+
+.superadmin-job-section .superadmin-optimization-card,
+.superadmin-job-section .superadmin-management-side-panel:not(.superadmin-optimization-card) {
+  min-height: 100%;
+}
+
+.superadmin-job-section .superadmin-list-item,
+.superadmin-recruiter-section .superadmin-list-item {
+  border-top-color: rgba(15, 24, 48, 0.06);
+}
+
+.superadmin-analytics-section {
+  gap: 1.2rem;
+}
+
+.superadmin-analytics-section .superadmin-analytics-metric-card {
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fffaf7);
+  box-shadow: 0 14px 32px rgba(15, 24, 48, 0.06);
+}
+
+.superadmin-analytics-section .superadmin-panel-head {
+  margin-bottom: 1rem;
+}
+
+.superadmin-analytics-section .superadmin-chart-panel.is-analytics,
+.superadmin-analytics-section .superadmin-popular-jobs-panel.is-analytics,
+.superadmin-analytics-section .superadmin-category-panel.is-analytics,
+.superadmin-analytics-section .superadmin-analytics-health-panel {
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
+}
+
+.superadmin-analytics-section .superadmin-analytics-health-item {
+  border-radius: 12px;
+  background: #fcfbfd;
+}
+
+.superadmin-analytics-section .superadmin-category-item {
+  padding: 0.9rem 0.95rem;
+  border: 1px solid rgba(15, 24, 48, 0.07);
+  border-radius: 12px;
+  background: #fcfbfd;
+}
+
+.superadmin-analytics-section .superadmin-popular-jobs-panel .superadmin-table-wrap {
+  margin-top: 0.2rem;
+}
+
+.superadmin-analytics-section .superadmin-dark-panel.is-analytics {
+  box-shadow: 0 18px 38px rgba(15, 24, 48, 0.14);
+}
+
+.superadmin-moderation-section {
+  gap: 1.2rem;
+}
+
+.superadmin-moderation-card {
+  padding: 1.15rem 1.25rem 1.2rem;
+  background: linear-gradient(180deg, #ffffff, #fffdfb);
+}
+
+.superadmin-moderation-card .superadmin-moderation-tabs {
+  gap: 0.95rem 1.2rem;
+  padding-bottom: 1rem;
+}
+
+.superadmin-moderation-card .superadmin-report-list {
+  gap: 0.95rem;
+  padding-top: 1rem;
+}
+
+.superadmin-moderation-card .superadmin-report-card,
+.superadmin-moderation-card .superadmin-report-card:first-child {
+  padding: 1.2rem 1.15rem;
+  border: 1px solid rgba(15, 24, 48, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fbf8fb);
+}
+
+.superadmin-moderation-card .superadmin-report-meta {
+  min-width: 132px;
+}
+
+.superadmin-moderation-card .superadmin-report-quote {
+  border-radius: 12px;
+  background: #fcf8fa;
+}
+
+.superadmin-moderation-card .superadmin-report-actions {
+  align-content: center;
+}
+
 .superadmin-icon-actions,
 .superadmin-job-actions {
   display: flex;
