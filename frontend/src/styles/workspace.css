@@ -2692,3 +2692,353 @@
     min-height: 3.25rem;
   }
 }
+
+.candidate-jobs-layout {
+  margin-top: 0;
+}
+
+.candidate-jobs-shell {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.candidate-jobs-hero {
+  padding: 0.4rem 0.2rem 0.1rem;
+}
+
+.candidate-jobs-kicker {
+  display: inline-block;
+  color: #c49645;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.candidate-jobs-hero h1 {
+  margin: 0.55rem 0 0;
+  color: #5b171d;
+  font-family: var(--font-display);
+  font-size: clamp(2.3rem, 4vw, 3.4rem);
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+}
+
+.candidate-jobs-hero p {
+  max-width: 30rem;
+  margin: 0.9rem 0 0;
+  color: #726a6a;
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.candidate-jobs-card-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.candidate-jobs-card {
+  padding: 1.35rem;
+  border: 1px solid rgba(107, 53, 53, 0.08);
+  border-radius: 1.45rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 38px rgba(63, 33, 33, 0.08);
+}
+
+.candidate-jobs-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.95rem;
+}
+
+.candidate-jobs-card-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.candidate-jobs-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 225, 172, 0.22), transparent 36%),
+    linear-gradient(135deg, #35151b 0%, #733337 100%);
+  color: #f5e3c5;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-shadow: inset 0 0 0 1px rgba(255, 243, 220, 0.08);
+}
+
+.candidate-jobs-title-wrap {
+  min-width: 0;
+}
+
+.candidate-jobs-title-wrap h2 {
+  margin: 0;
+  color: #5b171d;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.candidate-jobs-title-wrap span {
+  display: block;
+  margin-top: 0.28rem;
+  color: #7b7273;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.candidate-jobs-match-badge {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  min-width: 4.6rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(180deg, #eef9ee 0%, #e4f5e4 100%);
+  color: #12833e;
+}
+
+.candidate-jobs-match-badge strong,
+.candidate-jobs-match-badge span {
+  display: block;
+  line-height: 1.1;
+}
+
+.candidate-jobs-match-badge strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.candidate-jobs-match-badge span {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.candidate-jobs-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.candidate-jobs-meta-row span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.05rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(197, 169, 129, 0.48);
+  border-radius: 0.7rem;
+  background: #fffaf4;
+  color: #74412f;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.candidate-jobs-description {
+  min-height: 4.8rem;
+  margin: 1rem 0 0;
+  color: #666061;
+  font-size: 0.99rem;
+  line-height: 1.75;
+}
+
+.candidate-jobs-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(140, 102, 102, 0.1);
+}
+
+.candidate-jobs-salary {
+  min-width: 0;
+}
+
+.candidate-jobs-salary small,
+.candidate-jobs-salary strong {
+  display: block;
+}
+
+.candidate-jobs-salary small {
+  color: #8f8384;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.candidate-jobs-salary strong {
+  margin-top: 0.35rem;
+  color: #5b171d;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.candidate-jobs-primary-button {
+  flex: 0 0 auto;
+  min-width: 9.4rem;
+  min-height: 3.1rem;
+  padding: 0.7rem 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e6c46a 0%, #c7983a 100%);
+  color: #fffdf8;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: 0 14px 28px rgba(199, 152, 58, 0.22);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.candidate-jobs-primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(199, 152, 58, 0.28);
+}
+
+.candidate-jobs-card-empty {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.candidate-jobs-empty-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.candidate-jobs-empty-head strong {
+  color: #5b171d;
+  font-size: 1.1rem;
+}
+
+.candidate-jobs-empty-head span {
+  color: #8a7b72;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.candidate-jobs-card-empty p {
+  margin: 0;
+  color: #6c6767;
+  line-height: 1.7;
+}
+
+@media (max-width: 920px) {
+  .candidate-jobs-shell {
+    width: min(100%, 620px);
+  }
+}
+
+@media (max-width: 680px) {
+  .candidate-jobs-shell {
+    width: 100%;
+  }
+
+  .candidate-jobs-hero {
+    padding-top: 0.2rem;
+  }
+
+  .candidate-jobs-hero h1 {
+    font-size: 2.15rem;
+  }
+
+  .candidate-jobs-hero p {
+    font-size: 0.98rem;
+  }
+
+  .candidate-jobs-card {
+    padding: 1.15rem 1rem;
+    border-radius: 1.2rem;
+  }
+
+  .candidate-jobs-card-head {
+    gap: 0.7rem;
+  }
+
+  .candidate-jobs-title-wrap h2 {
+    font-size: 1.6rem;
+  }
+
+  .candidate-jobs-title-wrap span {
+    font-size: 0.94rem;
+  }
+
+  .candidate-jobs-description {
+    min-height: 0;
+    font-size: 0.96rem;
+  }
+
+  .candidate-jobs-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .candidate-jobs-primary-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .candidate-jobs-hero h1 {
+    font-size: 1.95rem;
+  }
+
+  .candidate-jobs-avatar {
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.8rem;
+  }
+
+  .candidate-jobs-title-wrap h2 {
+    font-size: 1.45rem;
+  }
+
+  .candidate-jobs-match-badge {
+    min-width: 4.2rem;
+    padding: 0.5rem 0.55rem;
+  }
+
+  .candidate-jobs-match-badge strong {
+    font-size: 0.95rem;
+  }
+
+  .candidate-jobs-match-badge span {
+    font-size: 0.72rem;
+  }
+
+  .candidate-jobs-meta-row span {
+    font-size: 0.8rem;
+  }
+
+  .candidate-jobs-salary strong {
+    font-size: 1.1rem;
+  }
+
+  .candidate-jobs-primary-button {
+    min-height: 3rem;
+    font-size: 0.98rem;
+  }
+}

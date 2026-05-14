@@ -17,6 +17,7 @@ import {
   saveCandidateProfile,
   sortCandidateRecommendedJobs,
 } from '../utils/candidateFlow.js';
+import { saveCandidateApplyIntent } from '../utils/candidateApplyIntent.js';
 import { formatExperienceLevel, formatWorkMode } from '../utils/jobFormatters.js';
 import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/workspace.css';
@@ -95,6 +96,53 @@ const formatDateTime = (value) => {
 const formatCurrency = (value) => {
   const numericValue = Number(value || 0);
   return `Rp ${numericValue.toLocaleString('id-ID')}`;
+};
+
+const formatCompactSalaryValue = (value) => {
+  const numericValue = Number(value || 0);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return '0,0jt';
+  }
+
+  return `${(numericValue / 1000000).toLocaleString('id-ID', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}jt`;
+};
+
+const formatCompactSalaryRange = (minimumValue, maximumValue) =>
+  `Rp ${formatCompactSalaryValue(minimumValue)} - ${formatCompactSalaryValue(maximumValue)}`;
+
+const formatCandidateJobScorePercent = (job) => {
+  const rawScore = Number(job?.candidate_match?.score || 0);
+
+  if (!Number.isFinite(rawScore) || rawScore <= 0) {
+    return 0;
+  }
+
+  return Math.min(100, Math.round((rawScore / 10) * 100));
+};
+
+const formatCompactExperienceLevel = (value = '') =>
+  String(formatExperienceLevel(value)).replace(/\s*\(.*?\)/g, '').trim() || '-';
+
+const buildInitials = (value = '') =>
+  String(value)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((segment) => segment.charAt(0).toUpperCase())
+    .join('') || 'KN';
+
+const truncateJobDescription = (description = '', maxLength = 132) => {
+  const normalizedDescription = String(description || '').trim();
+
+  if (normalizedDescription.length <= maxLength) {
+    return normalizedDescription;
+  }
+
+  return `${normalizedDescription.slice(0, maxLength).trim()}...`;
 };
 
 const firstFilledItem = (items = [], fallback = '-') =>
@@ -362,6 +410,21 @@ const CandidateDashboardPage = () => {
     setActiveSection(section);
     setIsMobileNavOpen(false);
     navigate(getCandidateSectionRoute(section));
+  };
+
+  const handleOpenRecommendedJob = (job) => {
+    saveCandidateApplyIntent({
+      jobId: job.id,
+      page: 1,
+      filters: {
+        search: job.title,
+        experience_level: job.experience_level,
+        location: job.location,
+      },
+      selectedLocation: job.location,
+    });
+
+    navigate(APP_ROUTES.jobs);
   };
 
   const handleLogout = async () => {
@@ -1317,75 +1380,100 @@ const CandidateDashboardPage = () => {
         )}
 
         {activeSection === 'jobs' && (
-          <section className="workspace-section-stack">
-            <article className="workspace-panel" data-reveal>
-              <div className="workspace-panel-heading">
-                <div>
-                  <span className="workspace-section-label">Lowongan Rekomendasi</span>
-                  <h2>Prioritas lowongan untuk Anda</h2>
-                </div>
+          <section className="workspace-section-stack candidate-jobs-layout">
+            <div className="candidate-jobs-shell">
+              <header className="candidate-jobs-hero" data-reveal>
+                <span className="candidate-jobs-kicker">Lowongan Rekomendasi</span>
+                <h1>Prioritas lowongan untuk Anda</h1>
                 <p>
-                  Rekomendasi disusun dari posisi incaran, lokasi minat, dan skill utama yang sudah
-                  Anda simpan di profil.
+                  Rekomendasi disusun dari posisi incaran, lokasi minat, dan skill utama yang
+                  sudah Anda simpan di profil.
                 </p>
-              </div>
+              </header>
 
               {jobsError && <div className="error">{jobsError}</div>}
 
-              <div className="workspace-card-list">
+              <div className="candidate-jobs-card-list">
                 {isLoadingJobs ? (
                   <div className="loading">Memuat rekomendasi lowongan...</div>
-                ) : spotlightJobs.length === 0 ? (
-                  <article className="workspace-subcard">
-                    <div className="workspace-subcard-heading">
+                ) : recommendedJobs.length === 0 ? (
+                  <article className="candidate-jobs-card candidate-jobs-card-empty">
+                    <div className="candidate-jobs-empty-head">
                       <strong>Belum ada rekomendasi kuat</strong>
                       <span>Lengkapi minat kerja</span>
                     </div>
                     <p>
-                      Tambahkan posisi yang dicari, lokasi prioritas, dan minimal satu skill utama
-                      agar mesin rekomendasi bisa menyaring lowongan yang lebih relevan.
+                      Tambahkan posisi yang diminati, lokasi prioritas, dan industri target agar
+                      sistem bisa menyusun lowongan yang lebih relevan untuk Anda.
                     </p>
+                    <button
+                      type="button"
+                      className="candidate-jobs-primary-button"
+                      onClick={() => handleSectionChange('profile')}
+                    >
+                      Lengkapi Profil
+                    </button>
                   </article>
                 ) : (
-                  spotlightJobs.map((job) => (
-                    <article key={job.id} className="workspace-subcard workspace-job-spotlight-card">
-                      <div className="workspace-subcard-heading">
-                        <div>
-                          <strong>{job.title}</strong>
-                          <span>{job.recruiter?.name || 'Perusahaan'}</span>
+                  recommendedJobs.map((job, index) => {
+                    const recruiterName =
+                      job.recruiter?.company_name || job.recruiter?.name || 'Recruiter Demo';
+                    const matchPercent = formatCandidateJobScorePercent(job);
+
+                    return (
+                      <article
+                        key={job.id}
+                        className="candidate-jobs-card"
+                        data-reveal
+                        data-reveal-delay={`${Math.min(index, 5) * 40}ms`}
+                      >
+                        <div className="candidate-jobs-card-head">
+                          <div className="candidate-jobs-card-identity">
+                            <span className="candidate-jobs-avatar" aria-hidden="true">
+                              {buildInitials(recruiterName)}
+                            </span>
+                            <div className="candidate-jobs-title-wrap">
+                              <h2>{job.title}</h2>
+                              <span>{recruiterName}</span>
+                            </div>
+                          </div>
+                          <div className="candidate-jobs-match-badge">
+                            <strong>{matchPercent}%</strong>
+                            <span>COCOK</span>
+                          </div>
                         </div>
-                        <span>{job.candidate_match.score} poin cocok</span>
-                      </div>
 
-                      <div className="workspace-inline-metadata">
-                        <span>{job.location}</span>
-                        <span>{formatExperienceLevel(job.experience_level)}</span>
-                        <span>{formatWorkMode(job.work_mode)}</span>
-                      </div>
+                        <div className="candidate-jobs-meta-row">
+                          <span>{job.location || '-'}</span>
+                          <span>{formatCompactExperienceLevel(job.experience_level)}</span>
+                          <span>{formatWorkMode(job.work_mode)}</span>
+                        </div>
 
-                      <p>{job.description}</p>
+                        <p className="candidate-jobs-description">
+                          {truncateJobDescription(job.description)}
+                        </p>
 
-                      <div className="workspace-tag-list">
-                        {job.candidate_match.reasons.map((reason) => (
-                          <span key={reason} className="workspace-chip">
-                            {reason}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="workspace-action-row">
-                        <Link to={APP_ROUTES.jobs} className="btn btn-primary">
-                          Buka dan Lamar
-                        </Link>
-                        <span className="workspace-muted-text">
-                          {formatCurrency(job.salary_min)} - {formatCurrency(job.salary_max)}
-                        </span>
-                      </div>
-                    </article>
-                  ))
+                        <div className="candidate-jobs-footer">
+                          <div className="candidate-jobs-salary">
+                            <small>Estimasi Gaji</small>
+                            <strong>
+                              {formatCompactSalaryRange(job.salary_min, job.salary_max)}
+                            </strong>
+                          </div>
+                          <button
+                            type="button"
+                            className="candidate-jobs-primary-button"
+                            onClick={() => handleOpenRecommendedJob(job)}
+                          >
+                            Buka &amp; Lamar
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
                 )}
               </div>
-            </article>
+            </div>
           </section>
         )}
 
