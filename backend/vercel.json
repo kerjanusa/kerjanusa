@@ -45,6 +45,22 @@
       "destination": "/api/change-password/index.php"
     },
     {
+      "source": "/api/chat/threads",
+      "destination": "/api/chat/threads.php"
+    },
+    {
+      "source": "/api/chat/contacts",
+      "destination": "/api/chat/contacts.php"
+    },
+    {
+      "source": "/api/chat/conversations/:userId",
+      "destination": "/api/chat/conversations/[userId].php"
+    },
+    {
+      "source": "/api/chat/messages",
+      "destination": "/api/chat/messages.php"
+    },
+    {
       "source": "/api/job-locations",
       "destination": "/api/job-locations.php"
     },

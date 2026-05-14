@@ -121,9 +121,14 @@ const InboxWorkspace = ({
             </div>
             <input
               type="search"
+              name="contact-search"
               className="collaboration-search"
               placeholder="Cari nama, email, atau perusahaan..."
               value={contactSearchQuery}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck="false"
               onChange={(event) => onContactSearchQueryChange?.(event.target.value)}
             />
 

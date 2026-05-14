@@ -694,6 +694,7 @@ const AdminDashboardPage = () => {
     isLoadingContacts,
     isLoadingMessages,
     isSendingMessage,
+    error: chatError,
     loadThreads,
     loadContacts,
     loadConversation,
@@ -792,9 +793,36 @@ const AdminDashboardPage = () => {
       return;
     }
 
+    setFeedback(null);
     loadThreads().catch(() => {});
     loadContacts(chatSearchQuery).catch(() => {});
   }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages' || !chatError) {
+      return;
+    }
+
+    setFeedback({
+      type: 'error',
+      message: chatError,
+    });
+  }, [activeSection, chatError]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages') {
+      return;
+    }
+
+    const normalizedQuery = chatSearchQuery.trim().toLowerCase();
+    const ownSearchTerms = [user?.email, user?.name]
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean);
+
+    if (normalizedQuery && ownSearchTerms.includes(normalizedQuery)) {
+      setChatSearchQuery('');
+    }
+  }, [activeSection, chatSearchQuery, user?.email, user?.name]);
 
   const totals = dashboard?.totals ?? {};
   const growth = dashboard?.growth ?? {};
