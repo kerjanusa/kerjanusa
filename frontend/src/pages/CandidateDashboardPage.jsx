@@ -104,6 +104,7 @@ const CandidateDashboardPage = () => {
     loadContacts,
     loadConversation,
     sendMessage,
+    error: chatError,
   } = useChat();
   const [activeSection, setActiveSection] = useState(resolveCandidateSectionFromHash(location.hash));
   const [profile, setProfile] = useState(() => readCandidateProfile(user));
@@ -151,9 +152,21 @@ const CandidateDashboardPage = () => {
       return;
     }
 
+    setFeedback(null);
     loadThreads().catch(() => {});
     loadContacts(chatSearchQuery).catch(() => {});
   }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages' || !chatError) {
+      return;
+    }
+
+    setFeedback({
+      type: 'error',
+      message: chatError,
+    });
+  }, [activeSection, chatError]);
 
   const completion = useMemo(() => getCandidateProfileCompletion(profile), [profile]);
   const activeApplications = useMemo(

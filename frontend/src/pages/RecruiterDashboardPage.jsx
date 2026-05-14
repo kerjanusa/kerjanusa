@@ -122,6 +122,7 @@ const RecruiterDashboardPage = () => {
     loadContacts,
     loadConversation,
     sendMessage,
+    error: chatError,
   } = useChat();
   const [activeSection, setActiveSection] = useState(resolveRecruiterSectionFromHash(location.hash));
   const [companyProfile, setCompanyProfile] = useState(() => readRecruiterCompanyProfile(user));
@@ -274,9 +275,21 @@ const RecruiterDashboardPage = () => {
       return;
     }
 
+    setFeedback(null);
     loadThreads().catch(() => {});
     loadContacts(chatSearchQuery).catch(() => {});
   }, [activeSection, chatSearchQuery, loadContacts, loadThreads]);
+
+  useEffect(() => {
+    if (activeSection !== 'messages' || !chatError) {
+      return;
+    }
+
+    setFeedback({
+      type: 'error',
+      message: chatError,
+    });
+  }, [activeSection, chatError]);
 
   useEffect(() => {
     if (activeSection !== 'talent' || talentCandidates.length > 0) {

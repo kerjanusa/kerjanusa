@@ -7,13 +7,58 @@ use App\Models\Job;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class MessageService
 {
+    private function ensureMessagesTableExists(): void
+    {
+        static $schemaReady = false;
+
+        if ($schemaReady) {
+            return;
+        }
+
+        if (Schema::hasTable('messages')) {
+            $schemaReady = true;
+            return;
+        }
+
+        try {
+            Schema::create('messages', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('recipient_id')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('job_id')->nullable()->constrained('jobs')->nullOnDelete();
+                $table->text('body');
+                $table->timestamp('read_at')->nullable();
+                $table->timestamps();
+
+                $table->index(['sender_id', 'recipient_id']);
+                $table->index(['recipient_id', 'read_at']);
+                $table->index(['job_id', 'created_at']);
+            });
+        } catch (Throwable $exception) {
+            if (!Schema::hasTable('messages')) {
+                throw ValidationException::withMessages([
+                    'chat' => [
+                        'Layanan chat belum aktif karena storage pesan belum siap. Sinkronkan migrasi production untuk tabel messages.',
+                    ],
+                ]);
+            }
+        }
+
+        $schemaReady = true;
+    }
+
     public function listThreads(User $user): array
     {
+        $this->ensureMessagesTableExists();
+
         $messages = Message::query()
             ->with(['sender', 'recipient', 'job'])
             ->where(function (Builder $query) use ($user) {
@@ -58,6 +103,7 @@ class MessageService
 
     public function getConversation(User $user, User $counterpart): array
     {
+        $this->ensureMessagesTableExists();
         $this->assertCanCommunicate($user, $counterpart);
 
         Message::query()
@@ -150,6 +196,8 @@ class MessageService
 
     public function sendMessage(User $sender, array $payload): Message
     {
+        $this->ensureMessagesTableExists();
+
         $recipient = User::findOrFail($payload['recipient_id']);
         $this->assertCanCommunicate($sender, $recipient);
 
