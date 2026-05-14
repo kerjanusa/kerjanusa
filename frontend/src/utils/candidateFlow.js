@@ -86,11 +86,16 @@ export const mergeCandidateProfile = (user, savedProfile) => {
 export const getCandidateProfileStorageKey = (userId) =>
   `${CANDIDATE_PROFILE_STORAGE_PREFIX}:${userId || 'guest'}`;
 
-const getCandidateProfileSource = (user) => {
+const getCandidateProfileSource = (user, options = {}) => {
+  const preferStoredDraft = options.preferStoredDraft ?? true;
   const backendProfile =
     user?.candidate_profile && typeof user.candidate_profile === 'object'
       ? user.candidate_profile
       : null;
+
+  if (!preferStoredDraft) {
+    return mergeCandidateProfile(user, backendProfile);
+  }
 
   if (typeof window === 'undefined') {
     return mergeCandidateProfile(user, backendProfile);
@@ -109,8 +114,8 @@ const getCandidateProfileSource = (user) => {
   }
 };
 
-export const readCandidateProfile = (user) => {
-  return getCandidateProfileSource(user);
+export const readCandidateProfile = (user, options = {}) => {
+  return getCandidateProfileSource(user, options);
 };
 
 export const saveCandidateProfile = (user, profile) => {

@@ -22,12 +22,15 @@ import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/workspace.css';
 
 const CANDIDATE_SECTION_OPTIONS = [
-  { value: 'overview', label: 'Dashboard' },
-  { value: 'profile', label: 'Profil Siap Lamar' },
-  { value: 'jobs', label: 'Lowongan' },
-  { value: 'applications', label: 'Lamaran Saya' },
-  { value: 'messages', label: 'Chat' },
+  { value: 'overview', label: 'Dashboard', mobileLabel: 'Beranda' },
+  { value: 'profile', label: 'Profil Siap Lamar', mobileLabel: 'Profil' },
+  { value: 'jobs', label: 'Lowongan', mobileLabel: 'Lowongan' },
+  { value: 'applications', label: 'Lamaran Saya', mobileLabel: 'Lamaran' },
+  { value: 'messages', label: 'Chat', mobileLabel: 'Chat' },
 ];
+
+const CONTACT_WHATSAPP_LINK =
+  'https://api.whatsapp.com/send?phone=6281286402753&text=Halo%20KerjaNusa';
 
 const resolveCandidateSectionFromHash = (hash) => {
   if (hash === '#profile') {
@@ -80,10 +83,72 @@ const formatCurrency = (value) => {
 const firstFilledItem = (items = [], fallback = '-') =>
   items.find((item) => String(item || '').trim()) || fallback;
 
+const createChecklistStatusItem = (label, isComplete, pendingAction = 'Lengkapi') => ({
+  label,
+  isComplete,
+  actionLabel: isComplete ? 'Siap' : pendingAction,
+});
+
+const buildCandidateDashboardChecklistSections = (profile, completion) => {
+  const checklistLookup = Object.fromEntries(
+    completion.checklist.map((item) => [item.key, item])
+  );
+  const hasLatestEducation =
+    Boolean(profile.education?.institution?.trim()) || Boolean(profile.education?.major?.trim());
+  const hasLatestExperience = profile.experiences.some(
+    (item) => item.company?.trim() || item.position?.trim()
+  );
+
+  return [
+    {
+      id: 'personal',
+      title: 'Data Pribadi',
+      description: 'Pastikan recruiter langsung menemukan identitas dan kontak utama Anda.',
+      items: [
+        createChecklistStatusItem('Nama Lengkap', checklistLookup.fullName?.isComplete),
+        createChecklistStatusItem('Nomor Telepon', checklistLookup.phone?.isComplete),
+        createChecklistStatusItem('Email Akun', checklistLookup.email?.isComplete),
+        createChecklistStatusItem('Domisili', checklistLookup.currentAddress?.isComplete),
+      ],
+    },
+    {
+      id: 'professional',
+      title: 'Profesional',
+      description: 'Bagian ini dipakai untuk menilai kesiapan kerja dan arah pencarian Anda.',
+      items: [
+        createChecklistStatusItem('Ringkasan Profil', checklistLookup.profileSummary?.isComplete),
+        createChecklistStatusItem('Posisi yang Dicari', checklistLookup.preferredRoles?.isComplete),
+        createChecklistStatusItem(
+          'Lokasi Kerja Diminati',
+          checklistLookup.preferredLocations?.isComplete
+        ),
+        createChecklistStatusItem(
+          'Minimal Satu Keahlian',
+          checklistLookup.skills?.isComplete
+        ),
+      ],
+    },
+    {
+      id: 'documents',
+      title: 'Dokumen',
+      description: 'CV dan riwayat dasar membantu recruiter menilai kecocokan lebih cepat.',
+      items: [
+        createChecklistStatusItem('Pendidikan Terbaru', hasLatestEducation),
+        createChecklistStatusItem('Pengalaman Terbaru', hasLatestExperience),
+        createChecklistStatusItem('CV / Resume', checklistLookup.resumeFiles?.isComplete, 'Unggah'),
+      ],
+    },
+  ].map((section) => ({
+    ...section,
+    completedItems: section.items.filter((item) => item.isComplete).length,
+    totalItems: section.items.length,
+  }));
+};
+
 const CandidateDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, getCurrentUser } = useAuth();
   const { jobs, isLoading: isLoadingJobs, error: jobsError, fetchJobs } = useJobs();
   const {
     applications,
@@ -107,7 +172,9 @@ const CandidateDashboardPage = () => {
     error: chatError,
   } = useChat();
   const [activeSection, setActiveSection] = useState(resolveCandidateSectionFromHash(location.hash));
-  const [profile, setProfile] = useState(() => readCandidateProfile(user));
+  const [profile, setProfile] = useState(() =>
+    readCandidateProfile(user, { preferStoredDraft: false })
+  );
   const [feedback, setFeedback] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -123,7 +190,7 @@ const CandidateDashboardPage = () => {
   }, [location.hash]);
 
   useEffect(() => {
-    setProfile(readCandidateProfile(user));
+    setProfile(readCandidateProfile(user, { preferStoredDraft: false }));
   }, [user]);
 
   useEffect(() => {
@@ -134,6 +201,28 @@ const CandidateDashboardPage = () => {
     fetchJobs({}, 1, 24);
     getMyApplications(1, 30);
   }, [fetchJobs, getMyApplications, user?.id, user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== 'candidate') {
+      return;
+    }
+
+    let isMounted = true;
+
+    getCurrentUser()
+      .then((freshUser) => {
+        if (!isMounted || !freshUser) {
+          return;
+        }
+
+        setProfile(readCandidateProfile(freshUser, { preferStoredDraft: false }));
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [getCurrentUser, user?.id, user?.role]);
 
   useEffect(() => {
     if (!location.state?.candidateNotice) {
@@ -168,7 +257,15 @@ const CandidateDashboardPage = () => {
     });
   }, [activeSection, chatError]);
 
-  const completion = useMemo(() => getCandidateProfileCompletion(profile), [profile]);
+  const persistedProfile = useMemo(
+    () => readCandidateProfile(user, { preferStoredDraft: false }),
+    [user]
+  );
+  const completion = useMemo(
+    () => getCandidateProfileCompletion(persistedProfile),
+    [persistedProfile]
+  );
+  const draftCompletion = useMemo(() => getCandidateProfileCompletion(profile), [profile]);
   const activeApplications = useMemo(
     () => applications.filter((application) => isCandidateApplicationActive(application.status, application)),
     [applications]
@@ -179,40 +276,65 @@ const CandidateDashboardPage = () => {
     [applications]
   );
   const recommendedJobs = useMemo(
-    () => sortCandidateRecommendedJobs(jobs, profile, applications).filter((job) => !job.alreadyApplied),
-    [applications, jobs, profile]
+    () =>
+      sortCandidateRecommendedJobs(jobs, persistedProfile, applications).filter(
+        (job) => !job.alreadyApplied
+      ),
+    [applications, jobs, persistedProfile]
   );
   const spotlightJobs = recommendedJobs.slice(0, 6);
-
-  const nextAction = useMemo(() => {
+  const checklistSections = useMemo(
+    () => buildCandidateDashboardChecklistSections(persistedProfile, completion),
+    [completion, persistedProfile]
+  );
+  const activeApplicationsPreview = useMemo(
+    () => activeApplications.slice(0, 3),
+    [activeApplications]
+  );
+  const recommendedJobsPreview = useMemo(() => recommendedJobs.slice(0, 3), [recommendedJobs]);
+  const recommendedJobsCount = recommendedJobs.length;
+  const overviewHero = useMemo(() => {
     if (!completion.isReady) {
       return {
-        label: 'Lengkapi profil minimum',
+        title: 'Optimalkan Profil Profesional Anda',
         description:
-          'Isi data inti seperti domisili, ringkasan profil, posisi yang dicari, dan CV agar Anda bisa melamar tanpa hambatan.',
-        cta: 'Buka profil siap lamar',
-        section: 'profile',
+          'Lengkapi data diri Anda untuk meningkatkan peluang dilirik recruiter. Semua indikator di dashboard ini diambil dari profil kandidat, lowongan, dan lamaran aktif pada akun Anda saat ini.',
+        secondaryLabel: 'Buka Profil',
+        secondarySection: 'profile',
       };
     }
 
-    if (activeApplications.length === 0) {
+    if (activeApplications.length > 0) {
       return {
-        label: 'Mulai lamaran pertama',
+        title: 'Pantau Progres Lamaran Profesional Anda',
         description:
-          'Profil Anda sudah siap. Sekarang fokus ke lowongan yang paling cocok dan kirim lamaran pertama Anda.',
-        cta: 'Lihat lowongan cocok',
-        section: 'jobs',
+          'Lamaran aktif, status recruiter, dan peluang lowongan baru kini tersaji dari data akun Anda secara real-time agar tindak lanjut tidak terlewat.',
+        secondaryLabel: 'Lihat Lamaran',
+        secondarySection: 'applications',
       };
     }
 
     return {
-      label: 'Pantau progres lamaran aktif',
+      title: 'Profil Anda Siap Didorong Lebih Jauh',
       description:
-        'Anda sudah punya proses berjalan. Cek status terbaru dan siapkan diri jika recruiter menghubungi Anda.',
-      cta: 'Buka lamaran saya',
-      section: 'applications',
+        'Gunakan profil yang sudah lengkap untuk mulai melamar lowongan yang paling sesuai dengan minat, lokasi, dan keahlian Anda saat ini.',
+      secondaryLabel: 'Buka Profil',
+      secondarySection: 'profile',
     };
   }, [activeApplications.length, completion.isReady]);
+  const primaryPreferredRole = firstFilledItem(persistedProfile.preferredRoles, 'Belum diisi');
+  const primaryPreferredLocation = firstFilledItem(
+    persistedProfile.preferredLocations,
+    'Belum diisi'
+  );
+  const completionRingRadius = 52;
+  const completionRingCircumference = 2 * Math.PI * completionRingRadius;
+  const completionRingOffset =
+    completionRingCircumference -
+    (completionRingCircumference * completion.completionPercent) / 100;
+  const mobileBottomSections = CANDIDATE_SECTION_OPTIONS.filter((section) =>
+    ['overview', 'jobs', 'applications', 'messages'].includes(section.value)
+  );
 
   const applicationList = applicationBucket === 'active' ? activeApplications : completedApplications;
 
@@ -305,11 +427,15 @@ const CandidateDashboardPage = () => {
         phone: savedProfile.phone.trim(),
         candidate_profile: savedProfile,
       });
-      setProfile(readCandidateProfile(response?.user || user));
+      const syncedProfile = readCandidateProfile(response?.user || user, {
+        preferStoredDraft: false,
+      });
+      const syncedCompletion = getCandidateProfileCompletion(syncedProfile);
+      setProfile(syncedProfile);
 
       setFeedback({
         type: 'success',
-        message: completion.isReady
+        message: syncedCompletion.isReady
           ? 'Profil kandidat berhasil disimpan dan sudah siap dipakai untuk melamar.'
           : 'Profil kandidat berhasil disimpan. Lengkapi checklist minimum agar siap melamar.',
       });
@@ -403,9 +529,9 @@ const CandidateDashboardPage = () => {
     },
     {
       label: 'Lowongan cocok',
-      value: `${spotlightJobs.length}`,
+      value: `${recommendedJobsCount}`,
       detail:
-        spotlightJobs.length > 0
+        recommendedJobsCount > 0
           ? 'Disusun dari minat role, lokasi, dan skill Anda'
           : 'Lengkapi minat kerja untuk rekomendasi yang lebih akurat',
     },
@@ -498,138 +624,316 @@ const CandidateDashboardPage = () => {
         )}
 
         {activeSection === 'overview' && (
-          <section className="workspace-section-stack">
-            <div className="workspace-candidate-overview-layout">
-              <article className="workspace-hero-card workspace-candidate-hero-slot" data-reveal>
-                <span className="workspace-kicker">Candidate Flow</span>
-                <h1>{nextAction.label}</h1>
-                <p>{nextAction.description}</p>
+          <section className="workspace-section-stack workspace-candidate-dashboard-overview">
+            <div className="candidate-dashboard-hero-layout">
+              <article className="candidate-dashboard-hero-card" data-reveal>
+                <span className="candidate-dashboard-eyebrow">Candidate Flow</span>
+                <h1>{overviewHero.title}</h1>
+                <p>{overviewHero.description}</p>
 
-                <div className="workspace-action-row">
+                <div className="candidate-dashboard-hero-actions">
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => handleSectionChange(nextAction.section)}
+                    onClick={() => handleSectionChange('jobs')}
                   >
-                    {nextAction.cta}
+                    Cari Lowongan
                   </button>
-                  <Link to={APP_ROUTES.jobs} className="btn btn-outline">
-                    Buka Semua Lowongan
-                  </Link>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => handleSectionChange(overviewHero.secondarySection)}
+                  >
+                    {overviewHero.secondaryLabel}
+                  </button>
                 </div>
 
-                <div className="workspace-candidate-highlight-grid">
-                  <article className="workspace-subcard">
-                    <div className="workspace-subcard-heading">
+                <div className="candidate-dashboard-hero-metadata">
+                  <article className="candidate-dashboard-snapshot-card">
+                    <div className="candidate-dashboard-snapshot-head">
                       <strong>Posisi utama</strong>
-                      <span>{formatCandidateCareerStage(profile)}</span>
+                      <span>{formatCandidateCareerStage(persistedProfile)}</span>
                     </div>
-                    <p>Fokus pencarian Anda saat ini berdasarkan minat role dan pengalaman yang tersimpan.</p>
+                    <p>
+                      Fokus pencarian Anda saat ini dibaca dari minat role dan pengalaman yang
+                      tersimpan.
+                    </p>
+                    <small>{primaryPreferredRole}</small>
                   </article>
 
-                  <article className="workspace-subcard">
-                    <div className="workspace-subcard-heading">
+                  <article className="candidate-dashboard-snapshot-card">
+                    <div className="candidate-dashboard-snapshot-head">
                       <strong>Lokasi prioritas</strong>
-                      <span>{firstFilledItem(profile.preferredLocations, 'Belum diisi')}</span>
+                      <span>{primaryPreferredLocation}</span>
                     </div>
-                    <p>Isi lokasi minat kerja agar rekomendasi lowongan menjadi lebih relevan.</p>
+                    <p>
+                      Lengkapi domisili dan lokasi minat agar rekomendasi lowongan makin relevan.
+                    </p>
+                    <small>
+                      {persistedProfile.currentAddress?.trim() || 'Domisili belum diisi'}
+                    </small>
                   </article>
                 </div>
               </article>
 
-              <section className="workspace-candidate-kpi-slot">
-                <div className="workspace-kpi-grid">
+              <div className="candidate-dashboard-summary-rail">
+                <article
+                  className="candidate-dashboard-mobile-progress-card"
+                  data-reveal
+                  data-reveal-delay="40ms"
+                >
+                  <div className="candidate-dashboard-progress-ring">
+                    <svg
+                      className="candidate-dashboard-progress-svg"
+                      viewBox="0 0 132 132"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="candidate-dashboard-progress-track"
+                        cx="66"
+                        cy="66"
+                        r={completionRingRadius}
+                      />
+                      <circle
+                        className="candidate-dashboard-progress-value"
+                        cx="66"
+                        cy="66"
+                        r={completionRingRadius}
+                        strokeDasharray={completionRingCircumference}
+                        strokeDashoffset={completionRingOffset}
+                      />
+                    </svg>
+                    <div className="candidate-dashboard-progress-copy">
+                      <strong>{completion.completionPercent}%</strong>
+                      <span>Selesai</span>
+                    </div>
+                  </div>
+
+                  <strong className="candidate-dashboard-mobile-progress-title">
+                    {getCandidateProfileStatusLabel(completion)}
+                  </strong>
+                  <p className="candidate-dashboard-mobile-progress-caption">
+                    {completion.completedRequiredItems}/{completion.totalRequiredItems} syarat
+                    terpenuhi
+                  </p>
+
+                  <div className="candidate-dashboard-mobile-progress-stats">
+                    <article>
+                      <strong>{activeApplications.length}</strong>
+                      <span>Lamaran aktif</span>
+                    </article>
+                    <article>
+                      <strong>{recommendedJobsCount}</strong>
+                      <span>Lowongan cocok</span>
+                    </article>
+                  </div>
+                </article>
+
+                <div className="candidate-dashboard-summary-grid" data-reveal data-reveal-delay="40ms">
                   {profileSummaryCards.map((card) => (
-                    <article key={card.label} className="workspace-kpi-card" data-reveal>
+                    <article key={card.label} className="candidate-dashboard-summary-card">
                       <span>{card.label}</span>
                       <strong>{card.value}</strong>
                       <small>{card.detail}</small>
                     </article>
                   ))}
                 </div>
-              </section>
+              </div>
             </div>
 
-            <div className="workspace-two-column-grid">
-              <article className="workspace-panel" data-reveal data-reveal-delay="60ms">
-                <div className="workspace-panel-heading">
+            <div className="candidate-dashboard-main-grid">
+              <article className="candidate-dashboard-panel" data-reveal data-reveal-delay="80ms">
+                <div className="candidate-dashboard-panel-head">
                   <div>
-                    <span className="workspace-section-label">Checklist Siap Lamar</span>
+                    <span className="candidate-dashboard-eyebrow">Checklist Siap Lamar</span>
                     <h2>Minimum yang harus beres</h2>
                   </div>
                   <p>
-                    Candidate hanya bisa melamar dengan lancar jika komponen inti profil sudah
-                    lengkap. Fokus ke daftar ini dulu, bukan ke profil sempurna.
+                    Semua status di bawah dibangun dari profil kandidat yang tersimpan di akun Anda
+                    saat ini, bukan data contoh.
                   </p>
                 </div>
 
-                <div className="workspace-card-list">
-                  {completion.requiredChecklist.map((item) => (
-                    <article
-                      key={item.key}
-                      className={`workspace-subcard workspace-checklist-card${
-                        item.isComplete ? ' is-complete' : ' is-missing'
-                      }`}
-                    >
-                      <div className="workspace-subcard-heading">
-                        <strong>{item.label}</strong>
-                        <span>{item.isComplete ? 'Siap' : 'Belum lengkap'}</span>
+                <div className="candidate-dashboard-checklist-groups">
+                  {checklistSections.map((section) => (
+                    <section key={section.id} className="candidate-dashboard-checklist-group">
+                      <div className="candidate-dashboard-checklist-head">
+                        <div>
+                          <h3>{section.title}</h3>
+                          <p>{section.description}</p>
+                        </div>
+                        <strong>
+                          {section.completedItems}/{section.totalItems}
+                        </strong>
                       </div>
-                      <p>
-                        {item.isComplete
-                          ? 'Komponen ini sudah masuk dan bisa langsung dipakai saat apply.'
-                          : 'Lengkapi komponen ini agar alur lamaran tidak berhenti di tengah jalan.'}
-                      </p>
-                    </article>
+
+                      <div className="candidate-dashboard-status-list">
+                        {section.items.map((item) => (
+                          <article
+                            key={`${section.id}-${item.label}`}
+                            className={`candidate-dashboard-status-row${
+                              item.isComplete ? ' is-complete' : ' is-missing'
+                            }`}
+                          >
+                            <div>
+                              <strong>{item.label}</strong>
+                              <span>
+                                {item.isComplete
+                                  ? 'Komponen ini sudah aktif dan siap dipakai saat melamar.'
+                                  : 'Lengkapi komponen ini agar recruiter mendapat profil yang utuh.'}
+                              </span>
+                            </div>
+                            <small>{item.actionLabel}</small>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </article>
 
-              <article className="workspace-panel" data-reveal data-reveal-delay="120ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Lamaran Aktif</span>
-                    <h2>Yang sedang bergerak sekarang</h2>
+              <div className="candidate-dashboard-side-column">
+                <article
+                  className="candidate-dashboard-panel"
+                  data-reveal
+                  data-reveal-delay="120ms"
+                >
+                  <div className="candidate-dashboard-panel-head">
+                    <div>
+                      <span className="candidate-dashboard-eyebrow">Lamaran Aktif</span>
+                      <h2>Yang sedang bergerak sekarang</h2>
+                    </div>
+                    <p>
+                      Area ini menampilkan proses yang masih berjalan agar tindak lanjut recruiter
+                      tidak terlewat.
+                    </p>
                   </div>
-                  <p>
-                    Area ini menunjukkan proses yang masih hidup, supaya Anda tahu recruiter masih
-                    meninjau atau sudah memberi keputusan awal.
-                  </p>
-                </div>
 
-                <div className="workspace-card-list">
-                  {activeApplications.length === 0 ? (
-                    <article className="workspace-subcard">
-                      <div className="workspace-subcard-heading">
-                        <strong>Belum ada lamaran aktif</strong>
-                        <span>Mulai dari lowongan teratas</span>
-                      </div>
-                      <p>
-                        Profil siap lamar akan lebih berguna jika langsung dipakai untuk kirim
-                        lamaran pertama.
-                      </p>
-                    </article>
-                  ) : (
-                    activeApplications.slice(0, 3).map((application) => {
-                      const statusMeta = getCandidateApplicationMeta(application.status, application);
+                  <div className="candidate-dashboard-inline-list">
+                    {activeApplicationsPreview.length === 0 ? (
+                      <article className="candidate-dashboard-inline-card is-empty">
+                        <div className="candidate-dashboard-inline-head">
+                          <strong>Belum ada lamaran aktif</strong>
+                          <span>Mulai dari lowongan teratas</span>
+                        </div>
+                        <p>
+                          Profil siap lamar akan lebih berguna jika langsung dipakai untuk kirim
+                          lamaran pertama.
+                        </p>
+                      </article>
+                    ) : (
+                      activeApplicationsPreview.map((application) => {
+                        const statusMeta = getCandidateApplicationMeta(
+                          application.status,
+                          application
+                        );
 
-                      return (
-                        <article key={application.id} className="workspace-subcard">
-                          <div className="workspace-subcard-heading">
-                            <strong>{application.job?.title || 'Lowongan'}</strong>
-                            <span>{formatCandidateApplicationStatus(application.status, application)}</span>
+                        return (
+                          <article
+                            key={application.id}
+                            className="candidate-dashboard-inline-card"
+                          >
+                            <div className="candidate-dashboard-inline-head">
+                              <strong>{application.job?.title || 'Lowongan'}</strong>
+                              <span>
+                                {formatCandidateApplicationStatus(
+                                  application.status,
+                                  application
+                                )}
+                              </span>
+                            </div>
+                            <p>{statusMeta.nextAction}</p>
+                            <small>
+                              {application.job?.recruiter?.name || 'Recruiter'} •{' '}
+                              {formatDateTime(application.applied_at)}
+                            </small>
+                          </article>
+                        );
+                      })
+                    )}
+                  </div>
+                </article>
+
+                <article
+                  className="candidate-dashboard-panel"
+                  data-reveal
+                  data-reveal-delay="160ms"
+                >
+                  <div className="candidate-dashboard-panel-head">
+                    <div>
+                      <span className="candidate-dashboard-eyebrow">Lowongan Cocok</span>
+                      <h2>Peluang terdekat untuk Anda</h2>
+                    </div>
+                    <p>
+                      Rekomendasi ini dihitung dari role, lokasi, skill, dan histori lamaran yang
+                      tersimpan sekarang.
+                    </p>
+                  </div>
+
+                  <div className="candidate-dashboard-inline-list">
+                    {recommendedJobsPreview.length === 0 ? (
+                      <article className="candidate-dashboard-inline-card is-empty">
+                        <div className="candidate-dashboard-inline-head">
+                          <strong>Belum ada rekomendasi kuat</strong>
+                          <span>Lengkapi minat kerja</span>
+                        </div>
+                        <p>
+                          Tambahkan posisi yang dicari, lokasi prioritas, dan skill utama agar
+                          mesin rekomendasi bisa menyaring lowongan yang lebih relevan.
+                        </p>
+                      </article>
+                    ) : (
+                      recommendedJobsPreview.map((job) => (
+                        <article key={job.id} className="candidate-dashboard-inline-card">
+                          <div className="candidate-dashboard-inline-head">
+                            <strong>{job.title}</strong>
+                            <span>{job.candidate_match.score} poin</span>
                           </div>
-                          <p>{statusMeta.nextAction}</p>
-                          <small className="workspace-muted-text">
-                            {application.job?.recruiter?.name || 'Recruiter'} •{' '}
-                            {formatDateTime(application.applied_at)}
+                          <p>
+                            {job.recruiter?.name || 'Perusahaan'} • {job.location || '-'} •{' '}
+                            {formatWorkMode(job.work_mode)}
+                          </p>
+                          <small>
+                            {job.candidate_match.reasons[0] ||
+                              'Rekomendasi ini diambil dari kecocokan profil Anda.'}
                           </small>
                         </article>
-                      );
-                    })
-                  )}
-                </div>
-              </article>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="candidate-dashboard-panel-actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => handleSectionChange('jobs')}
+                    >
+                      Buka Semua Lowongan
+                    </button>
+                  </div>
+                </article>
+
+                <aside
+                  className="candidate-dashboard-help-card"
+                  data-reveal
+                  data-reveal-delay="200ms"
+                >
+                  <span className="candidate-dashboard-help-kicker">Butuh bantuan?</span>
+                  <h2>Butuh Bantuan?</h2>
+                  <p>
+                    Tim kami siap membantu menyempurnakan profil Anda untuk menarik perhatian
+                    korporasi besar di Indonesia.
+                  </p>
+                  <a
+                    className="candidate-dashboard-help-button"
+                    href={CONTACT_WHATSAPP_LINK}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Hubungi Konsultan
+                  </a>
+                </aside>
+              </div>
             </div>
           </section>
         )}
@@ -648,19 +952,19 @@ const CandidateDashboardPage = () => {
                 </p>
               </div>
 
-              <div className="workspace-profile-status-banner">
-                <div>
-                  <strong>{getCandidateProfileStatusLabel(completion)}</strong>
-                  <span>
-                    {completion.completedRequiredItems}/{completion.totalRequiredItems} syarat inti
-                    terpenuhi
-                  </span>
+                <div className="workspace-profile-status-banner">
+                  <div>
+                    <strong>{getCandidateProfileStatusLabel(draftCompletion)}</strong>
+                    <span>
+                      {draftCompletion.completedRequiredItems}/{draftCompletion.totalRequiredItems}{' '}
+                      syarat inti terpenuhi
+                    </span>
+                  </div>
+                  <div>
+                    <strong>{draftCompletion.readinessPercent}%</strong>
+                    <span>Kesiapan lamaran</span>
+                  </div>
                 </div>
-                <div>
-                  <strong>{completion.readinessPercent}%</strong>
-                  <span>Kesiapan lamaran</span>
-                </div>
-              </div>
             </article>
 
             <article className="workspace-panel" data-reveal data-reveal-delay="50ms">
@@ -1314,6 +1618,21 @@ const CandidateDashboardPage = () => {
           />
         )}
       </main>
+
+      <nav className="candidate-dashboard-mobile-bottom-nav" aria-label="Navigasi cepat pelamar">
+        {mobileBottomSections.map((section) => (
+          <button
+            key={section.value}
+            type="button"
+            className={`candidate-dashboard-mobile-bottom-link${
+              activeSection === section.value ? ' is-active' : ''
+            }`}
+            onClick={() => handleSectionChange(section.value)}
+          >
+            <span>{section.mobileLabel || section.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 };
