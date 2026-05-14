@@ -162,6 +162,41 @@
   min-width: fit-content;
 }
 
+.navbar-user-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.16rem;
+  min-width: 0;
+  padding: 0.2rem 0;
+  text-align: right;
+}
+
+.navbar-user-chip strong,
+.navbar-user-chip span {
+  display: block;
+  min-width: 0;
+  max-width: min(15rem, 24vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar-user-chip strong {
+  color: var(--primary-dark);
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.navbar-user-chip span {
+  color: var(--gray-500);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 @media (max-width: 1180px) {
   .navbar-logo {
     width: clamp(10rem, 16vw, 12.6rem);
@@ -174,6 +209,11 @@
   .navbar-auth .btn {
     padding: 0.66rem 1.1rem;
     font-size: 0.9rem;
+  }
+
+  .navbar-user-chip strong,
+  .navbar-user-chip span {
+    max-width: min(11.5rem, 18vw);
   }
 }
 
@@ -250,6 +290,22 @@
 
   .navbar-contact {
     width: 100%;
+  }
+
+  .navbar-auth {
+    justify-content: stretch;
+    min-width: 0;
+  }
+
+  .navbar-user-chip {
+    align-items: flex-start;
+    text-align: left;
+    padding: 0.2rem 0.15rem 0.1rem;
+  }
+
+  .navbar-user-chip strong,
+  .navbar-user-chip span {
+    max-width: none;
   }
 
   .navbar-contact-trigger {

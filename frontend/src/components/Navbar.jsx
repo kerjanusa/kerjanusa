@@ -6,6 +6,22 @@ import '../styles/navbar.css';
 
 const CONTACT_EMAIL = 'Kerjanusacompany@gmail.com';
 
+const resolveUserRoleLabel = (role) => {
+  if (role === 'candidate') {
+    return 'Pelamar';
+  }
+
+  if (role === 'recruiter') {
+    return 'Recruiter';
+  }
+
+  if (role === 'superadmin') {
+    return 'Superadmin';
+  }
+
+  return 'Pengguna';
+};
+
 const Navbar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -163,9 +179,15 @@ const Navbar = () => {
 
             <div className="navbar-auth">
               {user ? (
-                <button className="btn btn-secondary" onClick={handleLogout}>
-                  Logout
-                </button>
+                <>
+                  <div className="navbar-user-chip" aria-label="Akun yang sedang login">
+                    <strong>{user.name || 'Akun KerjaNusa'}</strong>
+                    <span>{resolveUserRoleLabel(user.role)}</span>
+                  </div>
+                  <button className="btn btn-secondary" onClick={handleLogout}>
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <Link to="/login" className="btn btn-outline" onClick={closeMobileMenu}>
