@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import LandingRegisterForm from '../components/LandingRegisterForm.jsx';
 import useAuth from '../hooks/useAuth.js';
+import { getDefaultRouteForRole, normalizeUserRole } from '../utils/routeHelpers.js';
 import '../styles/home.css';
 
 const brandList = [
@@ -129,7 +130,12 @@ const heroBenefitItems = [
 const HomePage = () => {
   const { user } = useAuth();
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
-  const userRole = user?.role;
+  const userRole = normalizeUserRole(user?.role);
+
+  if (user && userRole !== 'recruiter') {
+    return <Navigate to={getDefaultRouteForRole(userRole)} replace />;
+  }
+
   const heroActionSet = user
     ? userRole === 'recruiter'
       ? {
