@@ -1973,7 +1973,7 @@ const AdminDashboardPage = () => {
     {
       label: 'Total Pelamar',
       value: numberFormatter.format(totals.candidates ?? 0),
-      detail: `↗ +${Math.max(growth.new_candidates_last_7_days ?? 0, 0)} bln ini`,
+      detail: `+${numberFormatter.format(Math.max(growth.new_candidates_last_7_days ?? 0, 0))} dari 7 hari lalu`,
       detailTone: 'accent',
       icon: 'candidate',
       iconTone: 'default',
@@ -1982,15 +1982,15 @@ const AdminDashboardPage = () => {
     {
       label: 'Pelamar Aktif',
       value: numberFormatter.format(activeCandidatesCount),
-      detail: 'Stabil bln ini',
+      detail: `${getProgressValue(activeCandidatesCount, totals.candidates ?? 0)}% tingkat retensi`,
       icon: 'check',
       iconTone: 'success',
       compact: true,
     },
     {
       label: 'Lamaran Baru',
-      value: numberFormatter.format(growth.new_applications_last_7_days ?? 0),
-      detail: `↗ +${Math.max(growth.new_applications_last_7_days ?? 0, 0)} bln ini`,
+      value: numberFormatter.format(growth.new_candidates_last_7_days ?? 0),
+      detail: `${numberFormatter.format(candidateReviewCount)} belum ditinjau`,
       detailTone: 'warning',
       icon: 'spark',
       iconTone: 'warning',
@@ -1999,7 +1999,7 @@ const AdminDashboardPage = () => {
     {
       label: 'Dinonaktifkan',
       value: numberFormatter.format(suspendedCandidatesCount),
-      detail: `↘ -${Math.max(suspendedCandidatesCount, 0)} bln ini`,
+      detail: 'Arsip periode ini',
       alert: true,
       detailTone: 'danger',
       icon: 'ban',
@@ -2700,16 +2700,18 @@ const AdminDashboardPage = () => {
   };
 
   const renderCandidateManagement = () => (
-    <section className="superadmin-section-block">
-      <SectionMetrics cards={pelamarCards} />
+    <section className="superadmin-section-block superadmin-candidate-section">
+      <div className="superadmin-candidate-metrics-wrap">
+        <SectionMetrics cards={pelamarCards} />
+      </div>
 
-      <article className="superadmin-panel superadmin-table-panel is-candidate">
-        <div className="superadmin-toolbar superadmin-toolbar-compact">
-          <label className="superadmin-search-input">
+      <article className="superadmin-panel superadmin-table-panel is-candidate superadmin-candidate-table-card">
+        <div className="superadmin-toolbar superadmin-toolbar-compact superadmin-candidate-toolbar">
+          <label className="superadmin-search-input superadmin-candidate-search">
             <AdminIcon name="search" />
             <input
               type="search"
-              placeholder="Cari nama pelamar..."
+              placeholder="Cari nama pelamar atau posisi..."
               value={candidateSearchQuery}
               onChange={(event) => setCandidateSearchQuery(event.target.value)}
             />
@@ -2724,11 +2726,11 @@ const AdminDashboardPage = () => {
               <option value="all">Semua Status</option>
               <option value="active">Aktif</option>
               <option value="review">Menunggu</option>
-              <option value="suspended">Nonaktif</option>
+              <option value="suspended">Dinonaktifkan</option>
             </select>
             <button
               type="button"
-              className="superadmin-secondary-button"
+              className="superadmin-secondary-button superadmin-candidate-export"
               onClick={() => handleExport('pelamar')}
             >
               <AdminIcon name="download" />
@@ -2738,7 +2740,7 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="superadmin-table-wrap">
-          <table className="superadmin-table superadmin-table-candidate">
+          <table className="superadmin-table superadmin-table-candidate superadmin-candidate-table-modern">
             <thead>
               <tr>
                 <th>Pelamar</th>
@@ -2770,7 +2772,7 @@ const AdminDashboardPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td>{candidate.position}</td>
+                    <td className="superadmin-candidate-position-cell">{candidate.position}</td>
                     <td>
                       <span className={`superadmin-status-tag is-${candidate.adminStatus.tone}`}>
                         {candidate.adminStatus.label}
@@ -2778,7 +2780,7 @@ const AdminDashboardPage = () => {
                     </td>
                     <td className="superadmin-cell-date">{candidate.dateLabel}</td>
                     <td>
-                      <div className="superadmin-icon-actions">
+                      <div className="superadmin-icon-actions superadmin-candidate-actions">
                         <button
                           type="button"
                           className="superadmin-icon-button"
@@ -2832,29 +2834,29 @@ const AdminDashboardPage = () => {
         />
       </article>
 
-      <div className="superadmin-two-column">
-        <article className="superadmin-panel">
-          <div className="superadmin-panel-head">
-            <div>
-              <h3>Detail Pelamar</h3>
-            </div>
-          </div>
-
+      <div className="superadmin-two-column superadmin-candidate-bottom">
+        <article className="superadmin-panel superadmin-candidate-detail-panel">
           {selectedCandidate ? (
-            <div className="superadmin-detail-card">
-              <div className="superadmin-detail-identity">
-                <div className="superadmin-person-avatar">{selectedCandidate.initials}</div>
-                <div>
-                  <strong>{selectedCandidate.name}</strong>
-                  <span>{selectedCandidate.email}</span>
+            <div className="superadmin-candidate-profile-card">
+              <div className="superadmin-candidate-profile-head">
+                <div className="superadmin-detail-identity">
+                  <div className="superadmin-person-avatar">{selectedCandidate.initials}</div>
+                  <div>
+                    <strong>{selectedCandidate.name}</strong>
+                    <span>{selectedCandidate.email}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="superadmin-detail-grid">
+              <div className="superadmin-candidate-profile-grid">
                 <div>
-                  <label>Status</label>
+                  <label>Status Lamaran</label>
                   <span className={`superadmin-status-tag is-${selectedCandidate.adminStatus.tone}`}>
-                    {selectedCandidate.adminStatus.label}
+                    {selectedCandidate.adminStatus.label === 'Diblokir'
+                      ? 'Dinonaktifkan'
+                      : selectedCandidate.adminStatus.label === 'Aktif'
+                        ? 'Aktif'
+                        : 'Menunggu Review'}
                   </span>
                 </div>
                 <div>
@@ -2866,12 +2868,12 @@ const AdminDashboardPage = () => {
                   <strong>
                     {selectedCandidate.latest_application_stage
                       ? formatApplicationStage(selectedCandidate.latest_application_stage)
-                      : 'Belum melamar'}
+                      : 'Belum melamar posisi spesifik'}
                   </strong>
                 </div>
                 <div>
-                  <label>Resume</label>
-                  <strong>{selectedCandidate.resume_files_count || 0} file</strong>
+                  <label>Resume / Portofolio</label>
+                  <strong>{selectedCandidate.resume_files_count || 0} file diunggah</strong>
                 </div>
                 <div>
                   <label>Preferensi Role</label>
@@ -2883,14 +2885,25 @@ const AdminDashboardPage = () => {
                 </div>
               </div>
 
-              <div className="superadmin-detail-block">
-                <label>Ringkasan Profil</label>
-                <p>{selectedCandidate.profile_summary || 'Ringkasan profil belum diisi.'}</p>
-              </div>
-
-              <div className="superadmin-detail-block">
-                <label>Skill Utama</label>
-                <p>{selectedCandidate.skillsLabel}</p>
+              <div className="superadmin-candidate-summary-block">
+                <label>Ringkasan Profil & Skill Utama</label>
+                <div className="superadmin-candidate-summary-box">
+                  <p>
+                    {selectedCandidate.profile_summary ||
+                      'Informasi profil belum dilengkapi oleh pelamar.'}
+                  </p>
+                  <small>{selectedCandidate.skillsLabel}</small>
+                  <button
+                    type="button"
+                    className="superadmin-secondary-button superadmin-candidate-remind"
+                    onClick={() => handleSendResetLink(selectedCandidate)}
+                    disabled={userResetActionInFlightId === selectedCandidate.id}
+                  >
+                    {userResetActionInFlightId === selectedCandidate.id
+                      ? 'Mengirim...'
+                      : 'Ingatkan Pelamar'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -2901,10 +2914,11 @@ const AdminDashboardPage = () => {
           )}
         </article>
 
-        <article className="superadmin-panel">
+        <article className="superadmin-panel superadmin-candidate-queue-panel">
           <div className="superadmin-panel-head">
             <div>
               <h3>Antrian Review Pelamar</h3>
+              <p>{numberFormatter.format(candidateReviewQueue.length)} pelamar membutuhkan tindakan segera</p>
             </div>
           </div>
           <div className="superadmin-list-stack">
@@ -2915,7 +2929,7 @@ const AdminDashboardPage = () => {
                 <button
                   key={candidate.id}
                   type="button"
-                  className={`superadmin-queue-item${
+                  className={`superadmin-queue-item superadmin-candidate-queue-item${
                     Number(selectedCandidate?.id) === Number(candidate.id) ? ' is-active' : ''
                   }`}
                   onClick={() => setSelectedCandidateId(candidate.id)}
@@ -2931,6 +2945,17 @@ const AdminDashboardPage = () => {
               ))
             )}
           </div>
+
+          <button
+            type="button"
+            className="superadmin-secondary-button superadmin-candidate-queue-button"
+            onClick={() => {
+              setCandidateStatusFilter('review');
+              setCandidatePage(1);
+            }}
+          >
+            Lihat Semua Antrian
+          </button>
         </article>
       </div>
     </section>
