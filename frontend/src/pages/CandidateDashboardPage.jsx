@@ -32,6 +32,23 @@ const CANDIDATE_SECTION_OPTIONS = [
 const CONTACT_WHATSAPP_LINK =
   'https://api.whatsapp.com/send?phone=6281286402753&text=Halo%20KerjaNusa';
 
+const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
+  'Full-time / Tetap',
+  'Part-time',
+  'Kontrak',
+  'Freelance',
+  'Magang',
+];
+
+const CANDIDATE_EDUCATION_LEVEL_OPTIONS = [
+  'SMA / SMK',
+  'D1 / D2',
+  'D3',
+  'S1 - Sarjana',
+  'S2 - Magister',
+  'S3 - Doktor',
+];
+
 const resolveCandidateSectionFromHash = (hash) => {
   if (hash === '#profile') {
     return 'profile';
@@ -116,15 +133,17 @@ const buildCandidateDashboardChecklistSections = (profile, completion) => {
       title: 'Profesional',
       description: 'Bagian ini dipakai untuk menilai kesiapan kerja dan arah pencarian Anda.',
       items: [
-        createChecklistStatusItem('Ringkasan Profil', checklistLookup.profileSummary?.isComplete),
-        createChecklistStatusItem('Posisi yang Dicari', checklistLookup.preferredRoles?.isComplete),
         createChecklistStatusItem(
-          'Lokasi Kerja Diminati',
-          checklistLookup.preferredLocations?.isComplete
+          'Posisi yang Diminati',
+          checklistLookup.preferredRoles?.isComplete
         ),
         createChecklistStatusItem(
-          'Minimal Satu Keahlian',
-          checklistLookup.skills?.isComplete
+          'Tipe Pekerjaan',
+          checklistLookup.employmentType?.isComplete
+        ),
+        createChecklistStatusItem(
+          'Industri Target',
+          checklistLookup.targetIndustry?.isComplete
         ),
       ],
     },
@@ -265,7 +284,6 @@ const CandidateDashboardPage = () => {
     () => getCandidateProfileCompletion(persistedProfile),
     [persistedProfile]
   );
-  const draftCompletion = useMemo(() => getCandidateProfileCompletion(profile), [profile]);
   const activeApplications = useMemo(
     () => applications.filter((application) => isCandidateApplicationActive(application.status, application)),
     [applications]
@@ -327,6 +345,8 @@ const CandidateDashboardPage = () => {
     persistedProfile.preferredLocations,
     'Belum diisi'
   );
+  const latestExperience = profile.experiences[0];
+  const resumePreviewName = profile.resumeFiles[0] || 'CV belum diunggah';
   const completionRingRadius = 52;
   const completionRingCircumference = 2 * Math.PI * completionRingRadius;
   const completionRingOffset =
@@ -404,21 +424,26 @@ const CandidateDashboardPage = () => {
     setFeedback(null);
   };
 
-  const handlePhotoChange = (files) => {
-    setProfile((currentProfile) => ({
-      ...currentProfile,
-      photoFileName: files?.[0]?.name || '',
-    }));
-    setFeedback(null);
-  };
-
   const handleSaveProfile = async () => {
     if (!user) {
       return;
     }
 
     setIsSavingProfile(true);
-    const savedProfile = saveCandidateProfile(user, profile);
+    const normalizedProfile = {
+      ...profile,
+      preferredLocations: profile.preferredLocations.map((item, index) =>
+        index === 0 && !String(item || '').trim()
+          ? String(profile.currentAddress || '').trim()
+          : item
+      ),
+      skills: profile.skills.map((item, index) =>
+        index === 0 && !String(item || '').trim()
+          ? String(profile.targetIndustry || '').trim()
+          : item
+      ),
+    };
+    const savedProfile = saveCandidateProfile(user, normalizedProfile);
     setProfile(savedProfile);
 
     try {
@@ -939,402 +964,354 @@ const CandidateDashboardPage = () => {
         )}
 
         {activeSection === 'profile' && (
-          <section className="workspace-section-stack">
-            <article className="workspace-panel" data-reveal>
-              <div className="workspace-panel-heading">
-                <div>
-                  <span className="workspace-section-label">Profil Minimum</span>
-                  <h2>Siapkan profil sebelum melamar</h2>
-                </div>
-                <p>
-                  Fokus ke data yang langsung dipakai recruiter untuk menilai kecocokan dan
-                  menghubungi Anda. Sisanya bisa menyusul.
-                </p>
-              </div>
+          <section className="workspace-section-stack candidate-profile-layout">
+            <div className="candidate-profile-shell">
+              <header className="candidate-profile-hero" data-reveal>
+                <span className="candidate-profile-kicker">Pengaturan Kandidat</span>
+                <h1>Lengkapi Profil Profesional Anda</h1>
+                <span className="candidate-profile-divider" />
+              </header>
 
-                <div className="workspace-profile-status-banner">
-                  <div>
-                    <strong>{getCandidateProfileStatusLabel(draftCompletion)}</strong>
-                    <span>
-                      {draftCompletion.completedRequiredItems}/{draftCompletion.totalRequiredItems}{' '}
-                      syarat inti terpenuhi
+              <article className="candidate-profile-card" data-reveal data-reveal-delay="40ms">
+                <div className="candidate-profile-card-head">
+                  <div className="candidate-profile-card-title">
+                    <span className="candidate-profile-card-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M12 12a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4ZM6.5 18.4a5.5 5.5 0 0 1 11 0"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </span>
-                  </div>
-                  <div>
-                    <strong>{draftCompletion.readinessPercent}%</strong>
-                    <span>Kesiapan lamaran</span>
+                    <h2>Data Inti</h2>
                   </div>
                 </div>
-            </article>
 
-            <article className="workspace-panel" data-reveal data-reveal-delay="50ms">
-              <div className="workspace-panel-heading">
-                <div>
-                  <span className="workspace-section-label">Data Inti</span>
-                  <h2>Kontak dan ringkasan pelamar</h2>
-                </div>
-                <p>
-                  Gunakan informasi yang memang aktif dipakai sehari-hari. Recruiter akan melihat
-                  blok ini lebih dulu.
-                </p>
-              </div>
+                <div className="candidate-profile-form-stack">
+                  <label className="candidate-profile-field">
+                    <span>Nama Lengkap</span>
+                    <input
+                      type="text"
+                      placeholder="Masukkan nama sesuai KTP"
+                      value={profile.fullName}
+                      onChange={(event) => handleProfileFieldChange('fullName', event.target.value)}
+                    />
+                  </label>
 
-              <div className="workspace-form-grid workspace-form-grid-two">
-                <label className="workspace-field">
-                  <span>Nama lengkap</span>
-                  <input
-                    type="text"
-                    value={profile.fullName}
-                    onChange={(event) => handleProfileFieldChange('fullName', event.target.value)}
-                  />
-                </label>
-                <label className="workspace-field">
-                  <span>Email akun</span>
-                  <input type="email" value={profile.email} readOnly />
-                </label>
-                <label className="workspace-field">
-                  <span>Nomor telepon aktif</span>
-                  <input
-                    type="tel"
-                    value={profile.phone}
-                    onChange={(event) => handleProfileFieldChange('phone', event.target.value)}
-                  />
-                </label>
-                <label className="workspace-field">
-                  <span>Nama kontak aktif</span>
-                  <input
-                    type="text"
-                    value={profile.activeContactName}
-                    onChange={(event) =>
-                      handleProfileFieldChange('activeContactName', event.target.value)
-                    }
-                  />
-                </label>
-                <label className="workspace-field">
-                  <span>Tempat lahir</span>
-                  <input
-                    type="text"
-                    value={profile.placeOfBirth}
-                    onChange={(event) =>
-                      handleProfileFieldChange('placeOfBirth', event.target.value)
-                    }
-                  />
-                </label>
-                <label className="workspace-field">
-                  <span>Tanggal lahir</span>
-                  <input
-                    type="date"
-                    value={profile.dateOfBirth}
-                    onChange={(event) =>
-                      handleProfileFieldChange('dateOfBirth', event.target.value)
-                    }
-                  />
-                </label>
-                <label className="workspace-field workspace-field-span-two">
-                  <span>Alamat / domisili saat ini</span>
-                  <textarea
-                    rows="3"
-                    value={profile.currentAddress}
-                    onChange={(event) =>
-                      handleProfileFieldChange('currentAddress', event.target.value)
-                    }
-                  />
-                </label>
-                <label className="workspace-field workspace-field-span-two">
-                  <span>Ringkasan profil</span>
-                  <textarea
-                    rows="5"
-                    placeholder="Ceritakan singkat pengalaman, kekuatan utama, dan jenis pekerjaan yang Anda incar."
-                    value={profile.profileSummary}
-                    onChange={(event) =>
-                      handleProfileFieldChange('profileSummary', event.target.value)
-                    }
-                  />
-                </label>
-              </div>
-            </article>
+                  <label className="candidate-profile-field">
+                    <span>Email Aktif</span>
+                    <input type="email" value={profile.email} readOnly />
+                  </label>
 
-            <div className="workspace-two-column-grid">
-              <article className="workspace-panel" data-reveal data-reveal-delay="90ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Target Pekerjaan</span>
-                    <h2>Role, lokasi, dan skill utama</h2>
-                  </div>
-                  <p>
-                    Rekomendasi lowongan dibangun dari area ini. Isi ringkas dan fokus ke prioritas
-                    Anda.
-                  </p>
-                </div>
+                  <label className="candidate-profile-field">
+                    <span>Nomor Telepon / WhatsApp</span>
+                    <input
+                      type="tel"
+                      placeholder="+62 812 3456 7890"
+                      value={profile.phone}
+                      onChange={(event) => handleProfileFieldChange('phone', event.target.value)}
+                    />
+                  </label>
 
-                <div className="workspace-form-grid">
-                  <div className="workspace-field">
-                    <span>Posisi yang dicari</span>
-                    <div className="workspace-list-inputs">
-                      {profile.preferredRoles.slice(0, 3).map((value, index) => (
-                        <input
-                          key={`preferred-role-${index + 1}`}
-                          type="text"
-                          placeholder={`Contoh: Admin Operasional ${index + 1}`}
-                          value={value}
-                          onChange={(event) =>
-                            handleListFieldChange('preferredRoles', index, event.target.value)
-                          }
-                        />
-                      ))}
+                  <label className="candidate-profile-field candidate-profile-field-with-icon">
+                    <span>Lokasi Saat Ini</span>
+                    <div className="candidate-profile-input-shell">
+                      <input
+                        type="text"
+                        placeholder="Kota atau Kabupaten"
+                        value={profile.currentAddress}
+                        onChange={(event) =>
+                          handleProfileFieldChange('currentAddress', event.target.value)
+                        }
+                      />
+                      <span className="candidate-profile-trailing-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M12 21s6-5.3 6-10.2A6 6 0 1 0 6 10.8C6 15.7 12 21 12 21Z"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="12" cy="10.5" r="2.1" stroke="currentColor" strokeWidth="1.7" />
+                        </svg>
+                      </span>
                     </div>
-                  </div>
-
-                  <div className="workspace-field">
-                    <span>Lokasi kerja yang diminati</span>
-                    <div className="workspace-list-inputs">
-                      {profile.preferredLocations.slice(0, 3).map((value, index) => (
-                        <input
-                          key={`preferred-location-${index + 1}`}
-                          type="text"
-                          placeholder={`Contoh: Bogor ${index + 1}`}
-                          value={value}
-                          onChange={(event) =>
-                            handleListFieldChange('preferredLocations', index, event.target.value)
-                          }
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="workspace-field">
-                    <span>Keahlian utama</span>
-                    <div className="workspace-list-inputs">
-                      {profile.skills.map((value, index) => (
-                        <input
-                          key={`skill-${index + 1}`}
-                          type="text"
-                          placeholder={`Skill ${index + 1}`}
-                          value={value}
-                          onChange={(event) =>
-                            handleListFieldChange('skills', index, event.target.value)
-                          }
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  </label>
                 </div>
               </article>
 
-              <article className="workspace-panel" data-reveal data-reveal-delay="130ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Dokumen & Ekspektasi</span>
-                    <h2>CV dan informasi pendukung</h2>
+              <article className="candidate-profile-card" data-reveal data-reveal-delay="80ms">
+                <div className="candidate-profile-card-head">
+                  <div className="candidate-profile-card-title">
+                    <span className="candidate-profile-card-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M4.5 8.5h15M7.5 5.5h9M6 18.5h12M8.5 12.5h7"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </span>
+                    <h2>Target Pekerjaan</h2>
                   </div>
-                  <p>
-                    Apply flow sekarang mengambil CV dari profil Anda. Simpan di sini sekali, lalu
-                    pakai berulang kali untuk lowongan berikutnya.
-                  </p>
                 </div>
 
-                <div className="workspace-form-grid">
-                  <label className="workspace-field">
-                    <span>Foto profil</span>
-                    <input type="file" accept="image/*" onChange={(event) => handlePhotoChange(event.target.files)} />
-                  </label>
-                  <label className="workspace-field">
-                    <span>CV / resume</span>
+                <div className="candidate-profile-form-stack">
+                  <label className="candidate-profile-field">
+                    <span>Posisi yang Diminati</span>
                     <input
+                      type="text"
+                      placeholder="Contoh: Senior Business Analyst, Supervisor Operasional"
+                      value={profile.preferredRoles[0]}
+                      onChange={(event) =>
+                        handleListFieldChange('preferredRoles', 0, event.target.value)
+                      }
+                    />
+                  </label>
+
+                  <label className="candidate-profile-field">
+                    <span>Tipe Pekerjaan</span>
+                    <select
+                      value={profile.employmentType || ''}
+                      onChange={(event) =>
+                        handleProfileFieldChange('employmentType', event.target.value)
+                      }
+                    >
+                      <option value="">Pilih tipe pekerjaan</option>
+                      {CANDIDATE_EMPLOYMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="candidate-profile-field">
+                    <span>Industri Target</span>
+                    <input
+                      type="text"
+                      placeholder="Contoh: FinTech, E-commerce"
+                      value={profile.targetIndustry || ''}
+                      onChange={(event) =>
+                        handleProfileFieldChange('targetIndustry', event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+              </article>
+
+              <article className="candidate-profile-card" data-reveal data-reveal-delay="120ms">
+                <div className="candidate-profile-card-head">
+                  <div className="candidate-profile-card-title">
+                    <span className="candidate-profile-card-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M4.5 8.5 12 5l7.5 3.5L12 12 4.5 8.5ZM6.5 11.5V16L12 19l5.5-3v-4.5"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <h2>Pendidikan & Pengalaman</h2>
+                  </div>
+                </div>
+
+                <div className="candidate-profile-stack">
+                  <section className="candidate-profile-detail-block">
+                    <div className="candidate-profile-detail-head">
+                      <span className="candidate-profile-detail-icon">PK</span>
+                      <div className="candidate-profile-detail-copy">
+                        <div>
+                          <h3>Pengalaman Terakhir</h3>
+                          <p>Tuliskan posisi dan perusahaan terakhir Anda.</p>
+                        </div>
+                        <span className="candidate-profile-detail-action">Tambah</span>
+                      </div>
+                    </div>
+
+                    <div className="candidate-profile-form-stack">
+                      <label className="candidate-profile-field">
+                        <span>Jabatan Terakhir</span>
+                        <input
+                          type="text"
+                          placeholder="Jabatan terakhir"
+                          value={latestExperience.position}
+                          onChange={(event) =>
+                            handleExperienceChange(0, 'position', event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className="candidate-profile-field">
+                        <span>Nama Instansi</span>
+                        <input
+                          type="text"
+                          placeholder="Nama instansi"
+                          value={latestExperience.company}
+                          onChange={(event) =>
+                            handleExperienceChange(0, 'company', event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="candidate-profile-detail-block">
+                    <div className="candidate-profile-detail-head">
+                      <span className="candidate-profile-detail-icon">ED</span>
+                      <div className="candidate-profile-detail-copy">
+                        <div>
+                          <h3>Pendidikan Terakhir</h3>
+                          <p>Latar belakang akademis tertinggi Anda.</p>
+                        </div>
+                        <span className="candidate-profile-detail-action">Tambah</span>
+                      </div>
+                    </div>
+
+                    <div className="candidate-profile-form-stack">
+                      <label className="candidate-profile-field">
+                        <span>Pendidikan Terakhir</span>
+                        <select
+                          value={profile.education.degree || ''}
+                          onChange={(event) =>
+                            handleEducationChange('degree', event.target.value)
+                          }
+                        >
+                          <option value="">Pilih jenjang pendidikan</option>
+                          {CANDIDATE_EDUCATION_LEVEL_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="candidate-profile-field">
+                        <span>Universitas / Sekolah</span>
+                        <input
+                          type="text"
+                          placeholder="Universitas / Sekolah"
+                          value={profile.education.institution}
+                          onChange={(event) =>
+                            handleEducationChange('institution', event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              </article>
+
+              <article className="candidate-profile-card" data-reveal data-reveal-delay="160ms">
+                <div className="candidate-profile-card-head">
+                  <div className="candidate-profile-card-title">
+                    <span className="candidate-profile-card-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M7 4.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7.5 4.5Z"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path d="M14 4.5V9h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <h2>Dokumen & Ekspektasi</h2>
+                  </div>
+                </div>
+
+                <div className="candidate-profile-form-stack">
+                  <label className="candidate-profile-field">
+                    <span>Ekspektasi Gaji (Bulanan)</span>
+                    <div className="candidate-profile-salary-shell">
+                      <span className="candidate-profile-salary-prefix">Rp</span>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Contoh: 15.000.000"
+                        value={profile.salaryMin}
+                        onChange={(event) => {
+                          handleProfileFieldChange('salaryMin', event.target.value);
+                          handleProfileFieldChange('salaryMax', event.target.value);
+                        }}
+                      />
+                    </div>
+                  </label>
+
+                  <div className="candidate-profile-field">
+                    <span>Unggah CV / Resume (PDF)</span>
+                    <label
+                      className="candidate-profile-upload-zone"
+                      htmlFor="candidate-resume-upload"
+                    >
+                      <span className="candidate-profile-upload-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M12 16V6m0 0-3.5 3.5M12 6l3.5 3.5M5 17.5v1A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-1"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <strong>Pilih File CV</strong>
+                      <small>Maks 5MB</small>
+                    </label>
+                    <input
+                      id="candidate-resume-upload"
+                      className="candidate-profile-upload-input"
                       type="file"
                       accept=".pdf,.doc,.docx"
                       multiple
                       onChange={(event) => handleFileChange('resumeFiles', event.target.files, 3)}
                     />
-                  </label>
-                  <label className="workspace-field">
-                    <span>Sertifikat / dokumen pendukung</span>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={(event) =>
-                        handleFileChange('certificateFiles', event.target.files, 5)
-                      }
-                    />
-                  </label>
-
-                  <div className="workspace-form-grid workspace-form-grid-two">
-                    <label className="workspace-field">
-                      <span>Ekspektasi gaji minimum</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={profile.salaryMin}
-                        onChange={(event) =>
-                          handleProfileFieldChange('salaryMin', event.target.value)
-                        }
-                      />
-                    </label>
-                    <label className="workspace-field">
-                      <span>Ekspektasi gaji maksimum</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={profile.salaryMax}
-                        onChange={(event) =>
-                          handleProfileFieldChange('salaryMax', event.target.value)
-                        }
-                      />
-                    </label>
                   </div>
-                </div>
 
-                <div className="workspace-profile-file-summary">
-                  <span>CV tersimpan: {profile.resumeFiles.length}</span>
-                  <span>Dokumen pendukung: {profile.certificateFiles.length}</span>
-                  <span>Foto profil: {profile.photoFileName ? 'Sudah ada' : 'Belum ada'}</span>
-                </div>
-              </article>
-            </div>
-
-            <div className="workspace-two-column-grid">
-              <article className="workspace-panel" data-reveal data-reveal-delay="170ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Pendidikan</span>
-                    <h2>Data pendidikan terakhir</h2>
-                  </div>
-                  <p>Cukup isi pendidikan yang paling relevan dengan pekerjaan yang Anda cari.</p>
-                </div>
-
-                <div className="workspace-form-grid workspace-form-grid-two">
-                  <label className="workspace-field">
-                    <span>Institusi</span>
-                    <input
-                      type="text"
-                      value={profile.education.institution}
-                      onChange={(event) =>
-                        handleEducationChange('institution', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="workspace-field">
-                    <span>Jurusan</span>
-                    <input
-                      type="text"
-                      value={profile.education.major}
-                      onChange={(event) => handleEducationChange('major', event.target.value)}
-                    />
-                  </label>
-                  <label className="workspace-field">
-                    <span>Tahun mulai</span>
-                    <input
-                      type="text"
-                      value={profile.education.startYear}
-                      onChange={(event) =>
-                        handleEducationChange('startYear', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="workspace-field">
-                    <span>Tahun selesai</span>
-                    <input
-                      type="text"
-                      value={profile.education.endYear}
-                      onChange={(event) => handleEducationChange('endYear', event.target.value)}
-                    />
-                  </label>
-                </div>
-              </article>
-
-              <article className="workspace-panel" data-reveal data-reveal-delay="210ms">
-                <div className="workspace-panel-heading">
-                  <div>
-                    <span className="workspace-section-label">Pengalaman Terbaru</span>
-                    <h2>Ambil yang paling relevan saja</h2>
-                  </div>
-                  <p>
-                    Tidak perlu menuliskan semua pengalaman. Satu atau dua entri yang tepat sudah
-                    cukup untuk fase MVP candidate ini.
-                  </p>
-                </div>
-
-                <div className="workspace-card-list">
-                  {profile.experiences.slice(0, 2).map((experience, index) => (
-                    <article key={`experience-${index + 1}`} className="workspace-subcard">
-                      <div className="workspace-subcard-heading">
-                        <strong>Pengalaman {index + 1}</strong>
-                        <span>{experience.company || 'Belum diisi'}</span>
+                  <div className="candidate-profile-resume-preview">
+                    <span className="candidate-profile-preview-label">
+                      Preview resume sebelumnya
+                    </span>
+                    <div className="candidate-profile-preview-sheet">
+                      <div className="candidate-profile-preview-sheet-header" />
+                      <div className="candidate-profile-preview-sheet-line is-wide" />
+                      <div className="candidate-profile-preview-sheet-line" />
+                      <div className="candidate-profile-preview-sheet-line" />
+                      <div className="candidate-profile-preview-sheet-line is-wide" />
+                      <div className="candidate-profile-preview-sheet-grid">
+                        <span />
+                        <span />
+                        <span />
                       </div>
-                      <div className="workspace-form-grid workspace-form-grid-two">
-                        <label className="workspace-field">
-                          <span>Perusahaan</span>
-                          <input
-                            type="text"
-                            value={experience.company}
-                            onChange={(event) =>
-                              handleExperienceChange(index, 'company', event.target.value)
-                            }
-                          />
-                        </label>
-                        <label className="workspace-field">
-                          <span>Posisi</span>
-                          <input
-                            type="text"
-                            value={experience.position}
-                            onChange={(event) =>
-                              handleExperienceChange(index, 'position', event.target.value)
-                            }
-                          />
-                        </label>
-                        <label className="workspace-field">
-                          <span>Tahun / periode</span>
-                          <input
-                            type="text"
-                            value={experience.year}
-                            onChange={(event) =>
-                              handleExperienceChange(index, 'year', event.target.value)
-                            }
-                          />
-                        </label>
-                        <label className="workspace-field">
-                          <span>Alasan keluar</span>
-                          <input
-                            type="text"
-                            value={experience.reasonForLeaving}
-                            onChange={(event) =>
-                              handleExperienceChange(index, 'reasonForLeaving', event.target.value)
-                            }
-                          />
-                        </label>
-                        <label className="workspace-field workspace-field-span-two">
-                          <span>Tanggung jawab / pencapaian</span>
-                          <textarea
-                            rows="4"
-                            value={experience.responsibilities}
-                            onChange={(event) =>
-                              handleExperienceChange(index, 'responsibilities', event.target.value)
-                            }
-                          />
-                        </label>
-                      </div>
-                    </article>
-                  ))}
+                    </div>
+                    <small>{resumePreviewName}</small>
+                  </div>
                 </div>
               </article>
-            </div>
 
-            <div className="workspace-action-row">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSaveProfile}
-                disabled={isSavingProfile}
-              >
-                {isSavingProfile ? 'Menyimpan...' : 'Simpan Profil Candidate'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => handleSectionChange('jobs')}
-              >
-                Lanjut Cari Lowongan
-              </button>
+              <div className="candidate-profile-actions">
+                <button
+                  type="button"
+                  className="candidate-profile-primary-button"
+                  onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? 'Menyimpan...' : 'Simpan Profil'}
+                </button>
+                <button
+                  type="button"
+                  className="candidate-profile-secondary-button"
+                  onClick={() => handleSectionChange('jobs')}
+                >
+                  Lanjut Cari Lowongan
+                </button>
+              </div>
             </div>
           </section>
         )}

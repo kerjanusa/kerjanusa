@@ -21,6 +21,44 @@ const createExperienceItem = () => ({
 const normalizeStringList = (items, maxLength) =>
   Array.from({ length: maxLength }, (_, index) => String(items?.[index] || ''));
 
+const trimText = (value) => String(value || '').trim();
+
+const firstFilledText = (items = []) => items.find((item) => trimText(item)) || '';
+
+const buildAutoProfileSummary = (profile) => {
+  const role = trimText(firstFilledText(profile?.preferredRoles));
+  const employmentType = trimText(profile?.employmentType);
+  const targetIndustry = trimText(profile?.targetIndustry);
+  const latestPosition = trimText(profile?.experiences?.[0]?.position);
+  const latestCompany = trimText(profile?.experiences?.[0]?.company);
+  const currentAddress = trimText(profile?.currentAddress);
+
+  if (
+    !role &&
+    !employmentType &&
+    !targetIndustry &&
+    !latestPosition &&
+    !latestCompany &&
+    !currentAddress
+  ) {
+    return '';
+  }
+
+  const summaryParts = [
+    role ? `Menargetkan posisi ${role}` : 'Kandidat profesional aktif',
+    employmentType ? `dengan preferensi kerja ${employmentType}` : '',
+    targetIndustry ? `di sektor ${targetIndustry}` : '',
+    latestPosition || latestCompany
+      ? `berbekal pengalaman terakhir sebagai ${latestPosition || 'profesional'}${
+          latestCompany ? ` di ${latestCompany}` : ''
+        }`
+      : '',
+    currentAddress ? `dan berdomisili di ${currentAddress}` : '',
+  ].filter(Boolean);
+
+  return `${summaryParts.join(' ')}.`;
+};
+
 export const createCandidateProfile = (user) => ({
   fullName: user?.name || '',
   email: user?.email || '',
@@ -30,12 +68,15 @@ export const createCandidateProfile = (user) => ({
   dateOfBirth: '',
   currentAddress: '',
   profileSummary: '',
+  employmentType: '',
+  targetIndustry: '',
   photoFileName: '',
   linkedin: '',
   instagram: '',
   tiktok: '',
   otherSocial: '',
   education: {
+    degree: '',
     institution: '',
     major: '',
     startYear: '',
@@ -59,12 +100,28 @@ export const mergeCandidateProfile = (user, savedProfile) => {
     return baseProfile;
   }
 
+  const normalizedPreferredLocations = normalizeStringList(savedProfile.preferredLocations, 5);
+  const normalizedSkills = normalizeStringList(savedProfile.skills, 5);
+
+  if (!firstFilledText(normalizedPreferredLocations) && trimText(savedProfile.currentAddress)) {
+    normalizedPreferredLocations[0] = trimText(savedProfile.currentAddress);
+  }
+
+  if (!firstFilledText(normalizedSkills)) {
+    normalizedSkills[0] =
+      trimText(savedProfile.targetIndustry) || trimText(savedProfile.education?.major);
+  }
+
+  const profileSummary =
+    trimText(savedProfile.profileSummary) || buildAutoProfileSummary(savedProfile);
+
   return {
     ...baseProfile,
     ...savedProfile,
     fullName: savedProfile.fullName || user?.name || '',
     email: savedProfile.email || user?.email || '',
     phone: savedProfile.phone || user?.phone || '',
+    profileSummary,
     education: {
       ...baseProfile.education,
       ...(savedProfile.education || {}),
@@ -73,8 +130,8 @@ export const mergeCandidateProfile = (user, savedProfile) => {
       ...item,
       ...(savedProfile.experiences?.[index] || {}),
     })),
-    skills: normalizeStringList(savedProfile.skills, 5),
-    preferredLocations: normalizeStringList(savedProfile.preferredLocations, 5),
+    skills: normalizedSkills,
+    preferredLocations: normalizedPreferredLocations,
     preferredRoles: normalizeStringList(savedProfile.preferredRoles, 5),
     resumeFiles: Array.isArray(savedProfile.resumeFiles) ? savedProfile.resumeFiles.slice(0, 3) : [],
     certificateFiles: Array.isArray(savedProfile.certificateFiles)
@@ -121,11 +178,13 @@ export const readCandidateProfile = (user, options = {}) => {
 export const saveCandidateProfile = (user, profile) => {
   const normalizedProfile = mergeCandidateProfile(user, {
     ...profile,
-    fullName: profile?.fullName?.trim?.() || '',
-    email: profile?.email?.trim?.() || user?.email || '',
-    phone: profile?.phone?.trim?.() || '',
-    currentAddress: profile?.currentAddress?.trim?.() || '',
-    profileSummary: profile?.profileSummary?.trim?.() || '',
+    fullName: trimText(profile?.fullName),
+    email: trimText(profile?.email) || user?.email || '',
+    phone: trimText(profile?.phone),
+    currentAddress: trimText(profile?.currentAddress),
+    employmentType: trimText(profile?.employmentType),
+    targetIndustry: trimText(profile?.targetIndustry),
+    profileSummary: trimText(profile?.profileSummary) || buildAutoProfileSummary(profile),
   });
 
   if (typeof window === 'undefined') {
@@ -161,27 +220,21 @@ export const getCandidateProfileChecklist = (profile) => {
       required: true,
     },
     {
-      key: 'profileSummary',
-      label: 'Ringkasan profil',
-      isComplete: Boolean(profile.profileSummary?.trim()),
-      required: true,
-    },
-    {
       key: 'preferredRoles',
-      label: 'Posisi yang dicari',
+      label: 'Posisi yang diminati',
       isComplete: countFilledItems(profile.preferredRoles) > 0,
       required: true,
     },
     {
-      key: 'preferredLocations',
-      label: 'Lokasi kerja yang diminati',
-      isComplete: countFilledItems(profile.preferredLocations) > 0,
+      key: 'employmentType',
+      label: 'Tipe pekerjaan',
+      isComplete: Boolean(trimText(profile.employmentType)),
       required: true,
     },
     {
-      key: 'skills',
-      label: 'Minimal satu keahlian utama',
-      isComplete: countFilledItems(profile.skills) > 0,
+      key: 'targetIndustry',
+      label: 'Industri target',
+      isComplete: Boolean(trimText(profile.targetIndustry)),
       required: true,
     },
     {
