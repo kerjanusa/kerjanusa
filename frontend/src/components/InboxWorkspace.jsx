@@ -217,6 +217,8 @@ const InboxWorkspace = ({
                     key={`contact-${contact.id}`}
                     type="button"
                     className={`collaboration-contact-chip${
+                      compactLayout ? ' is-label-only' : ''
+                    }${
                       Number(selectedContactId) === Number(contact.id) ? ' is-active' : ''
                     }`}
                     onClick={() => onSelectContact?.(contact)}
@@ -224,9 +226,11 @@ const InboxWorkspace = ({
                     <strong className="collaboration-card-title">
                       {resolveContactLabel(contact)}
                     </strong>
-                    <span className="collaboration-card-email">
-                      {resolveContactSecondaryText(contact)}
-                    </span>
+                    {!compactLayout && (
+                      <span className="collaboration-card-email">
+                        {resolveContactSecondaryText(contact)}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
