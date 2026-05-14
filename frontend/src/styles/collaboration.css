@@ -1,6 +1,8 @@
 .collaboration-workspace-app {
   min-height: 0;
   height: 100%;
+  margin-top: 0;
+  gap: 0;
 }
 
 .collaboration-grid {
@@ -21,6 +23,7 @@
   min-height: 0;
   height: 100%;
   align-items: stretch;
+  gap: 0.9rem;
 }
 
 .collaboration-sidebar {
@@ -195,8 +198,13 @@
   height: 100%;
 }
 
+.collaboration-grid.is-app-layout .collaboration-sidebar {
+  border-radius: 1.35rem;
+}
+
 .collaboration-grid.is-app-layout .collaboration-chat-panel {
   grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: 1.35rem;
   overflow: hidden;
 }
 
@@ -225,26 +233,33 @@
   white-space: nowrap;
 }
 
-.collaboration-chat-contact-meta.is-placeholder {
+  .collaboration-chat-contact-meta.is-placeholder {
   max-width: 22rem;
   white-space: normal;
   line-height: 1.55;
 }
 
 .collaboration-message-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.85rem;
-  align-content: start;
+  justify-content: flex-end;
   min-height: 0;
   max-height: none;
-  padding-right: 0.2rem;
+  padding: 0.35rem 0.45rem 0.1rem 0.1rem;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 248, 0.96), rgba(252, 247, 241, 0.98)),
+    radial-gradient(circle at top right, rgba(214, 165, 61, 0.06), transparent 28%);
+  border: 1px solid rgba(91, 35, 79, 0.08);
+  border-radius: 1.2rem;
 }
 
 .collaboration-empty-state {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 100%;
   border: 1px dashed rgba(91, 35, 79, 0.16);
   border-radius: 1.15rem;
@@ -260,17 +275,21 @@
 .collaboration-message-bubble {
   max-width: min(100%, 42rem);
   padding: 1rem 1.05rem;
-  border-radius: 1.15rem;
+  border-radius: 1.2rem;
   border: 1px solid rgba(91, 35, 79, 0.08);
+  box-shadow: 0 10px 22px rgba(46, 22, 44, 0.05);
 }
 
 .collaboration-message-bubble.is-mine {
   justify-self: end;
-  background: linear-gradient(135deg, #f6e7b6 0%, #f9efd6 100%);
+  align-self: flex-end;
+  border-top-right-radius: 0.45rem;
+  background: linear-gradient(135deg, #f7df97 0%, #f9e9bc 100%);
 }
 
 .collaboration-message-bubble.is-theirs {
-  justify-self: start;
+  align-self: flex-start;
+  border-top-left-radius: 0.45rem;
   background: rgba(255, 252, 248, 0.98);
 }
 
@@ -302,6 +321,48 @@
   padding-top: 0.95rem;
   border-top: 1px solid rgba(91, 35, 79, 0.08);
   background: rgba(255, 251, 246, 0.98);
+}
+
+.collaboration-grid.is-app-layout .collaboration-composer textarea {
+  min-height: 5.25rem;
+  resize: none;
+}
+
+.collaboration-grid.is-app-layout .collaboration-chat-header {
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid rgba(91, 35, 79, 0.08);
+}
+
+.collaboration-grid.is-app-layout .collaboration-sidebar {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.collaboration-grid.is-app-layout .collaboration-sidebar-block {
+  min-height: 0;
+}
+
+.collaboration-grid.is-app-layout .collaboration-sidebar-block:first-child {
+  min-height: 0;
+}
+
+.collaboration-grid.is-app-layout .collaboration-sidebar-block:last-child {
+  min-height: 0;
+}
+
+.collaboration-grid.is-app-layout .collaboration-thread-list {
+  max-height: none;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.collaboration-grid.is-app-layout .collaboration-contact-list {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.collaboration-grid.is-app-layout .collaboration-message-list.has-conversation {
+  justify-content: flex-end;
 }
 
 .collaboration-composer textarea,

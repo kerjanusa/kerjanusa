@@ -57,6 +57,7 @@ const InboxWorkspace = ({
   emptyMessage = 'Pilih percakapan untuk mulai berdiskusi.',
 }) => {
   const messageListRef = useRef(null);
+  const hasSelectedConversation = Boolean(selectedContactId);
 
   useEffect(() => {
     if (!selectedContactId || !messageListRef.current) {
@@ -184,7 +185,13 @@ const InboxWorkspace = ({
           </div>
         </article>
 
-        <article className="workspace-panel collaboration-chat-panel" data-reveal data-reveal-delay="110ms">
+        <article
+          className={`workspace-panel collaboration-chat-panel${
+            hasSelectedConversation ? ' has-conversation' : ''
+          }`}
+          data-reveal
+          data-reveal-delay="110ms"
+        >
           <div className="collaboration-chat-header">
             <div>
               <span className="workspace-section-label">Percakapan</span>
@@ -199,7 +206,12 @@ const InboxWorkspace = ({
             )}
           </div>
 
-          <div className="collaboration-message-list" ref={messageListRef}>
+          <div
+            className={`collaboration-message-list${
+              hasSelectedConversation ? ' has-conversation' : ''
+            }`}
+            ref={messageListRef}
+          >
             {!selectedContactId ? (
               <div className="collaboration-empty-state">
                 <p>{emptyMessage}</p>
