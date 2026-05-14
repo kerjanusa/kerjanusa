@@ -119,37 +119,53 @@ const aboutPillars = [
   },
 ];
 
+const heroBenefitItems = [
+  'Jumlah loker aktif unlimited',
+  'Screening CV lebih efisien',
+  'Cari kandidat dengan Talent Search',
+  'Jangkau 10 juta+ kandidat',
+];
+
 const HomePage = () => {
   const { user } = useAuth();
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
   const userRole = user?.role;
-  const heroQuickLinks = user
+  const heroActionSet = user
     ? userRole === 'recruiter'
-      ? [
-          { label: 'Pasang Loker Sekarang', to: '/recruiter/jobs/create', primary: true },
-          { label: 'Dashboard Company', to: '/recruiter' },
-          { label: 'Cari Pekerjaan', to: '/jobs' },
-          { label: 'Tentang Kami', to: '/platform' },
-        ]
-      : userRole === 'candidate'
-        ? [
-            { label: 'Info Data Diri', to: '/candidate', primary: true },
+      ? {
+          primary: { label: 'Pasang Loker Sekarang', to: '/recruiter/jobs/create' },
+          secondary: { label: 'Dashboard Company', to: '/recruiter' },
+          supportLinks: [
             { label: 'Cari Pekerjaan', to: '/jobs' },
-            { label: 'Chat', to: '/candidate#chat' },
             { label: 'Tentang Kami', to: '/platform' },
-          ]
-        : [
-            { label: 'Dashboard Admin', to: '/admin', primary: true },
-            { label: 'Monitoring Pelamar', to: '/admin#pelamar' },
-            { label: 'Moderasi Lowongan', to: '/admin#moderasi' },
-            { label: 'Tentang Kami', to: '/platform' },
-          ]
-    : [
-        { label: 'Login', to: '/login', primary: true },
-        { label: 'Daftar Sekarang', to: '/register' },
-        { label: 'Dashboard Company', to: '/login?role=recruiter' },
-        { label: 'Tentang Kami', to: '/platform' },
-      ];
+          ],
+        }
+      : userRole === 'candidate'
+        ? {
+            primary: { label: 'Lihat Lowongan', to: '/jobs' },
+            secondary: { label: 'Info Data Diri', to: '/candidate' },
+            supportLinks: [
+              { label: 'Chat Kandidat', to: '/candidate#chat' },
+              { label: 'Tentang Kami', to: '/platform' },
+            ],
+          }
+        : {
+            primary: { label: 'Dashboard Admin', to: '/admin' },
+            secondary: { label: 'Moderasi Lowongan', to: '/admin#moderasi' },
+            supportLinks: [
+              { label: 'Monitoring Pelamar', to: '/admin#pelamar' },
+              { label: 'Tentang Kami', to: '/platform' },
+            ],
+          }
+    : {
+        primary: { label: 'Pasang Loker Sekarang', to: '/register?role=recruiter' },
+        secondary: { label: 'Lihat Lowongan', to: '/jobs' },
+        supportLinks: [
+          { label: 'Login Recruiter', to: '/login?role=recruiter' },
+          { label: 'Daftar Pelamar', to: '/register?role=candidate' },
+          { label: 'Tentang Kami', to: '/platform' },
+        ],
+      };
 
   const toggleFaq = (index) => {
     setOpenFaqIndex((currentIndex) => (currentIndex === index ? null : index));
@@ -160,36 +176,42 @@ const HomePage = () => {
       <section className="home-hero">
         <div className="home-shell home-hero-grid">
           <div className="hero-copy" data-reveal data-reveal-delay="40ms">
-            <span className="hero-kicker">Beranda Ringkas</span>
-            <h1>Dashboard Awal</h1>
-            <p className="hero-description">
-              Saat pertama masuk website, user langsung melihat fitur inti tanpa perlu mencari
-              menu yang tidak relevan di tahap awal.
+            <span className="hero-kicker">Dashboard Awal</span>
+            <h1 className="hero-headline">
+              <span className="hero-headline-line">Pasang</span>
+              <span className="hero-headline-line">Loker</span>
+              <span className="hero-headline-line">Gratis</span>
+              <span className="hero-headline-line hero-headline-accent">TANPA BATAS!</span>
+            </h1>
+            <span className="hero-headline-bar" aria-hidden="true" />
+            <p className="hero-description hero-description-spotlight">
+              Kelola hiring dari publikasi lowongan sampai shortlist kandidat dalam tampilan
+              yang cepat, rapi, dan mudah dipakai tim recruiter.
             </p>
-            <div className="hero-feature-brief">
-              <span className="hero-feature-heading">Fitur</span>
-              <p className="hero-feature-summary">
-                Masuk website awal langsung muncul hanya fitur <strong>Login</strong>,{' '}
-                <strong>Daftar Sekarang</strong>, <strong>Dashboard Company</strong>, dan{' '}
-                <strong>Tentang Kami</strong>.
-              </p>
-              <ul className="hero-feature-list">
-                <li>
-                  <strong>Login</strong> untuk Rekruter, Pelamar, dan Superadmin KerjaNusa.
-                </li>
-                <li>
-                  <strong>Daftar Sekarang</strong> untuk Rekruter dan Pelamar.
-                </li>
-              </ul>
+
+            <div className="hero-benefits" aria-label="Keunggulan utama KerjaNusa">
+              {heroBenefitItems.map((benefit) => (
+                <span key={benefit} className="hero-benefit-item">
+                  {benefit}
+                </span>
+              ))}
             </div>
 
             <div className="hero-actions">
-              {heroQuickLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className={`btn btn-hero${link.primary ? ' btn-primary' : ' btn-ghost btn-hero-secondary'}`}
-                >
+              <Link to={heroActionSet.primary.to} className="btn btn-hero btn-primary">
+                {heroActionSet.primary.label}
+              </Link>
+              <Link
+                to={heroActionSet.secondary.to}
+                className="btn btn-hero btn-ghost btn-hero-secondary"
+              >
+                {heroActionSet.secondary.label}
+              </Link>
+            </div>
+
+            <div className="hero-support-links" aria-label="Akses cepat tambahan">
+              {heroActionSet.supportLinks.map((link) => (
+                <Link key={link.label} to={link.to} className="hero-support-link">
                   {link.label}
                 </Link>
               ))}
@@ -197,46 +219,32 @@ const HomePage = () => {
           </div>
 
           <div className="hero-visual" data-reveal data-reveal-delay="140ms">
-            <div className="hero-visual-stack">
-              <Link
-                to="/platform"
-                className="hero-greeting-card"
-                aria-label="Buka halaman Tentang Kami"
-              >
-                <img src="/kerjanusa-badge-final-v4.png" alt="" className="hero-greeting-logo" />
-              </Link>
+            <div className="hero-showcase">
+              <div className="hero-showcase-chip">Recruitment Flow yang Lebih Cepat</div>
 
-              <div className="hero-carousel">
-                <div className="hero-carousel-shell hero-carousel-shell-concept">
-                  <div className="hero-concept-board">
-                    <span className="hero-concept-kicker">Akses Cepat</span>
-                    <div className="hero-concept-grid">
-                      <article className="hero-concept-card">
-                        <strong>Login</strong>
-                        <span>Rekruter, Pelamar, Superadmin KerjaNusa</span>
-                      </article>
-                      <article className="hero-concept-card">
-                        <strong>Daftar Sekarang</strong>
-                        <span>Rekruter dan Pelamar</span>
-                      </article>
-                      <article className="hero-concept-card">
-                        <strong>Dashboard Company</strong>
-                        <span>Pintu masuk recruiter eksternal</span>
-                      </article>
-                      <article className="hero-concept-card">
-                        <strong>Tentang Kami</strong>
-                        <span>Profil dan informasi platform</span>
-                      </article>
-                    </div>
-                  </div>
+              <div className="hero-showcase-panel">
+                <div className="hero-showcase-badge hero-showcase-badge-top">
+                  Review video interview lebih jelas
+                </div>
+
+                <div className="hero-phone-frame">
+                  <img
+                    src="/hero-slides/review-1.jpeg"
+                    alt="Tampilan evaluasi kandidat KerjaNusa"
+                    className="hero-phone-screen"
+                  />
+                </div>
+
+                <div className="hero-showcase-badge hero-showcase-badge-bottom">
+                  Shortlist kandidat lebih cepat
                 </div>
               </div>
 
-              <div className="hero-visual-note">
-                <strong>Alur masuk dibuat lebih jelas</strong>
+              <div className="hero-showcase-note">
+                <strong>Publikasi, screening, dan shortlist dalam satu alur.</strong>
                 <span>
-                  Recruiter, pelamar, dan superadmin KerjaNusa sekarang punya jalur akses yang lebih
-                  mudah dipahami dari beranda awal.
+                  Cocok untuk recruiter yang ingin pasang lowongan cepat tanpa proses manual
+                  yang berulang.
                 </span>
               </div>
             </div>

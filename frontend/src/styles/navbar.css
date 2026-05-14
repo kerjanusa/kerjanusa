@@ -466,6 +466,16 @@
   background: rgba(255, 249, 240, 0.84);
 }
 
+.navbar-home .navbar-logo {
+  width: clamp(7.8rem, 10vw, 9.4rem);
+}
+
+@media (max-width: 640px) {
+  .navbar-home .navbar-logo {
+    width: min(7.2rem, 34vw);
+  }
+}
+
 @media (max-width: 900px) {
   .navbar-panel {
     border: 1px solid rgba(183, 133, 45, 0.22);
