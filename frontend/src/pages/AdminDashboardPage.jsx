@@ -804,6 +804,13 @@ const AdminDashboardPage = () => {
   const jobs = dashboard?.jobs ?? [];
   const applications = dashboard?.applications ?? [];
   const screeningOverview = dashboard?.screening_overview ?? {};
+  const schemaWarnings = dashboard?.meta?.schema_warnings ?? [];
+  const hasSchemaWarnings = schemaWarnings.length > 0;
+  const schemaWarningSummary = hasSchemaWarnings
+    ? `Kolom production belum sinkron: ${schemaWarnings.slice(0, 4).join(', ')}${
+        schemaWarnings.length > 4 ? `, +${schemaWarnings.length - 4} lainnya` : ''
+      }.`
+    : '';
 
   const activeCandidatesCount = candidateTable.filter(
     (candidate) => candidate.account_status === 'active'
@@ -1147,7 +1154,7 @@ const AdminDashboardPage = () => {
     jobRows[0] ||
     null;
   const flaggedJobsCount = jobRows.filter((job) => job.isFlagged).length;
-  const syncTone = isLoading ? 'loading' : error ? 'error' : 'success';
+  const syncTone = isLoading ? 'loading' : error ? 'error' : hasSchemaWarnings ? 'warning' : 'success';
 
   useEffect(() => {
     if (!selectedOptimizationJob && jobRows.length > 0) {
@@ -1574,8 +1581,8 @@ const AdminDashboardPage = () => {
   const analyticsHealthItems = [
     {
       label: 'Server API',
-      tone: syncTone === 'error' ? 'danger' : 'success',
-      value: syncTone === 'error' ? 'Issue' : 'Live',
+      tone: syncTone === 'error' ? 'danger' : syncTone === 'warning' ? 'warning' : 'success',
+      value: syncTone === 'error' ? 'Issue' : syncTone === 'warning' ? 'Fallback' : 'Live',
     },
     {
       label: 'Database Feed',
@@ -1636,16 +1643,25 @@ const AdminDashboardPage = () => {
   const monitoringHealthCards = [
     {
       label: 'Dashboard API',
-      status: syncTone === 'error' ? 'danger' : syncTone === 'loading' ? 'warning' : 'success',
+      status:
+        syncTone === 'error'
+          ? 'danger'
+          : syncTone === 'loading' || syncTone === 'warning'
+            ? 'warning'
+            : 'success',
       title:
         syncTone === 'error'
           ? 'Koneksi ke dashboard bermasalah'
+          : syncTone === 'warning'
+            ? 'Dashboard berjalan dengan mode fallback'
           : syncTone === 'loading'
             ? 'Sinkronisasi data berjalan'
             : 'Feed operasional sedang sehat',
       detail:
         syncTone === 'error'
           ? error
+          : syncTone === 'warning'
+            ? `${schemaWarningSummary} Jalankan migrate production agar seluruh data dan fitur sinkron penuh.`
           : syncTone === 'loading'
             ? 'Sedang mengambil data kandidat, recruiter, lowongan, dan lamaran.'
             : `Data live berhasil ditarik pada ${formatDateTime(lastSyncedAt)}.`,
@@ -1758,6 +1774,14 @@ const AdminDashboardPage = () => {
           actionLabel: 'Muat Ulang',
           action: () => loadDashboard(),
         }
+      : syncTone === 'warning'
+        ? {
+            tone: 'warning',
+            title: 'Schema production belum sinkron penuh',
+            detail: `${schemaWarningSummary} Dashboard tetap berjalan, tetapi beberapa data lanjutan bisa memakai fallback.`,
+            actionLabel: 'Refresh',
+            action: () => loadDashboard(false),
+          }
       : flaggedJobsCount > 0
         ? {
             tone: 'danger',
@@ -2380,9 +2404,17 @@ const AdminDashboardPage = () => {
             </button>
           </div>
           <div className="superadmin-monitoring-toolbar-right">
-            <span className={`superadmin-monitoring-platform-chip is-${syncTone === 'error' ? 'danger' : 'success'}`}>
+            <span
+              className={`superadmin-monitoring-platform-chip is-${
+                syncTone === 'error' ? 'danger' : syncTone === 'warning' ? 'warning' : 'success'
+              }`}
+            >
               <i />
-              {syncTone === 'error' ? 'Platform Warning' : 'Platform Online'}
+              {syncTone === 'error'
+                ? 'Platform Warning'
+                : syncTone === 'warning'
+                  ? 'Platform Fallback'
+                  : 'Platform Online'}
             </span>
             <small>Last update: {lastSyncedAt ? formatDateTime(lastSyncedAt) : 'Belum tersinkron'}</small>
           </div>

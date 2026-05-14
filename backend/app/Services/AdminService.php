@@ -8,11 +8,66 @@ use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AdminService
 {
     public function __construct(private RecruiterPlanService $recruiterPlanService)
     {
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        static $columnCache = [];
+
+        if (!array_key_exists($table, $columnCache)) {
+            $columnCache[$table] = [];
+        }
+
+        if (!array_key_exists($column, $columnCache[$table])) {
+            $columnCache[$table][$column] = Schema::hasColumn($table, $column);
+        }
+
+        return $columnCache[$table][$column];
+    }
+
+    private function toSqlLiteral(string|int|null $value): string
+    {
+        if ($value === null) {
+            return 'NULL';
+        }
+
+        if (is_int($value)) {
+            return (string) $value;
+        }
+
+        return "'" . str_replace("'", "''", $value) . "'";
+    }
+
+    private function selectOptionalColumn(string $table, string $column, string $alias, string|int|null $fallback = null)
+    {
+        if ($this->hasColumn($table, $column)) {
+            return $alias === $column
+                ? sprintf('%s.%s', $table, $column)
+                : sprintf('%s.%s as %s', $table, $column, $alias);
+        }
+
+        return DB::raw(sprintf('%s as %s', $this->toSqlLiteral($fallback), $alias));
+    }
+
+    private function decodeArrayPayload(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function extractProfileReadiness(array $profile, array $requiredKeys): bool
@@ -42,6 +97,32 @@ class AdminService
     public function getDashboardData(): array
     {
         $sevenDaysAgo = now()->subDays(7);
+        $hasUserCompanyName = $this->hasColumn('users', 'company_name');
+        $hasUserAccountStatus = $this->hasColumn('users', 'account_status');
+        $hasUserAccountStatusReason = $this->hasColumn('users', 'account_status_reason');
+        $hasCandidateProfile = $this->hasColumn('users', 'candidate_profile');
+        $hasRecruiterProfile = $this->hasColumn('users', 'recruiter_profile');
+        $hasJobWorkflowStatus = $this->hasColumn('jobs', 'workflow_status');
+        $hasJobVideoScreeningRequirement = $this->hasColumn('jobs', 'video_screening_requirement');
+        $hasJobQuizScreeningQuestions = $this->hasColumn('jobs', 'quiz_screening_questions');
+        $hasApplicationStage = $this->hasColumn('applications', 'stage');
+        $hasApplicationScreeningAnswers = $this->hasColumn('applications', 'screening_answers');
+        $hasApplicationVideoIntroUrl = $this->hasColumn('applications', 'video_intro_url');
+        $hasApplicationAppliedAt = $this->hasColumn('applications', 'applied_at');
+
+        $schemaWarnings = collect([
+            !$hasUserCompanyName ? 'users.company_name' : null,
+            !$hasUserAccountStatus ? 'users.account_status' : null,
+            !$hasUserAccountStatusReason ? 'users.account_status_reason' : null,
+            !$hasCandidateProfile ? 'users.candidate_profile' : null,
+            !$hasRecruiterProfile ? 'users.recruiter_profile' : null,
+            !$hasJobWorkflowStatus ? 'jobs.workflow_status' : null,
+            !$hasJobVideoScreeningRequirement ? 'jobs.video_screening_requirement' : null,
+            !$hasJobQuizScreeningQuestions ? 'jobs.quiz_screening_questions' : null,
+            !$hasApplicationStage ? 'applications.stage' : null,
+            !$hasApplicationScreeningAnswers ? 'applications.screening_answers' : null,
+            !$hasApplicationVideoIntroUrl ? 'applications.video_intro_url' : null,
+        ])->filter()->values()->all();
 
         $userAggregates = User::query()
             ->selectRaw('COUNT(*) as total_users')
@@ -113,20 +194,30 @@ class AdminService
             'superadmins' => (int) ($userAggregates->superadmins ?? 0),
             'active_candidates' => (int) User::query()
                 ->where('role', User::ROLE_CANDIDATE)
-                ->where('account_status', User::STATUS_ACTIVE)
+                ->when(
+                    $hasUserAccountStatus,
+                    fn ($query) => $query->where('account_status', User::STATUS_ACTIVE)
+                )
                 ->count(),
-            'inactive_candidates' => (int) User::query()
-                ->where('role', User::ROLE_CANDIDATE)
-                ->where('account_status', User::STATUS_SUSPENDED)
-                ->count(),
+            'inactive_candidates' => $hasUserAccountStatus
+                ? (int) User::query()
+                    ->where('role', User::ROLE_CANDIDATE)
+                    ->where('account_status', User::STATUS_SUSPENDED)
+                    ->count()
+                : 0,
             'active_recruiters' => (int) User::query()
                 ->where('role', User::ROLE_RECRUITER)
-                ->where('account_status', User::STATUS_ACTIVE)
+                ->when(
+                    $hasUserAccountStatus,
+                    fn ($query) => $query->where('account_status', User::STATUS_ACTIVE)
+                )
                 ->count(),
-            'inactive_recruiters' => (int) User::query()
-                ->where('role', User::ROLE_RECRUITER)
-                ->where('account_status', User::STATUS_SUSPENDED)
-                ->count(),
+            'inactive_recruiters' => $hasUserAccountStatus
+                ? (int) User::query()
+                    ->where('role', User::ROLE_RECRUITER)
+                    ->where('account_status', User::STATUS_SUSPENDED)
+                    ->count()
+                : 0,
             'total_jobs' => (int) ($jobAggregates->total_jobs ?? 0),
             'active_jobs' => (int) ($jobAggregates->active_jobs ?? 0),
             'inactive_jobs' => (int) ($jobAggregates->inactive_jobs ?? 0),
@@ -147,7 +238,11 @@ class AdminService
         $latestCandidateApplicationQuery = Application::query()
             ->leftJoin('jobs as latest_jobs', 'latest_jobs.id', '=', 'applications.job_id')
             ->whereColumn('applications.candidate_id', 'users.id')
-            ->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC')
+            ->when(
+                $hasApplicationAppliedAt,
+                fn ($query) => $query->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC'),
+                fn ($query) => $query->orderByDesc('applications.created_at')
+            )
             ->orderByDesc('applications.id');
 
         $candidateTable = User::query()
@@ -157,9 +252,9 @@ class AdminService
                 'users.name',
                 'users.email',
                 'users.phone',
-                'users.account_status',
-                'users.account_status_reason',
-                'users.candidate_profile',
+                $this->selectOptionalColumn('users', 'account_status', 'account_status', User::STATUS_ACTIVE),
+                $this->selectOptionalColumn('users', 'account_status_reason', 'account_status_reason'),
+                $this->selectOptionalColumn('users', 'candidate_profile', 'candidate_profile'),
                 'users.created_at',
             ])
             ->selectSub(
@@ -176,7 +271,11 @@ class AdminService
             )
             ->selectSub(
                 (clone $latestCandidateApplicationQuery)
-                    ->select('applications.stage')
+                    ->when(
+                        $hasApplicationStage,
+                        fn ($query) => $query->select('applications.stage'),
+                        fn ($query) => $query->selectRaw("'" . Application::STAGE_APPLIED . "'")
+                    )
                     ->limit(1),
                 'latest_application_stage'
             )
@@ -188,21 +287,27 @@ class AdminService
             )
             ->selectSub(
                 (clone $latestCandidateApplicationQuery)
-                    ->selectRaw('COALESCE(applications.applied_at, applications.created_at)')
+                    ->when(
+                        $hasApplicationAppliedAt,
+                        fn ($query) => $query->selectRaw('COALESCE(applications.applied_at, applications.created_at)'),
+                        fn ($query) => $query->select('applications.created_at')
+                    )
                     ->limit(1),
                 'latest_applied_at'
             )
             ->latest()
             ->get()
             ->map(function (User $candidate) {
+                $candidateProfile = $this->decodeArrayPayload($candidate->candidate_profile);
+
                 return [
                     'id' => $candidate->id,
                     'name' => $candidate->name,
                     'email' => $candidate->email,
                     'phone' => $candidate->phone,
-                    'account_status' => $candidate->account_status,
+                    'account_status' => $candidate->account_status ?? User::STATUS_ACTIVE,
                     'account_status_reason' => $candidate->account_status_reason,
-                    'profile_ready' => $this->extractProfileReadiness($candidate->candidate_profile ?? [], [
+                    'profile_ready' => $this->extractProfileReadiness($candidateProfile, [
                         'currentAddress',
                         'profileSummary',
                         'preferredRoles',
@@ -214,20 +319,20 @@ class AdminService
                     'latest_application_status' => $candidate->latest_application_status,
                     'latest_application_stage' => $candidate->latest_application_stage,
                     'latest_job_title' => $candidate->latest_job_title,
-                    'profile_summary' => Arr::get($candidate->candidate_profile ?? [], 'profileSummary'),
-                    'preferred_roles' => collect(Arr::get($candidate->candidate_profile ?? [], 'preferredRoles', []))
+                    'profile_summary' => Arr::get($candidateProfile, 'profileSummary'),
+                    'preferred_roles' => collect(Arr::get($candidateProfile, 'preferredRoles', []))
                         ->filter(fn ($role) => filled($role))
                         ->values()
                         ->all(),
-                    'preferred_locations' => collect(Arr::get($candidate->candidate_profile ?? [], 'preferredLocations', []))
+                    'preferred_locations' => collect(Arr::get($candidateProfile, 'preferredLocations', []))
                         ->filter(fn ($location) => filled($location))
                         ->values()
                         ->all(),
-                    'skills' => collect(Arr::get($candidate->candidate_profile ?? [], 'skills', []))
+                    'skills' => collect(Arr::get($candidateProfile, 'skills', []))
                         ->filter(fn ($skill) => filled($skill))
                         ->values()
                         ->all(),
-                    'resume_files_count' => collect(Arr::get($candidate->candidate_profile ?? [], 'resumeFiles', []))
+                    'resume_files_count' => collect(Arr::get($candidateProfile, 'resumeFiles', []))
                         ->filter(fn ($file) => filled($file))
                         ->count(),
                     'created_at' => $candidate->created_at?->toIso8601String(),
@@ -247,12 +352,12 @@ class AdminService
             ->select([
                 'users.id',
                 'users.name',
-                'users.company_name',
+                $hasUserCompanyName ? 'users.company_name' : DB::raw('users.name as company_name'),
                 'users.email',
                 'users.phone',
-                'users.account_status',
-                'users.account_status_reason',
-                'users.recruiter_profile',
+                $this->selectOptionalColumn('users', 'account_status', 'account_status', User::STATUS_ACTIVE),
+                $this->selectOptionalColumn('users', 'account_status_reason', 'account_status_reason'),
+                $this->selectOptionalColumn('users', 'recruiter_profile', 'recruiter_profile'),
                 'users.created_at',
             ])
             ->selectSub(
@@ -283,7 +388,8 @@ class AdminService
             ->latest()
             ->get()
             ->map(function (User $recruiter) {
-                $profileReady = $this->extractProfileReadiness($recruiter->recruiter_profile ?? [], [
+                $recruiterProfile = $this->decodeArrayPayload($recruiter->recruiter_profile);
+                $profileReady = $this->extractProfileReadiness($recruiterProfile, [
                     'companyName',
                     'contactRole',
                     'companyLocation',
@@ -295,26 +401,26 @@ class AdminService
                     ...$this->recruiterPlanService->getRecruiterPlanContext($recruiter),
                     'id' => $recruiter->id,
                     'name' => $recruiter->name,
-                    'company_name' => $recruiter->company_name,
-                    'company_location' => Arr::get($recruiter->recruiter_profile ?? [], 'companyLocation')
-                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'company_location'),
+                    'company_name' => $recruiter->company_name ?? $recruiter->name,
+                    'company_location' => Arr::get($recruiterProfile, 'companyLocation')
+                        ?? Arr::get($recruiterProfile, 'company_location'),
                     'email' => $recruiter->email,
                     'phone' => $recruiter->phone,
-                    'account_status' => $recruiter->account_status,
+                    'account_status' => $recruiter->account_status ?? User::STATUS_ACTIVE,
                     'account_status_reason' => $recruiter->account_status_reason,
                     'profile_ready' => $profileReady,
                     'jobs_count' => (int) ($recruiter->jobs_count ?? 0),
                     'active_jobs_count' => (int) ($recruiter->active_jobs_count ?? 0),
                     'latest_job_title' => $recruiter->latest_job_title,
-                    'verification_status' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationStatus')
+                    'verification_status' => Arr::get($recruiterProfile, 'verificationStatus')
                         ?? ($profileReady ? 'verified' : 'pending'),
-                    'verification_notes' => Arr::get($recruiter->recruiter_profile ?? [], 'verificationNotes'),
-                    'verified_at' => Arr::get($recruiter->recruiter_profile ?? [], 'verifiedAt'),
-                    'contact_role' => Arr::get($recruiter->recruiter_profile ?? [], 'contactRole')
-                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'contact_role'),
-                    'company_description' => Arr::get($recruiter->recruiter_profile ?? [], 'companyDescription')
-                        ?? Arr::get($recruiter->recruiter_profile ?? [], 'company_description'),
-                    'hiring_focus' => collect(Arr::get($recruiter->recruiter_profile ?? [], 'hiringFocus', []))
+                    'verification_notes' => Arr::get($recruiterProfile, 'verificationNotes'),
+                    'verified_at' => Arr::get($recruiterProfile, 'verifiedAt'),
+                    'contact_role' => Arr::get($recruiterProfile, 'contactRole')
+                        ?? Arr::get($recruiterProfile, 'contact_role'),
+                    'company_description' => Arr::get($recruiterProfile, 'companyDescription')
+                        ?? Arr::get($recruiterProfile, 'company_description'),
+                    'hiring_focus' => collect(Arr::get($recruiterProfile, 'hiringFocus', []))
                         ->filter(fn ($focus) => filled($focus))
                         ->values()
                         ->all(),
@@ -340,24 +446,29 @@ class AdminService
                 'jobs.category',
                 'jobs.location',
                 'jobs.status',
-                'jobs.workflow_status',
+                $this->selectOptionalColumn('jobs', 'workflow_status', 'workflow_status', Job::WORKFLOW_ACTIVE),
                 'jobs.job_type',
                 'jobs.experience_level',
-                'jobs.video_screening_requirement',
-                'jobs.quiz_screening_questions',
+                $this->selectOptionalColumn(
+                    'jobs',
+                    'video_screening_requirement',
+                    'video_screening_requirement',
+                    Job::VIDEO_SCREENING_OPTIONAL
+                ),
+                $this->selectOptionalColumn('jobs', 'quiz_screening_questions', 'quiz_screening_questions'),
                 'jobs.created_at',
                 DB::raw('COALESCE(application_totals.applications_count, 0) as applications_count'),
                 'recruiters.id as recruiter_id',
                 'recruiters.name as recruiter_name',
                 'recruiters.email as recruiter_email',
-                'recruiters.company_name as recruiter_company_name',
+                $hasUserCompanyName
+                    ? 'recruiters.company_name as recruiter_company_name'
+                    : 'recruiters.name as recruiter_company_name',
             ])
             ->latest()
             ->get()
             ->map(function ($job) {
-                $screeningQuestions = is_array($job->quiz_screening_questions ?? null)
-                    ? $job->quiz_screening_questions
-                    : json_decode($job->quiz_screening_questions ?? '[]', true);
+                $screeningQuestions = $this->decodeArrayPayload($job->quiz_screening_questions);
 
                 return [
                     'id' => $job->id,
@@ -365,7 +476,7 @@ class AdminService
                     'category' => $job->category,
                     'location' => $job->location,
                     'status' => $job->status,
-                    'workflow_status' => $job->workflow_status,
+                    'workflow_status' => $job->workflow_status ?? Job::WORKFLOW_ACTIVE,
                     'job_type' => $job->job_type,
                     'experience_level' => $job->experience_level,
                     'video_screening_requirement' => $job->video_screening_requirement ?? 'optional',
@@ -390,10 +501,12 @@ class AdminService
             ->select([
                 'applications.id',
                 'applications.status',
-                'applications.stage',
-                'applications.video_intro_url',
-                'applications.screening_answers',
-                DB::raw('COALESCE(applications.applied_at, applications.created_at) as applied_at'),
+                $this->selectOptionalColumn('applications', 'stage', 'stage', Application::STAGE_APPLIED),
+                $this->selectOptionalColumn('applications', 'video_intro_url', 'video_intro_url'),
+                $this->selectOptionalColumn('applications', 'screening_answers', 'screening_answers'),
+                $hasApplicationAppliedAt
+                    ? DB::raw('COALESCE(applications.applied_at, applications.created_at) as applied_at')
+                    : 'applications.created_at as applied_at',
                 'candidates.id as candidate_id',
                 'candidates.name as candidate_name',
                 'candidates.email as candidate_email',
@@ -403,21 +516,25 @@ class AdminService
                 'jobs.location as job_location',
                 'recruiters.id as recruiter_id',
                 'recruiters.name as recruiter_name',
-                'recruiters.company_name as recruiter_company_name',
+                $hasUserCompanyName
+                    ? 'recruiters.company_name as recruiter_company_name'
+                    : 'recruiters.name as recruiter_company_name',
                 'recruiters.email as recruiter_email',
             ])
-            ->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC')
+            ->when(
+                $hasApplicationAppliedAt,
+                fn ($query) => $query->orderByRaw('COALESCE(applications.applied_at, applications.created_at) DESC'),
+                fn ($query) => $query->orderByDesc('applications.created_at')
+            )
             ->orderByDesc('applications.id')
             ->get()
             ->map(function ($application) {
-                $screeningAnswers = is_array($application->screening_answers ?? null)
-                    ? $application->screening_answers
-                    : json_decode($application->screening_answers ?? '[]', true);
+                $screeningAnswers = $this->decodeArrayPayload($application->screening_answers);
 
                 return [
                     'id' => $application->id,
                     'status' => $application->status,
-                    'stage' => $application->stage,
+                    'stage' => $application->stage ?? Application::STAGE_APPLIED,
                     'applied_at' => $application->applied_at,
                     'has_video_intro' => filled($application->video_intro_url ?? null),
                     'screening_answers_count' => count(is_array($screeningAnswers) ? $screeningAnswers : []),
@@ -447,14 +564,18 @@ class AdminService
             'candidate_profiles_incomplete' => collect($candidateTable)
                 ->where('profile_ready', false)
                 ->count(),
-            'applications_with_video_screening' => Application::query()
-                ->whereNotNull('video_intro_url')
-                ->count(),
-            'applications_with_screening_answers' => Application::query()
-                ->whereNotNull('screening_answers')
-                ->count(),
+            'applications_with_video_screening' => $hasApplicationVideoIntroUrl
+                ? Application::query()->whereNotNull('video_intro_url')->count()
+                : 0,
+            'applications_with_screening_answers' => $hasApplicationScreeningAnswers
+                ? Application::query()->whereNotNull('screening_answers')->count()
+                : 0,
             'jobs_waiting_recruiter_notice' => Job::query()
-                ->where('workflow_status', Job::WORKFLOW_ACTIVE)
+                ->when(
+                    $hasJobWorkflowStatus,
+                    fn ($query) => $query->where('workflow_status', Job::WORKFLOW_ACTIVE),
+                    fn ($query) => $query->where('status', Job::STATUS_ACTIVE)
+                )
                 ->where('created_at', '<=', now()->subDays(3))
                 ->whereDoesntHave('applications')
                 ->count(),
@@ -491,6 +612,9 @@ class AdminService
                 ->all(),
             'jobs' => $jobs,
             'applications' => $applications,
+            'meta' => [
+                'schema_warnings' => $schemaWarnings,
+            ],
         ];
     }
 }
