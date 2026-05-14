@@ -119,27 +119,6 @@ const aboutPillars = [
   },
 ];
 
-const entryPortalCards = [
-  {
-    title: 'Login Rekruter',
-    description: 'Masuk sebagai recruiter atau company untuk membuka dashboard dan mengelola lowongan.',
-    to: '/login?role=recruiter',
-    action: 'Masuk sebagai Rekruter',
-  },
-  {
-    title: 'Login Pelamar',
-    description: 'Masuk sebagai kandidat untuk memantau proses lamaran dan aktivitas pencarian kerja.',
-    to: '/login?role=candidate',
-    action: 'Masuk sebagai Pelamar',
-  },
-  {
-    title: 'Login Superadmin KerjaNusa',
-    description: 'Akses superadmin untuk memantau recruiter, pelamar, lowongan, dan data platform.',
-    to: '/login?role=superadmin',
-    action: 'Masuk sebagai Superadmin',
-  },
-];
-
 const HomePage = () => {
   const { user } = useAuth();
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
@@ -260,38 +239,6 @@ const HomePage = () => {
                   mudah dipahami dari beranda awal.
                 </span>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="home-entry-hub-section" aria-label="Portal masuk utama">
-        <div className="home-shell">
-          <div className="entry-hub-flow" data-reveal>
-            <div className="entry-hub-root">
-              <span className="entry-hub-root-kicker">Dashboard Awal</span>
-              <strong>Pilih jalur login sesuai peran Anda</strong>
-            </div>
-
-            <div className="entry-hub-rail" aria-hidden="true">
-              <span className="entry-hub-stem" />
-              <span className="entry-hub-branch" />
-            </div>
-
-            <div className="entry-hub-grid">
-              {entryPortalCards.map((portal, index) => (
-                <Link
-                  key={portal.title}
-                  to={portal.to}
-                  className="entry-hub-card"
-                  data-reveal
-                  data-reveal-delay={`${index * 80}ms`}
-                >
-                  <span className="entry-hub-card-label">{portal.title}</span>
-                  <p>{portal.description}</p>
-                  <strong>{portal.action}</strong>
-                </Link>
-              ))}
             </div>
           </div>
         </div>
