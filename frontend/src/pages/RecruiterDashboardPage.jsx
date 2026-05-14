@@ -34,6 +34,16 @@ import { APP_ROUTES } from '../utils/routeHelpers.js';
 import '../styles/workspace.css';
 import '../styles/recruiterDashboard.css';
 
+const RECRUITER_SUPPORT_WHATSAPP_LINK =
+  'https://api.whatsapp.com/send?phone=6281286402753&text=Halo%20KerjaNusa';
+
+const RECRUITER_MOBILE_BOTTOM_SECTIONS = [
+  { value: 'overview', label: 'Beranda', icon: 'home' },
+  { value: 'jobs', label: 'Lowongan', icon: 'briefcase' },
+  { value: 'candidates', label: 'Kandidat', icon: 'clipboard' },
+  { value: 'company', label: 'Profil', icon: 'user' },
+];
+
 const resolveRecruiterSectionFromHash = (hash) => {
   const normalizedHash = hash.replace(/^#/, '');
 
@@ -89,6 +99,29 @@ const resolveContactLabel = (contact) => {
   }
 
   return contact.name || 'Kandidat';
+};
+
+const getRecruiterChecklistGuidance = (item) => {
+  if (item.isComplete) {
+    return 'Komponen company ini sudah bisa dipakai untuk meyakinkan kandidat.';
+  }
+
+  switch (item.key) {
+    case 'companyName':
+      return 'Nama perusahaan yang valid membantu kandidat percaya pada lowongan yang dipublikasikan.';
+    case 'contactRole':
+      return 'Lengkapi peran ini agar kandidat tahu siapa PIC recruiter untuk proses hiring.';
+    case 'phone':
+      return 'Nomor aktif dibutuhkan agar recruiter mudah dihubungi saat proses rekrutmen berjalan.';
+    case 'companyLocation':
+      return 'Lokasi utama membantu kandidat memahami area operasional perusahaan.';
+    case 'companyDescription':
+      return 'Ringkasan perusahaan membuat lowongan aktif terlihat lebih kredibel dan siap dipublikasikan.';
+    case 'hiringFocus':
+      return 'Fokus hiring saat ini membantu arah publikasi dan screening lowongan baru.';
+    default:
+      return 'Lengkapi komponen ini agar lowongan aktif terlihat lebih kredibel dan siap dipublikasikan.';
+  }
 };
 
 const RecruiterDashboardPage = () => {
@@ -437,6 +470,13 @@ const RecruiterDashboardPage = () => {
       }),
     [activeApplicationsCount, companyCompletion, recruiterJobs]
   );
+  const recruiterOverviewFocusedApplications = useMemo(
+    () =>
+      recruiterApplications
+        .filter((application) => isRecruiterApplicationStageActive(application.stage))
+        .slice(0, 1),
+    [recruiterApplications]
+  );
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
@@ -713,40 +753,43 @@ const RecruiterDashboardPage = () => {
         )}
 
         {activeSection === 'overview' && (
-          <section className="workspace-section-stack">
-            <div className="workspace-candidate-overview-layout recruiter-flow-overview-layout">
-              <article className="workspace-hero-card" data-reveal>
-                <span className="workspace-kicker">Recruiter Flow</span>
+          <section className="workspace-section-stack recruiter-mobile-overview-section">
+            <div className="recruiter-mobile-overview-shell">
+              <article className="recruiter-mobile-overview-hero" data-reveal>
+                <span className="recruiter-mobile-overview-kicker">Recruiter Flow</span>
                 <h1>{nextAction.title}</h1>
                 <p>{nextAction.description}</p>
 
-                <div className="workspace-action-row">
+                <div className="recruiter-mobile-overview-actions">
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="recruiter-mobile-overview-primary"
                     onClick={() => handleSectionChange(nextAction.section)}
                   >
                     {nextAction.cta}
                   </button>
-                  <Link to={APP_ROUTES.recruiterCreateJob} className="btn btn-outline">
+                  <Link
+                    to={APP_ROUTES.recruiterCreateJob}
+                    className="recruiter-mobile-overview-secondary"
+                  >
                     Buat Lowongan Baru
                   </Link>
                 </div>
 
-                <div className="workspace-candidate-highlight-grid">
-                  <article className="workspace-subcard">
-                    <div className="workspace-subcard-heading">
+                <div className="recruiter-mobile-overview-mini-grid">
+                  <article className="recruiter-mobile-overview-mini-card">
+                    <div className="recruiter-mobile-overview-mini-head">
                       <strong>Company profile</strong>
                       <span>{companyProfile.companyName || 'Belum diisi'}</span>
                     </div>
                     <p>
-                      Recruiter flow dimulai dari profil company yang jelas, karena itu menjadi
-                      dasar publish lowongan dan screening kandidat.
+                      Recruiter flow dimulai dari profil company yang valid agar proses publish dan
+                      screening lowongan lebih kredibel.
                     </p>
                   </article>
 
-                  <article className="workspace-subcard">
-                    <div className="workspace-subcard-heading">
+                  <article className="recruiter-mobile-overview-mini-card">
+                    <div className="recruiter-mobile-overview-mini-head">
                       <strong>Lowongan prioritas</strong>
                       <span>{selectedJob?.title || 'Belum ada lowongan'}</span>
                     </div>
@@ -758,24 +801,24 @@ const RecruiterDashboardPage = () => {
                 </div>
               </article>
 
-              <section className="workspace-candidate-kpi-slot">
-                <div className="workspace-kpi-grid">
-                  {overviewCards.map((card) => (
-                    <article key={card.label} className="workspace-kpi-card" data-reveal>
-                      <span>{card.label}</span>
-                      <strong>{card.value}</strong>
-                      <small>{card.detail}</small>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </div>
+              <div className="recruiter-mobile-overview-kpi-stack" data-reveal data-reveal-delay="40ms">
+                {overviewCards.map((card) => (
+                  <article key={card.label} className="recruiter-mobile-overview-kpi-card">
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.detail}</small>
+                  </article>
+                ))}
+              </div>
 
-            <div className="workspace-two-column-grid">
-              <article className="workspace-panel" data-reveal data-reveal-delay="60ms">
-                <div className="workspace-panel-heading">
+              <article
+                className="recruiter-mobile-overview-panel"
+                data-reveal
+                data-reveal-delay="80ms"
+              >
+                <div className="recruiter-mobile-overview-panel-head">
                   <div>
-                    <span className="workspace-section-label">Checklist Company</span>
+                    <span className="recruiter-mobile-overview-eyebrow">Checklist Company</span>
                     <h2>Apa yang harus siap sebelum publish</h2>
                   </div>
                   <p>
@@ -784,32 +827,32 @@ const RecruiterDashboardPage = () => {
                   </p>
                 </div>
 
-                <div className="workspace-card-list">
+                <div className="recruiter-mobile-overview-checklist">
                   {companyCompletion.requiredChecklist.map((item) => (
                     <article
                       key={item.key}
-                      className={`workspace-subcard workspace-checklist-card${
+                      className={`recruiter-mobile-overview-check-item${
                         item.isComplete ? ' is-complete' : ' is-missing'
                       }`}
                     >
-                      <div className="workspace-subcard-heading">
+                      <div className="recruiter-mobile-overview-check-head">
                         <strong>{item.label}</strong>
                         <span>{item.isComplete ? 'Siap' : 'Belum lengkap'}</span>
                       </div>
-                      <p>
-                        {item.isComplete
-                          ? 'Komponen company ini sudah bisa dipakai untuk meyakinkan kandidat.'
-                          : 'Lengkapi komponen ini agar lowongan aktif terlihat lebih kredibel dan siap dipublikasikan.'}
-                      </p>
+                      <p>{getRecruiterChecklistGuidance(item)}</p>
                     </article>
                   ))}
                 </div>
               </article>
 
-              <article className="workspace-panel" data-reveal data-reveal-delay="120ms">
-                <div className="workspace-panel-heading">
+              <article
+                className="recruiter-mobile-overview-panel"
+                data-reveal
+                data-reveal-delay="120ms"
+              >
+                <div className="recruiter-mobile-overview-panel-head">
                   <div>
-                    <span className="workspace-section-label">Pipeline Ringkas</span>
+                    <span className="recruiter-mobile-overview-eyebrow">Pipeline Ringkas</span>
                     <h2>Kandidat yang perlu tindakan</h2>
                   </div>
                   <p>
@@ -818,38 +861,80 @@ const RecruiterDashboardPage = () => {
                   </p>
                 </div>
 
-                <div className="workspace-card-list">
-                  {recruiterApplications.length === 0 ? (
-                    <article className="workspace-subcard">
-                      <div className="workspace-subcard-heading">
-                        <strong>Belum ada kandidat masuk</strong>
-                        <span>Fokus ke lowongan aktif</span>
-                      </div>
-                      <p>
-                        Publish atau aktifkan lowongan yang tepat agar pipeline kandidat mulai
-                        bergerak.
-                      </p>
+                <div className="recruiter-mobile-overview-pipeline">
+                  {recruiterOverviewFocusedApplications.length === 0 ? (
+                    <article className="recruiter-mobile-overview-pipeline-empty">
+                      <span className="recruiter-mobile-overview-pipeline-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M7 7.5h10A2.5 2.5 0 0 1 19.5 10v7.5L16 15h-9A2.5 2.5 0 0 1 4.5 12.5V10A2.5 2.5 0 0 1 7 7.5Z"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <strong>Belum ada kandidat masuk</strong>
+                      <p>Publish atau aktifkan lowongan yang tepat agar pipeline mulai bergerak.</p>
+                      <button
+                        type="button"
+                        className="recruiter-mobile-overview-pipeline-link"
+                        onClick={() => handleSectionChange('jobs')}
+                      >
+                        Fokus ke lowongan aktif
+                      </button>
                     </article>
                   ) : (
-                    recruiterApplications
-                      .filter((application) => isRecruiterApplicationStageActive(application.stage))
-                      .slice(0, 4)
-                      .map((application) => (
-                        <article key={application.id} className="workspace-subcard">
-                          <div className="workspace-subcard-heading">
-                            <strong>{application.candidate?.name || 'Kandidat'}</strong>
-                            <span>{application.stageLabel}</span>
-                          </div>
-                          <p>{application.stageMeta.summary}</p>
-                          <small className="workspace-muted-text">
-                            {application.job?.title || 'Lowongan'} •{' '}
-                            {formatDateTime(application.applied_at)}
-                          </small>
-                        </article>
-                      ))
+                    recruiterOverviewFocusedApplications.map((application) => (
+                      <article
+                        key={application.id}
+                        className="recruiter-mobile-overview-pipeline-card"
+                      >
+                        <div className="recruiter-mobile-overview-pipeline-head">
+                          <strong>{application.candidate?.name || 'Kandidat'}</strong>
+                          <span>{application.stageLabel}</span>
+                        </div>
+                        <p>{application.stageMeta.summary}</p>
+                        <small>
+                          {application.job?.title || 'Lowongan'} •{' '}
+                          {formatDateTime(application.applied_at)}
+                        </small>
+                        <button
+                          type="button"
+                          className="recruiter-mobile-overview-pipeline-link"
+                          onClick={() => handleSectionChange('candidates')}
+                        >
+                          Buka pipeline kandidat
+                        </button>
+                      </article>
+                    ))
                   )}
                 </div>
               </article>
+
+              <footer className="recruiter-mobile-overview-footer" data-reveal data-reveal-delay="160ms">
+                <strong>KerjaNusa</strong>
+                <p>
+                  Solusi rekrutmen profesional untuk membangun tim impian dengan standar kualitas
+                  tertinggi di Indonesia.
+                </p>
+
+                <div className="recruiter-mobile-overview-footer-links">
+                  <div>
+                    <span>Navigasi</span>
+                    <Link to={APP_ROUTES.platform}>Syarat &amp; Ketentuan</Link>
+                    <Link to={APP_ROUTES.about}>Kebijakan Privasi</Link>
+                  </div>
+                  <div>
+                    <span>Bantuan</span>
+                    <Link to={APP_ROUTES.platform}>Pusat Bantuan</Link>
+                    <a href={RECRUITER_SUPPORT_WHATSAPP_LINK} target="_blank" rel="noreferrer">
+                      Hubungi Kami
+                    </a>
+                  </div>
+                </div>
+              </footer>
             </div>
           </section>
         )}
@@ -1533,6 +1618,68 @@ const RecruiterDashboardPage = () => {
           </section>
         )}
       </main>
+
+      <nav className="recruiter-mobile-bottom-nav" aria-label="Navigasi cepat recruiter">
+        {RECRUITER_MOBILE_BOTTOM_SECTIONS.map((section) => (
+          <button
+            key={section.value}
+            type="button"
+            className={`recruiter-mobile-bottom-link${
+              activeSection === section.value ? ' is-active' : ''
+            }`}
+            onClick={() => handleSectionChange(section.value)}
+          >
+            <span className="recruiter-mobile-bottom-icon" aria-hidden="true">
+              {section.icon === 'home' && (
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M4.5 10.5 12 4l7.5 6.5V19A1.5 1.5 0 0 1 18 20.5h-3.5v-5h-5v5H6A1.5 1.5 0 0 1 4.5 19v-8.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+              {section.icon === 'briefcase' && (
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M8 6.5V5A1.5 1.5 0 0 1 9.5 3.5h5A1.5 1.5 0 0 1 16 5v1.5m-11 2h14A1.5 1.5 0 0 1 20.5 10v8A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18v-8A1.5 1.5 0 0 1 5 8.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+              {section.icon === 'clipboard' && (
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M9 4.5h6m-5 0A1.5 1.5 0 0 0 8.5 6v.5m7-2A1.5 1.5 0 0 1 17 6v.5m-8.5 0h7A1.5 1.5 0 0 1 17 8v10A1.5 1.5 0 0 1 15.5 19.5h-7A1.5 1.5 0 0 1 7 18V8A1.5 1.5 0 0 1 8.5 6.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M9.5 11h5m-5 3h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                </svg>
+              )}
+              {section.icon === 'user' && (
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-6 7a6 6 0 0 1 12 0"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </span>
+            <span>{section.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 };
