@@ -19,20 +19,65 @@ const formatMessageTime = (value) => {
   }
 };
 
+const normalizeLabelText = (value) => String(value || '').trim();
+
+const getEmailAlias = (value) => {
+  const normalizedEmail = normalizeLabelText(value);
+
+  if (!normalizedEmail.includes('@')) {
+    return normalizedEmail;
+  }
+
+  return normalizedEmail.split('@')[0];
+};
+
 const resolveContactLabel = (contact) => {
   if (!contact) {
     return 'Kontak';
   }
 
+  const normalizedName = normalizeLabelText(contact.name);
+  const normalizedCompany = normalizeLabelText(contact.company_name);
+  const normalizedEmailAlias = getEmailAlias(contact.email);
+
   if (contact.role === 'recruiter') {
-    return contact.company_name || contact.name || 'Recruiter';
+    return (
+      normalizedCompany ||
+      normalizedName ||
+      normalizedEmailAlias ||
+      `Recruiter #${contact.id || '-'}`
+    );
   }
 
   if (contact.role === 'superadmin') {
     return 'Superadmin KerjaNusa';
   }
 
-  return contact.name || 'Pelamar';
+  return normalizedName || normalizedCompany || normalizedEmailAlias || `Pelamar #${contact.id || '-'}`;
+};
+
+const resolveContactSecondaryText = (contact) => {
+  if (!contact) {
+    return 'Kontak belum tersedia.';
+  }
+
+  const normalizedEmail = normalizeLabelText(contact.email);
+  const normalizedName = normalizeLabelText(contact.name);
+  const normalizedCompany = normalizeLabelText(contact.company_name);
+
+  if (normalizedEmail) {
+    return normalizedEmail;
+  }
+
+  if (contact.role === 'recruiter') {
+    return normalizedName || `Akun recruiter #${contact.id || '-'}`;
+  }
+
+  if (contact.role === 'superadmin') {
+    return 'Akun superadmin';
+  }
+
+  return normalizedCompany || `Akun pelamar #${contact.id || '-'}`;
 };
 
 const InboxWorkspace = ({
@@ -129,7 +174,9 @@ const InboxWorkspace = ({
                         {formatMessageTime(thread.updated_at)}
                       </span>
                     </div>
-                    <p className="collaboration-card-preview">{thread.last_message}</p>
+                    <p className="collaboration-card-preview">
+                      {normalizeLabelText(thread.last_message) || 'Belum ada ringkasan pesan.'}
+                    </p>
                     <small className="collaboration-card-caption">
                       {thread.unread_count > 0
                         ? `${thread.unread_count} pesan belum dibaca`
@@ -177,7 +224,9 @@ const InboxWorkspace = ({
                     <strong className="collaboration-card-title">
                       {resolveContactLabel(contact)}
                     </strong>
-                    <span className="collaboration-card-email">{contact.email}</span>
+                    <span className="collaboration-card-email">
+                      {resolveContactSecondaryText(contact)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -197,8 +246,10 @@ const InboxWorkspace = ({
               <span className="workspace-section-label">Percakapan</span>
               <h2>{resolveContactLabel(selectedContact)}</h2>
             </div>
-            {selectedContact?.email ? (
-              <p className="collaboration-chat-contact-meta">{selectedContact.email}</p>
+            {selectedContact ? (
+              <p className="collaboration-chat-contact-meta">
+                {resolveContactSecondaryText(selectedContact)}
+              </p>
             ) : (
               <p className="collaboration-chat-contact-meta is-placeholder">
                 Pilih percakapan untuk mulai menangani pesan masuk.
