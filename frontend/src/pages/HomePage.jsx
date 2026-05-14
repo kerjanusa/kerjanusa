@@ -7,7 +7,7 @@ import '../styles/home.css';
 const brandList = [
   {
     name: 'Vismaya',
-    src: '/partner-logos/vismaya.png',
+    src: '/partner-logos/vismaya-clean.png',
   },
   {
     name: 'Dkriuk Fried Chicken',
@@ -23,7 +23,7 @@ const brandList = [
   },
   {
     name: 'CP Food Division',
-    src: '/partner-logos/cp-food-division.png',
+    src: '/partner-logos/cp-food-division-clean.png',
   },
   {
     name: 'Mixue',
@@ -31,7 +31,7 @@ const brandList = [
   },
   {
     name: 'J.Chicken',
-    src: '/partner-logos/j-chicken.png',
+    src: '/partner-logos/j-chicken-clean.png',
   },
 ];
 
