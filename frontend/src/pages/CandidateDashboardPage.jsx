@@ -56,6 +56,14 @@ const DEFAULT_VISIBLE_EXPERIENCE_ENTRIES = 1;
 const MAX_ADDITIONAL_EXPERIENCE_ENTRIES = 3;
 const MAX_VISIBLE_EXPERIENCE_ENTRIES =
   DEFAULT_VISIBLE_EXPERIENCE_ENTRIES + MAX_ADDITIONAL_EXPERIENCE_ENTRIES;
+const PROFILE_PHOTO_MAX_FILE_SIZE_IN_BYTES = 5 * 1024 * 1024;
+const PROFILE_PHOTO_MAX_DIMENSION_IN_PIXELS = 480;
+const PROFILE_PHOTO_OUTPUT_QUALITY = 0.82;
+const PROFILE_PHOTO_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const CANDIDATE_GENDER_OPTIONS = [
+  { value: 'male', label: 'Laki-laki' },
+  { value: 'female', label: 'Perempuan' },
+];
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -248,6 +256,58 @@ const getVisibleExperienceCount = (profile) =>
       countFilledExperienceEntries(profile?.experiences || [])
     )
   );
+
+const normalizeAgeInput = (value = '') =>
+  String(value ?? '')
+    .replace(/[^\d]/g, '')
+    .slice(0, 3);
+
+const isSupportedProfilePhotoFile = (file) =>
+  Boolean(file && PROFILE_PHOTO_ALLOWED_TYPES.has(String(file.type || '').toLowerCase()));
+
+const convertProfilePhotoToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      reject(new Error('Browser tidak mendukung upload foto profil.'));
+      return;
+    }
+
+    const imageUrl = window.URL.createObjectURL(file);
+    const image = new window.Image();
+
+    image.onload = () => {
+      const scaleRatio = Math.min(
+        1,
+        PROFILE_PHOTO_MAX_DIMENSION_IN_PIXELS / Math.max(image.width, image.height)
+      );
+      const targetWidth = Math.max(1, Math.round(image.width * scaleRatio));
+      const targetHeight = Math.max(1, Math.round(image.height * scaleRatio));
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      window.URL.revokeObjectURL(imageUrl);
+
+      if (!context) {
+        reject(new Error('Preview foto belum bisa diproses di browser ini.'));
+        return;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, targetWidth, targetHeight);
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+      resolve(canvas.toDataURL('image/jpeg', PROFILE_PHOTO_OUTPUT_QUALITY));
+    };
+
+    image.onerror = () => {
+      window.URL.revokeObjectURL(imageUrl);
+      reject(new Error('File foto belum bisa dibaca. Coba gunakan gambar lain.'));
+    };
+
+    image.src = imageUrl;
+  });
 
 const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
   'Full-time / Tetap',
@@ -633,6 +693,10 @@ const CandidateDashboardPage = () => {
     'Belum diisi'
   );
   const resumePreviewName = resumePreview?.name || profile.resumeFiles[0] || 'CV belum diunggah';
+  const hasProfilePhoto = Boolean(profile.photoDataUrl);
+  const profilePhotoAlt = profile.fullName?.trim()
+    ? `Foto profil ${profile.fullName.trim()}`
+    : 'Foto profil kandidat';
   const persistedResumeName = profile.resumeFiles[0] || '';
   const persistedResumeExtension = getFileExtension(persistedResumeName);
   const hasResumePreview = Boolean(resumePreview?.url);
@@ -691,6 +755,67 @@ const CandidateDashboardPage = () => {
     setProfile((currentProfile) => ({
       ...currentProfile,
       [field]: value,
+    }));
+    setFeedback(null);
+  };
+
+  const handleProfilePhotoChange = async (inputElement) => {
+    const photoFile = inputElement?.files?.[0];
+
+    if (!photoFile) {
+      return;
+    }
+
+    if (!isSupportedProfilePhotoFile(photoFile)) {
+      if (inputElement) {
+        inputElement.value = '';
+      }
+
+      setFeedback({
+        type: 'error',
+        message: 'Foto profil harus berupa JPG, PNG, atau WEBP.',
+      });
+      return;
+    }
+
+    if (photoFile.size > PROFILE_PHOTO_MAX_FILE_SIZE_IN_BYTES) {
+      if (inputElement) {
+        inputElement.value = '';
+      }
+
+      setFeedback({
+        type: 'error',
+        message: 'Ukuran foto profil maksimal 5MB.',
+      });
+      return;
+    }
+
+    try {
+      const photoDataUrl = await convertProfilePhotoToDataUrl(photoFile);
+
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        photoFileName: photoFile.name,
+        photoDataUrl,
+      }));
+      setFeedback(null);
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error?.message || 'Foto profil belum berhasil diproses.',
+      });
+    } finally {
+      if (inputElement) {
+        inputElement.value = '';
+      }
+    }
+  };
+
+  const handleRemoveProfilePhoto = () => {
+    setProfile((currentProfile) => ({
+      ...currentProfile,
+      photoFileName: '',
+      photoDataUrl: '',
     }));
     setFeedback(null);
   };
@@ -1426,6 +1551,53 @@ const CandidateDashboardPage = () => {
                 </div>
 
                 <div className="candidate-profile-form-stack">
+                  <div className="candidate-profile-photo-panel">
+                    <div className="candidate-profile-photo-preview">
+                      {hasProfilePhoto ? (
+                        <img src={profile.photoDataUrl} alt={profilePhotoAlt} />
+                      ) : (
+                        <span>{buildInitials(profile.fullName || user?.name || 'KN')}</span>
+                      )}
+                    </div>
+
+                    <div className="candidate-profile-photo-copy">
+                      <strong>Foto Profil</strong>
+                      <p>
+                        Upload foto kandidat agar profil terlihat lebih profesional saat dilihat
+                        recruiter.
+                      </p>
+                      <div className="candidate-profile-photo-actions">
+                        <label
+                          className="candidate-profile-photo-trigger"
+                          htmlFor="candidate-profile-photo-upload"
+                        >
+                          {hasProfilePhoto ? 'Ganti Foto' : 'Upload Foto'}
+                        </label>
+                        {hasProfilePhoto && (
+                          <button
+                            type="button"
+                            className="candidate-profile-photo-remove"
+                            onClick={handleRemoveProfilePhoto}
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                      <small>
+                        {profile.photoFileName
+                          ? profile.photoFileName
+                          : 'JPG, PNG, atau WEBP. Maks 5MB.'}
+                      </small>
+                      <input
+                        id="candidate-profile-photo-upload"
+                        className="candidate-profile-upload-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => handleProfilePhotoChange(event.target)}
+                      />
+                    </div>
+                  </div>
+
                   <label className="candidate-profile-field">
                     <span>Nama Lengkap</span>
                     <input
@@ -1450,6 +1622,38 @@ const CandidateDashboardPage = () => {
                       onChange={(event) => handleProfileFieldChange('phone', event.target.value)}
                     />
                   </label>
+
+                  <div className="candidate-profile-inline-grid">
+                    <label className="candidate-profile-field">
+                      <span>Jenis Kelamin</span>
+                      <select
+                        value={profile.gender || ''}
+                        onChange={(event) =>
+                          handleProfileFieldChange('gender', event.target.value)
+                        }
+                      >
+                        <option value="">Pilih jenis kelamin</option>
+                        {CANDIDATE_GENDER_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="candidate-profile-field">
+                      <span>Usia</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Contoh: 25"
+                        value={profile.age || ''}
+                        onChange={(event) =>
+                          handleProfileFieldChange('age', normalizeAgeInput(event.target.value))
+                        }
+                      />
+                    </label>
+                  </div>
 
                   <label className="candidate-profile-field candidate-profile-field-with-icon">
                     <span>Lokasi Saat Ini</span>

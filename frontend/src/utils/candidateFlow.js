@@ -22,6 +22,23 @@ const normalizeStringList = (items, maxLength) =>
   Array.from({ length: maxLength }, (_, index) => String(items?.[index] || ''));
 
 const trimText = (value) => String(value || '').trim();
+const normalizeAgeValue = (value) => {
+  const digitsOnly = String(value ?? '')
+    .replace(/[^\d]/g, '')
+    .slice(0, 3);
+
+  if (!digitsOnly) {
+    return '';
+  }
+
+  const parsedAge = Number.parseInt(digitsOnly, 10);
+
+  if (!Number.isFinite(parsedAge)) {
+    return '';
+  }
+
+  return String(Math.max(0, Math.min(100, parsedAge)));
+};
 const getFileExtension = (fileName = '') => String(fileName || '').trim().toLowerCase().split('.').pop() || '';
 const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
 
@@ -69,10 +86,13 @@ export const createCandidateProfile = (user) => ({
   placeOfBirth: '',
   dateOfBirth: '',
   currentAddress: '',
+  gender: '',
+  age: '',
   profileSummary: '',
   employmentType: '',
   targetIndustry: '',
   photoFileName: '',
+  photoDataUrl: '',
   linkedin: '',
   instagram: '',
   tiktok: '',
@@ -123,6 +143,10 @@ export const mergeCandidateProfile = (user, savedProfile) => {
     fullName: savedProfile.fullName || user?.name || '',
     email: savedProfile.email || user?.email || '',
     phone: savedProfile.phone || user?.phone || '',
+    gender: trimText(savedProfile.gender),
+    age: normalizeAgeValue(savedProfile.age),
+    photoFileName: trimText(savedProfile.photoFileName),
+    photoDataUrl: trimText(savedProfile.photoDataUrl),
     profileSummary,
     education: {
       ...baseProfile.education,
@@ -186,8 +210,12 @@ export const saveCandidateProfile = (user, profile) => {
     email: trimText(profile?.email) || user?.email || '',
     phone: trimText(profile?.phone),
     currentAddress: trimText(profile?.currentAddress),
+    gender: trimText(profile?.gender),
+    age: normalizeAgeValue(profile?.age),
     employmentType: trimText(profile?.employmentType),
     targetIndustry: trimText(profile?.targetIndustry),
+    photoFileName: trimText(profile?.photoFileName),
+    photoDataUrl: trimText(profile?.photoDataUrl),
     profileSummary: trimText(profile?.profileSummary) || buildAutoProfileSummary(profile),
   });
 
@@ -195,10 +223,14 @@ export const saveCandidateProfile = (user, profile) => {
     return normalizedProfile;
   }
 
-  localStorage.setItem(
-    getCandidateProfileStorageKey(user?.id),
-    JSON.stringify(normalizedProfile)
-  );
+  try {
+    localStorage.setItem(
+      getCandidateProfileStorageKey(user?.id),
+      JSON.stringify(normalizedProfile)
+    );
+  } catch {
+    // Keep the profile usable even when the browser cannot persist the draft locally.
+  }
 
   return normalizedProfile;
 };
@@ -256,7 +288,7 @@ export const getCandidateProfileChecklist = (profile) => {
     {
       key: 'photoFileName',
       label: 'Foto profil',
-      isComplete: Boolean(profile.photoFileName),
+      isComplete: Boolean(profile.photoDataUrl || profile.photoFileName),
       required: false,
     },
     {
