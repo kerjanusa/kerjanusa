@@ -2387,6 +2387,52 @@
   color: #4b1f42;
 }
 
+.candidate-profile-location-trigger {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.candidate-profile-location-trigger:hover {
+  color: #5b234f;
+  background: rgba(244, 218, 164, 0.28);
+  transform: translateY(-1px);
+}
+
+.candidate-profile-location-trigger:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(236, 196, 90, 0.2);
+}
+
+.candidate-profile-location-trigger:disabled {
+  cursor: wait;
+  opacity: 0.78;
+  transform: none;
+}
+
+.candidate-profile-location-trigger.is-detecting svg {
+  animation: candidate-profile-location-spin 0.9s linear infinite;
+}
+
+@keyframes candidate-profile-location-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .candidate-profile-detail-block {
   display: grid;
   gap: 0.95rem;

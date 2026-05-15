@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import InboxWorkspace from '../components/InboxWorkspace.jsx';
+import locationCoordinates from '../data/locationCoordinates.js';
 import useApplications from '../hooks/useApplications.js';
 import useAuth from '../hooks/useAuth.js';
 import useChat from '../hooks/useChat.js';
@@ -49,6 +50,188 @@ const isPdfResumeFile = (file) => {
 };
 
 const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
+const EARTH_RADIUS_IN_KILOMETERS = 6371;
+const MAX_LOCATION_FALLBACK_DISTANCE_IN_KILOMETERS = 60;
+
+const toRadians = (value) => (value * Math.PI) / 180;
+
+const calculateDistanceInKilometers = (origin, destination) => {
+  const latitudeDelta = toRadians(destination.latitude - origin.latitude);
+  const longitudeDelta = toRadians(destination.longitude - origin.longitude);
+  const originLatitude = toRadians(origin.latitude);
+  const destinationLatitude = toRadians(destination.latitude);
+
+  const haversineResult =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(originLatitude) *
+      Math.cos(destinationLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * EARTH_RADIUS_IN_KILOMETERS * Math.asin(Math.sqrt(haversineResult));
+};
+
+const toTitleCase = (value = '') =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const formatFallbackLocationLabel = (locationName = '') => {
+  const normalizedLocationName = String(locationName || '').trim().toLowerCase();
+
+  if (!normalizedLocationName) {
+    return '';
+  }
+
+  if (normalizedLocationName.endsWith(' kota')) {
+    return `Kota ${toTitleCase(normalizedLocationName.replace(/\s+kota$/, ''))}`;
+  }
+
+  if (normalizedLocationName.startsWith('kabupaten ')) {
+    return `Kabupaten ${toTitleCase(normalizedLocationName.replace(/^kabupaten\s+/, ''))}`;
+  }
+
+  return toTitleCase(normalizedLocationName);
+};
+
+const knownCurrentLocationFallbacks = Object.entries(locationCoordinates).map(
+  ([locationName, coordinates]) => ({
+    locationName: formatFallbackLocationLabel(locationName),
+    coordinates,
+  })
+);
+
+const getLocationPermissionErrorMessage = (errorCode) => {
+  switch (errorCode) {
+    case 1:
+      return 'Izin lokasi ditolak. Aktifkan akses GPS atau lokasi browser untuk mengisi domisili otomatis.';
+    case 2:
+      return 'Lokasi perangkat tidak berhasil dibaca. Coba lagi dalam beberapa saat.';
+    case 3:
+      return 'Permintaan lokasi melebihi batas waktu. Coba lagi.';
+    default:
+      return 'Gagal mengambil lokasi perangkat.';
+  }
+};
+
+const normalizeDetectedLocationLabel = (value = '') => {
+  let normalizedValue = String(value || '').trim();
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  if (/\bregency\b/i.test(normalizedValue)) {
+    normalizedValue = `Kabupaten ${normalizedValue.replace(/\bregency\b/gi, '').trim()}`;
+  }
+
+  if (/\bcity\b/i.test(normalizedValue)) {
+    normalizedValue = `Kota ${normalizedValue.replace(/\bcity\b/gi, '').trim()}`;
+  }
+
+  normalizedValue = normalizedValue
+    .replace(/\bkota administrasi\b/gi, '')
+    .replace(/\bkabupaten administrasi\b/gi, 'Kabupaten')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (/^kabupaten\s+/i.test(normalizedValue)) {
+    return `Kabupaten ${toTitleCase(normalizedValue.replace(/^kabupaten\s+/i, ''))}`;
+  }
+
+  if (/^kota\s+/i.test(normalizedValue)) {
+    return `Kota ${toTitleCase(normalizedValue.replace(/^kota\s+/i, ''))}`;
+  }
+
+  return toTitleCase(normalizedValue);
+};
+
+const isTooGranularLocationLabel = (value = '') =>
+  /^(kecamatan|kelurahan|desa|dusun|kampung|village|subdistrict)\b/i.test(
+    String(value || '').trim()
+  );
+
+const extractDetectedLocationLabel = (payload) => {
+  const address = payload?.address || {};
+  const displayNameSegments = String(payload?.display_name || '')
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const candidates = [
+    address.county,
+    address.city,
+    address.town,
+    address.municipality,
+    address.city_district,
+    address.state_district,
+    payload?.name,
+    ...displayNameSegments,
+  ]
+    .map(normalizeDetectedLocationLabel)
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (!isTooGranularLocationLabel(candidate) && !/^Indonesia$/i.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  return '';
+};
+
+const findClosestKnownLocation = (coordinates) => {
+  const closestKnownLocation = knownCurrentLocationFallbacks
+    .map((location) => ({
+      ...location,
+      distanceInKilometers: calculateDistanceInKilometers(coordinates, location.coordinates),
+    }))
+    .sort(
+      (firstLocation, secondLocation) =>
+        firstLocation.distanceInKilometers - secondLocation.distanceInKilometers
+    )[0];
+
+  if (
+    !closestKnownLocation ||
+    closestKnownLocation.distanceInKilometers > MAX_LOCATION_FALLBACK_DISTANCE_IN_KILOMETERS
+  ) {
+    return '';
+  }
+
+  return closestKnownLocation.locationName;
+};
+
+const requestCurrentCoordinates = () =>
+  new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 300000,
+    });
+  });
+
+const reverseGeocodeCoordinates = async ({ latitude, longitude }) => {
+  const reverseGeocodeUrl = new URL('https://nominatim.openstreetmap.org/reverse');
+  reverseGeocodeUrl.search = new URLSearchParams({
+    format: 'jsonv2',
+    lat: String(latitude),
+    lon: String(longitude),
+    zoom: '10',
+    addressdetails: '1',
+    'accept-language': 'id',
+  }).toString();
+
+  const response = await fetch(reverseGeocodeUrl.toString(), {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Reverse geocoding lokasi belum berhasil.');
+  }
+
+  return response.json();
+};
 
 const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
   'Full-time / Tetap',
@@ -262,6 +445,7 @@ const CandidateDashboardPage = () => {
   const [feedback, setFeedback] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isDetectingCurrentLocation, setIsDetectingCurrentLocation] = useState(false);
   const [applicationBucket, setApplicationBucket] = useState('active');
   const [applicationActionInFlightId, setApplicationActionInFlightId] = useState(null);
   const [selectedChatContact, setSelectedChatContact] = useState(null);
@@ -562,6 +746,67 @@ const CandidateDashboardPage = () => {
     }
 
     setFeedback(null);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      setFeedback({
+        type: 'error',
+        message: 'Browser Anda belum mendukung akses lokasi perangkat.',
+      });
+      return;
+    }
+
+    setIsDetectingCurrentLocation(true);
+    setFeedback(null);
+
+    try {
+      const position = await requestCurrentCoordinates();
+      const coordinates = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      let resolvedLocation = '';
+
+      try {
+        const reverseGeocodePayload = await reverseGeocodeCoordinates(coordinates);
+        resolvedLocation = extractDetectedLocationLabel(reverseGeocodePayload);
+      } catch {
+        resolvedLocation = '';
+      }
+
+      if (!resolvedLocation) {
+        resolvedLocation = findClosestKnownLocation(coordinates);
+      }
+
+      if (!resolvedLocation) {
+        throw new Error(
+          'Lokasi perangkat berhasil dibaca, tetapi kota atau kabupaten belum bisa dikenali otomatis.'
+        );
+      }
+
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        currentAddress: resolvedLocation,
+        preferredLocations: currentProfile.preferredLocations.map((item, index) =>
+          index === 0 && !String(item || '').trim() ? resolvedLocation : item
+        ),
+      }));
+      setFeedback({
+        type: 'success',
+        message: `Lokasi saat ini berhasil diisi otomatis: ${resolvedLocation}.`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          typeof error?.code === 'number'
+            ? getLocationPermissionErrorMessage(error.code)
+            : error?.message || 'Gagal mencocokkan lokasi perangkat Anda.',
+      });
+    } finally {
+      setIsDetectingCurrentLocation(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -1179,18 +1424,47 @@ const CandidateDashboardPage = () => {
                           handleProfileFieldChange('currentAddress', event.target.value)
                         }
                       />
-                      <span className="candidate-profile-trailing-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M12 21s6-5.3 6-10.2A6 6 0 1 0 6 10.8C6 15.7 12 21 12 21Z"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle cx="12" cy="10.5" r="2.1" stroke="currentColor" strokeWidth="1.7" />
-                        </svg>
-                      </span>
+                      <button
+                        type="button"
+                        className={`candidate-profile-trailing-icon candidate-profile-location-trigger${
+                          isDetectingCurrentLocation ? ' is-detecting' : ''
+                        }`}
+                        onClick={handleUseCurrentLocation}
+                        disabled={isDetectingCurrentLocation}
+                        aria-label={
+                          isDetectingCurrentLocation
+                            ? 'Sedang mencocokkan lokasi perangkat'
+                            : 'Gunakan GPS untuk mengisi lokasi saat ini'
+                        }
+                        title={
+                          isDetectingCurrentLocation
+                            ? 'Sedang mencocokkan lokasi perangkat'
+                            : 'Gunakan GPS untuk mengisi lokasi saat ini'
+                        }
+                      >
+                        {isDetectingCurrentLocation ? (
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="7.5" stroke="currentColor" strokeWidth="1.7" opacity="0.26" />
+                            <path
+                              d="M12 4.5A7.5 7.5 0 0 1 19.5 12"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                              d="M12 21s6-5.3 6-10.2A6 6 0 1 0 6 10.8C6 15.7 12 21 12 21Z"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <circle cx="12" cy="10.5" r="2.1" stroke="currentColor" strokeWidth="1.7" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
                   </label>
                 </div>
