@@ -52,6 +52,10 @@ const isPdfResumeFile = (file) => {
 const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
 const EARTH_RADIUS_IN_KILOMETERS = 6371;
 const MAX_LOCATION_FALLBACK_DISTANCE_IN_KILOMETERS = 60;
+const DEFAULT_VISIBLE_EXPERIENCE_ENTRIES = 1;
+const MAX_ADDITIONAL_EXPERIENCE_ENTRIES = 3;
+const MAX_VISIBLE_EXPERIENCE_ENTRIES =
+  DEFAULT_VISIBLE_EXPERIENCE_ENTRIES + MAX_ADDITIONAL_EXPERIENCE_ENTRIES;
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -232,6 +236,18 @@ const reverseGeocodeCoordinates = async ({ latitude, longitude }) => {
 
   return response.json();
 };
+
+const countFilledExperienceEntries = (experiences = []) =>
+  experiences.filter((item) => item?.company?.trim() || item?.position?.trim()).length;
+
+const getVisibleExperienceCount = (profile) =>
+  Math.min(
+    MAX_VISIBLE_EXPERIENCE_ENTRIES,
+    Math.max(
+      DEFAULT_VISIBLE_EXPERIENCE_ENTRIES,
+      countFilledExperienceEntries(profile?.experiences || [])
+    )
+  );
 
 const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
   'Full-time / Tetap',
@@ -442,6 +458,9 @@ const CandidateDashboardPage = () => {
   const [profile, setProfile] = useState(() =>
     readCandidateProfile(user, { preferStoredDraft: false })
   );
+  const [visibleExperienceCount, setVisibleExperienceCount] = useState(() =>
+    getVisibleExperienceCount(readCandidateProfile(user, { preferStoredDraft: false }))
+  );
   const [feedback, setFeedback] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -459,7 +478,9 @@ const CandidateDashboardPage = () => {
   }, [location.hash]);
 
   useEffect(() => {
-    setProfile(readCandidateProfile(user, { preferStoredDraft: false }));
+    const nextProfile = readCandidateProfile(user, { preferStoredDraft: false });
+    setProfile(nextProfile);
+    setVisibleExperienceCount(getVisibleExperienceCount(nextProfile));
   }, [user]);
 
   useEffect(() => {
@@ -498,7 +519,9 @@ const CandidateDashboardPage = () => {
           return;
         }
 
-        setProfile(readCandidateProfile(freshUser, { preferStoredDraft: false }));
+        const nextProfile = readCandidateProfile(freshUser, { preferStoredDraft: false });
+        setProfile(nextProfile);
+        setVisibleExperienceCount(getVisibleExperienceCount(nextProfile));
       })
       .catch(() => {});
 
@@ -609,7 +632,6 @@ const CandidateDashboardPage = () => {
     persistedProfile.preferredLocations,
     'Belum diisi'
   );
-  const latestExperience = profile.experiences[0];
   const resumePreviewName = resumePreview?.name || profile.resumeFiles[0] || 'CV belum diunggah';
   const persistedResumeName = profile.resumeFiles[0] || '';
   const persistedResumeExtension = getFileExtension(persistedResumeName);
@@ -696,6 +718,21 @@ const CandidateDashboardPage = () => {
           : item
       ),
     }));
+    setFeedback(null);
+  };
+
+  const handleAddExperienceEntry = () => {
+    if (visibleExperienceCount >= MAX_VISIBLE_EXPERIENCE_ENTRIES) {
+      setFeedback({
+        type: 'error',
+        message: `Pengalaman kerja hanya bisa ditambah maksimal ${MAX_ADDITIONAL_EXPERIENCE_ENTRIES} kali.`,
+      });
+      return;
+    }
+
+    setVisibleExperienceCount((currentCount) =>
+      Math.min(MAX_VISIBLE_EXPERIENCE_ENTRIES, currentCount + 1)
+    );
     setFeedback(null);
   };
 
@@ -854,6 +891,7 @@ const CandidateDashboardPage = () => {
       });
       const syncedCompletion = getCandidateProfileCompletion(syncedProfile);
       setProfile(syncedProfile);
+      setVisibleExperienceCount(getVisibleExperienceCount(syncedProfile));
 
       setFeedback({
         type: 'success',
@@ -1558,33 +1596,77 @@ const CandidateDashboardPage = () => {
                           <h3>Pengalaman Terakhir</h3>
                           <p>Tuliskan posisi dan perusahaan terakhir Anda.</p>
                         </div>
-                        <span className="candidate-profile-detail-action">Tambah</span>
+                        <button
+                          type="button"
+                          className="candidate-profile-detail-action"
+                          onClick={handleAddExperienceEntry}
+                          disabled={visibleExperienceCount >= MAX_VISIBLE_EXPERIENCE_ENTRIES}
+                        >
+                          {visibleExperienceCount >= MAX_VISIBLE_EXPERIENCE_ENTRIES
+                            ? 'Maksimal'
+                            : 'Tambah'}
+                        </button>
                       </div>
                     </div>
 
                     <div className="candidate-profile-form-stack">
-                      <label className="candidate-profile-field">
-                        <span>Jabatan Terakhir</span>
-                        <input
-                          type="text"
-                          placeholder="Jabatan terakhir"
-                          value={latestExperience.position}
-                          onChange={(event) =>
-                            handleExperienceChange(0, 'position', event.target.value)
-                          }
-                        />
-                      </label>
-                      <label className="candidate-profile-field">
-                        <span>Nama Instansi</span>
-                        <input
-                          type="text"
-                          placeholder="Nama instansi"
-                          value={latestExperience.company}
-                          onChange={(event) =>
-                            handleExperienceChange(0, 'company', event.target.value)
-                          }
-                        />
-                      </label>
+                      {profile.experiences
+                        .slice(0, visibleExperienceCount)
+                        .map((experienceItem, experienceIndex) => (
+                          <div
+                            key={`candidate-experience-${experienceIndex}`}
+                            className="candidate-profile-experience-entry"
+                          >
+                            {visibleExperienceCount > 1 && (
+                              <div className="candidate-profile-experience-entry-head">
+                                <strong>
+                                  {experienceIndex === 0
+                                    ? 'Pengalaman Utama'
+                                    : `Pengalaman ${experienceIndex + 1}`}
+                                </strong>
+                              </div>
+                            )}
+
+                            <label className="candidate-profile-field">
+                              <span>
+                                {experienceIndex === 0
+                                  ? 'Jabatan Terakhir'
+                                  : `Jabatan Sebelumnya ${experienceIndex}`}
+                              </span>
+                              <input
+                                type="text"
+                                placeholder="Jabatan terakhir"
+                                value={experienceItem.position}
+                                onChange={(event) =>
+                                  handleExperienceChange(
+                                    experienceIndex,
+                                    'position',
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
+                            <label className="candidate-profile-field">
+                              <span>
+                                {experienceIndex === 0
+                                  ? 'Nama Instansi'
+                                  : `Nama Instansi ${experienceIndex + 1}`}
+                              </span>
+                              <input
+                                type="text"
+                                placeholder="Nama instansi"
+                                value={experienceItem.company}
+                                onChange={(event) =>
+                                  handleExperienceChange(
+                                    experienceIndex,
+                                    'company',
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
+                        ))}
                     </div>
                   </section>
 
