@@ -64,6 +64,11 @@ const CANDIDATE_GENDER_OPTIONS = [
   { value: 'male', label: 'Laki-laki' },
   { value: 'female', label: 'Perempuan' },
 ];
+const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
+const EXPERIENCE_YEAR_OPTIONS = Array.from(
+  { length: 51 },
+  (_, index) => String(CURRENT_CALENDAR_YEAR - index)
+);
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -261,6 +266,27 @@ const normalizeAgeInput = (value = '') =>
   String(value ?? '')
     .replace(/[^\d]/g, '')
     .slice(0, 3);
+
+const buildExperienceYearRangeLabel = (startYear = '', endYear = '') => {
+  const normalizedStartYear = String(startYear || '').trim();
+  const normalizedEndYear = String(endYear || '').trim();
+
+  if (!normalizedStartYear && !normalizedEndYear) {
+    return '';
+  }
+
+  if (normalizedStartYear && !normalizedEndYear) {
+    return normalizedStartYear;
+  }
+
+  if (!normalizedStartYear && normalizedEndYear === 'current') {
+    return 'Sekarang';
+  }
+
+  return `${normalizedStartYear || '-'} - ${
+    normalizedEndYear === 'current' ? 'Sekarang' : normalizedEndYear
+  }`;
+};
 
 const isSupportedProfilePhotoFile = (file) =>
   Boolean(file && PROFILE_PHOTO_ALLOWED_TYPES.has(String(file.type || '').toLowerCase()));
@@ -836,10 +862,40 @@ const CandidateDashboardPage = () => {
       ...currentProfile,
       experiences: currentProfile.experiences.map((item, itemIndex) =>
         itemIndex === index
-          ? {
-              ...item,
-              [field]: value,
-            }
+          ? (() => {
+              if (field === 'startYear') {
+                const nextStartYear = String(value || '').trim();
+                const nextEndYear =
+                  item.endYear !== 'current' &&
+                  item.endYear &&
+                  nextStartYear &&
+                  Number(item.endYear) < Number(nextStartYear)
+                    ? ''
+                    : item.endYear;
+
+                return {
+                  ...item,
+                  startYear: nextStartYear,
+                  endYear: nextEndYear,
+                  year: buildExperienceYearRangeLabel(nextStartYear, nextEndYear),
+                };
+              }
+
+              if (field === 'endYear') {
+                const nextEndYear = String(value || '').trim();
+
+                return {
+                  ...item,
+                  endYear: nextEndYear,
+                  year: buildExperienceYearRangeLabel(item.startYear, nextEndYear),
+                };
+              }
+
+              return {
+                ...item,
+                [field]: value,
+              };
+            })()
           : item
       ),
     }));
@@ -1869,6 +1925,61 @@ const CandidateDashboardPage = () => {
                                 }
                               />
                             </label>
+                            <div className="candidate-profile-inline-grid">
+                              <label className="candidate-profile-field">
+                                <span>Tahun Mulai</span>
+                                <select
+                                  value={experienceItem.startYear || ''}
+                                  onChange={(event) =>
+                                    handleExperienceChange(
+                                      experienceIndex,
+                                      'startYear',
+                                      event.target.value
+                                    )
+                                  }
+                                >
+                                  <option value="">Pilih tahun mulai</option>
+                                  {EXPERIENCE_YEAR_OPTIONS.map((yearOption) => (
+                                    <option key={`experience-start-${yearOption}`} value={yearOption}>
+                                      {yearOption}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="candidate-profile-field">
+                                <span>Tahun Selesai</span>
+                                <select
+                                  value={experienceItem.endYear || ''}
+                                  onChange={(event) =>
+                                    handleExperienceChange(
+                                      experienceIndex,
+                                      'endYear',
+                                      event.target.value
+                                    )
+                                  }
+                                >
+                                  <option value="">Pilih tahun selesai</option>
+                                  <option value="current">Sekarang</option>
+                                  {EXPERIENCE_YEAR_OPTIONS.filter(
+                                    (yearOption) =>
+                                      !experienceItem.startYear ||
+                                      Number(yearOption) >= Number(experienceItem.startYear)
+                                  ).map((yearOption) => (
+                                    <option key={`experience-end-${yearOption}`} value={yearOption}>
+                                      {yearOption}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+                            {(experienceItem.startYear || experienceItem.endYear) && (
+                              <p className="candidate-profile-experience-period-note">
+                                Rentang: {buildExperienceYearRangeLabel(
+                                  experienceItem.startYear,
+                                  experienceItem.endYear
+                                )}
+                              </p>
+                            )}
                           </div>
                         ))}
                     </div>

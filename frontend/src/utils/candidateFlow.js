@@ -6,11 +6,15 @@ import {
 } from './recruiterFlow.js';
 
 const CANDIDATE_PROFILE_STORAGE_PREFIX = 'candidate_dashboard_profile';
+const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
+const MIN_EXPERIENCE_YEAR = CURRENT_CALENDAR_YEAR - 50;
 
 const createExperienceItem = () => ({
   company: '',
   position: '',
   year: '',
+  startYear: '',
+  endYear: '',
   responsibilities: '',
   achievement: '',
   reasonForLeaving: '',
@@ -38,6 +42,76 @@ const normalizeAgeValue = (value) => {
   }
 
   return String(Math.max(0, Math.min(100, parsedAge)));
+};
+const normalizeExperienceYearValue = (value, { allowCurrent = false } = {}) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+
+  if (allowCurrent && ['current', 'now', 'sekarang', 'saat ini', 'present'].includes(normalizedValue)) {
+    return 'current';
+  }
+
+  const digitsOnly = normalizedValue.replace(/[^\d]/g, '').slice(0, 4);
+
+  if (digitsOnly.length !== 4) {
+    return '';
+  }
+
+  const parsedYear = Number.parseInt(digitsOnly, 10);
+
+  if (!Number.isFinite(parsedYear)) {
+    return '';
+  }
+
+  if (parsedYear < MIN_EXPERIENCE_YEAR || parsedYear > CURRENT_CALENDAR_YEAR) {
+    return '';
+  }
+
+  return String(parsedYear);
+};
+const buildExperienceYearRange = (startYear = '', endYear = '') => {
+  const normalizedStartYear = normalizeExperienceYearValue(startYear);
+  const normalizedEndYear = normalizeExperienceYearValue(endYear, { allowCurrent: true });
+
+  if (!normalizedStartYear && !normalizedEndYear) {
+    return '';
+  }
+
+  if (normalizedStartYear && !normalizedEndYear) {
+    return normalizedStartYear;
+  }
+
+  if (!normalizedStartYear && normalizedEndYear === 'current') {
+    return 'Sekarang';
+  }
+
+  return `${normalizedStartYear || '-'} - ${
+    normalizedEndYear === 'current' ? 'Sekarang' : normalizedEndYear
+  }`;
+};
+const parseLegacyExperienceYearRange = (value = '') => {
+  const normalizedValue = String(value || '').trim().toLowerCase();
+  const matchedYears = normalizedValue.match(/\b(19|20)\d{2}\b/g) || [];
+  const uniqueYears = [...new Set(matchedYears)];
+  const hasCurrentToken = /\b(current|now|sekarang|saat ini|present)\b/.test(normalizedValue);
+
+  if (uniqueYears.length >= 2) {
+    return {
+      startYear: normalizeExperienceYearValue(uniqueYears[0]),
+      endYear: normalizeExperienceYearValue(uniqueYears[1], { allowCurrent: true }),
+    };
+  }
+
+  if (uniqueYears.length === 1) {
+    return {
+      startYear: normalizeExperienceYearValue(uniqueYears[0]),
+      endYear: hasCurrentToken ? 'current' : '',
+    };
+  }
+
+  return {
+    startYear: '',
+    endYear: hasCurrentToken ? 'current' : '',
+  };
 };
 const getFileExtension = (fileName = '') => String(fileName || '').trim().toLowerCase().split('.').pop() || '';
 const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
@@ -152,10 +226,25 @@ export const mergeCandidateProfile = (user, savedProfile) => {
       ...baseProfile.education,
       ...(savedProfile.education || {}),
     },
-    experiences: baseProfile.experiences.map((item, index) => ({
-      ...item,
-      ...(savedProfile.experiences?.[index] || {}),
-    })),
+    experiences: baseProfile.experiences.map((item, index) => {
+      const savedExperience = savedProfile.experiences?.[index] || {};
+      const parsedLegacyYearRange = parseLegacyExperienceYearRange(savedExperience.year);
+      const startYear = normalizeExperienceYearValue(
+        savedExperience.startYear || parsedLegacyYearRange.startYear
+      );
+      const endYear = normalizeExperienceYearValue(
+        savedExperience.endYear || parsedLegacyYearRange.endYear,
+        { allowCurrent: true }
+      );
+
+      return {
+        ...item,
+        ...savedExperience,
+        startYear,
+        endYear,
+        year: buildExperienceYearRange(startYear, endYear),
+      };
+    }),
     skills: normalizedSkills,
     preferredLocations: normalizedPreferredLocations,
     preferredRoles: normalizeStringList(savedProfile.preferredRoles, 5),

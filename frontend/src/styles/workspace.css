@@ -2638,6 +2638,13 @@
   text-transform: uppercase;
 }
 
+.candidate-profile-experience-period-note {
+  margin: -0.15rem 0 0;
+  color: #8f7482;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .candidate-profile-salary-prefix {
   position: absolute;
   left: 1rem;
