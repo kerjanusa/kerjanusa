@@ -64,11 +64,24 @@ const CANDIDATE_GENDER_OPTIONS = [
   { value: 'male', label: 'Laki-laki' },
   { value: 'female', label: 'Perempuan' },
 ];
+const ORGANIZATION_ACTIVITY_CURRENT_LABEL = 'Masih aktif';
 const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
 const EXPERIENCE_YEAR_OPTIONS = Array.from(
   { length: 51 },
   (_, index) => String(CURRENT_CALENDAR_YEAR - index)
 );
+const createEmptyExperienceEntry = () => ({
+  company: '',
+  position: '',
+  year: '',
+  startYear: '',
+  endYear: '',
+  responsibilities: '',
+  achievement: '',
+  reasonForLeaving: '',
+  referenceName: '',
+  referencePhone: '',
+});
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -267,7 +280,23 @@ const normalizeAgeInput = (value = '') =>
     .replace(/[^\d]/g, '')
     .slice(0, 3);
 
-const buildExperienceYearRangeLabel = (startYear = '', endYear = '') => {
+const normalizeSalaryInputValue = (value = '') =>
+  String(value ?? '')
+    .replace(/[^\d]/g, '')
+    .replace(/^0+(?=\d)/, '')
+    .slice(0, 12);
+
+const formatAccountingCurrencyValue = (value = '') => {
+  const normalizedValue = normalizeSalaryInputValue(value);
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  return Number.parseInt(normalizedValue, 10).toLocaleString('id-ID');
+};
+
+const buildYearRangeLabel = (startYear = '', endYear = '', currentLabel = 'Masih bekerja') => {
   const normalizedStartYear = String(startYear || '').trim();
   const normalizedEndYear = String(endYear || '').trim();
 
@@ -280,11 +309,11 @@ const buildExperienceYearRangeLabel = (startYear = '', endYear = '') => {
   }
 
   if (!normalizedStartYear && normalizedEndYear === 'current') {
-    return 'Sekarang';
+    return currentLabel;
   }
 
   return `${normalizedStartYear || '-'} - ${
-    normalizedEndYear === 'current' ? 'Sekarang' : normalizedEndYear
+    normalizedEndYear === 'current' ? currentLabel : normalizedEndYear
   }`;
 };
 
@@ -723,6 +752,7 @@ const CandidateDashboardPage = () => {
   const profilePhotoAlt = profile.fullName?.trim()
     ? `Foto profil ${profile.fullName.trim()}`
     : 'Foto profil kandidat';
+  const formattedSalaryExpectation = formatAccountingCurrencyValue(profile.salaryMin);
   const persistedResumeName = profile.resumeFiles[0] || '';
   const persistedResumeExtension = getFileExtension(persistedResumeName);
   const hasResumePreview = Boolean(resumePreview?.url);
@@ -847,13 +877,55 @@ const CandidateDashboardPage = () => {
   };
 
   const handleEducationChange = (field, value) => {
-    setProfile((currentProfile) => ({
-      ...currentProfile,
-      education: {
+    setProfile((currentProfile) => {
+      const nextEducation = {
         ...currentProfile.education,
         [field]: value,
-      },
-    }));
+      };
+
+      if (
+        field === 'startYear' &&
+        nextEducation.endYear &&
+        value &&
+        Number(nextEducation.endYear) < Number(value)
+      ) {
+        nextEducation.endYear = '';
+      }
+
+      return {
+        ...currentProfile,
+        education: nextEducation,
+      };
+    });
+    setFeedback(null);
+  };
+
+  const handleOrganizationActivityChange = (field, value) => {
+    setProfile((currentProfile) => {
+      const nextOrganizationActivity = {
+        ...currentProfile.organizationActivity,
+      };
+
+      if (field === 'startYear') {
+        nextOrganizationActivity.startYear = value;
+
+        if (
+          nextOrganizationActivity.endYear &&
+          nextOrganizationActivity.endYear !== 'current' &&
+          value &&
+          Number(nextOrganizationActivity.endYear) < Number(value)
+        ) {
+          nextOrganizationActivity.endYear = '';
+        }
+      } else {
+        nextOrganizationActivity[field] = value;
+      }
+
+      return {
+        ...currentProfile,
+        organizationActivity: nextOrganizationActivity,
+      };
+    });
     setFeedback(null);
   };
 
@@ -877,7 +949,7 @@ const CandidateDashboardPage = () => {
                   ...item,
                   startYear: nextStartYear,
                   endYear: nextEndYear,
-                  year: buildExperienceYearRangeLabel(nextStartYear, nextEndYear),
+                  year: buildYearRangeLabel(nextStartYear, nextEndYear),
                 };
               }
 
@@ -887,7 +959,7 @@ const CandidateDashboardPage = () => {
                 return {
                   ...item,
                   endYear: nextEndYear,
-                  year: buildExperienceYearRangeLabel(item.startYear, nextEndYear),
+                  year: buildYearRangeLabel(item.startYear, nextEndYear),
                 };
               }
 
@@ -917,10 +989,42 @@ const CandidateDashboardPage = () => {
     setFeedback(null);
   };
 
+  const handleRemoveExperienceEntry = (index) => {
+    if (index <= 0 || visibleExperienceCount <= DEFAULT_VISIBLE_EXPERIENCE_ENTRIES) {
+      return;
+    }
+
+    setProfile((currentProfile) => {
+      const nextExperiences = currentProfile.experiences
+        .filter((_, itemIndex) => itemIndex !== index)
+        .concat(createEmptyExperienceEntry());
+
+      return {
+        ...currentProfile,
+        experiences: nextExperiences.slice(0, currentProfile.experiences.length),
+      };
+    });
+    setVisibleExperienceCount((currentCount) =>
+      Math.max(DEFAULT_VISIBLE_EXPERIENCE_ENTRIES, currentCount - 1)
+    );
+    setFeedback(null);
+  };
+
   const handleListFieldChange = (field, index, value) => {
     setProfile((currentProfile) => ({
       ...currentProfile,
       [field]: currentProfile[field].map((item, itemIndex) => (itemIndex === index ? value : item)),
+    }));
+    setFeedback(null);
+  };
+
+  const handleSalaryExpectationChange = (value) => {
+    const normalizedSalaryValue = normalizeSalaryInputValue(value);
+
+    setProfile((currentProfile) => ({
+      ...currentProfile,
+      salaryMin: normalizedSalaryValue,
+      salaryMax: normalizedSalaryValue,
     }));
     setFeedback(null);
   };
@@ -1884,6 +1988,17 @@ const CandidateDashboardPage = () => {
                                     ? 'Pengalaman Utama'
                                     : `Pengalaman ${experienceIndex + 1}`}
                                 </strong>
+                                {experienceIndex > 0 && (
+                                  <button
+                                    type="button"
+                                    className="candidate-profile-experience-remove"
+                                    onClick={() => handleRemoveExperienceEntry(experienceIndex)}
+                                    aria-label={`Hapus pengalaman ${experienceIndex + 1}`}
+                                    title={`Hapus pengalaman ${experienceIndex + 1}`}
+                                  >
+                                    -
+                                  </button>
+                                )}
                               </div>
                             )}
 
@@ -1959,7 +2074,7 @@ const CandidateDashboardPage = () => {
                                   }
                                 >
                                   <option value="">Pilih tahun selesai</option>
-                                  <option value="current">Sekarang</option>
+                                  <option value="current">Masih bekerja</option>
                                   {EXPERIENCE_YEAR_OPTIONS.filter(
                                     (yearOption) =>
                                       !experienceItem.startYear ||
@@ -1972,9 +2087,24 @@ const CandidateDashboardPage = () => {
                                 </select>
                               </label>
                             </div>
+                            <label className="candidate-profile-field">
+                              <span>Deskripsi Pekerjaan</span>
+                              <textarea
+                                rows="4"
+                                placeholder="Jelaskan tanggung jawab utama, jenis pekerjaan, atau pencapaian singkat Anda."
+                                value={experienceItem.responsibilities || ''}
+                                onChange={(event) =>
+                                  handleExperienceChange(
+                                    experienceIndex,
+                                    'responsibilities',
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
                             {(experienceItem.startYear || experienceItem.endYear) && (
                               <p className="candidate-profile-experience-period-note">
-                                Rentang: {buildExperienceYearRangeLabel(
+                                Rentang: {buildYearRangeLabel(
                                   experienceItem.startYear,
                                   experienceItem.endYear
                                 )}
@@ -1993,7 +2123,6 @@ const CandidateDashboardPage = () => {
                           <h3>Pendidikan Terakhir</h3>
                           <p>Latar belakang akademis tertinggi Anda.</p>
                         </div>
-                        <span className="candidate-profile-detail-action">Tambah</span>
                       </div>
                     </div>
 
@@ -2025,12 +2154,161 @@ const CandidateDashboardPage = () => {
                           }
                         />
                       </label>
+                      <div className="candidate-profile-inline-grid">
+                        <label className="candidate-profile-field">
+                          <span>Tahun Mulai Pendidikan</span>
+                          <select
+                            value={profile.education.startYear || ''}
+                            onChange={(event) =>
+                              handleEducationChange('startYear', event.target.value)
+                            }
+                          >
+                            <option value="">Pilih tahun mulai</option>
+                            {EXPERIENCE_YEAR_OPTIONS.map((yearOption) => (
+                              <option key={`education-start-${yearOption}`} value={yearOption}>
+                                {yearOption}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="candidate-profile-field">
+                          <span>Tahun Selesai Pendidikan</span>
+                          <select
+                            value={profile.education.endYear || ''}
+                            onChange={(event) =>
+                              handleEducationChange('endYear', event.target.value)
+                            }
+                          >
+                            <option value="">Pilih tahun selesai</option>
+                            {EXPERIENCE_YEAR_OPTIONS.filter(
+                              (yearOption) =>
+                                !profile.education.startYear ||
+                                Number(yearOption) >= Number(profile.education.startYear)
+                            ).map((yearOption) => (
+                              <option key={`education-end-${yearOption}`} value={yearOption}>
+                                {yearOption}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                     </div>
                   </section>
                 </div>
               </article>
 
               <article className="candidate-profile-card" data-reveal data-reveal-delay="160ms">
+                <div className="candidate-profile-card-head">
+                  <div className="candidate-profile-card-title">
+                    <span className="candidate-profile-card-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M7 5.5h10M6.5 9.5h11M8.5 13.5h7M9.5 18.5h5"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </span>
+                    <h2>Organisasi / Relawan</h2>
+                  </div>
+                </div>
+
+                <div className="candidate-profile-form-stack">
+                  <label className="candidate-profile-field">
+                    <span>Nama Organisasi / Komunitas</span>
+                    <input
+                      type="text"
+                      placeholder="Contoh: BEM Fakultas, Komunitas Relawan"
+                      value={profile.organizationActivity.organizationName || ''}
+                      onChange={(event) =>
+                        handleOrganizationActivityChange(
+                          'organizationName',
+                          event.target.value
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label className="candidate-profile-field">
+                    <span>Peran / Posisi</span>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Koordinator Acara, Volunteer Pendidikan"
+                      value={profile.organizationActivity.role || ''}
+                      onChange={(event) =>
+                        handleOrganizationActivityChange('role', event.target.value)
+                      }
+                    />
+                  </label>
+
+                  <div className="candidate-profile-inline-grid">
+                    <label className="candidate-profile-field">
+                      <span>Tahun Mulai</span>
+                      <select
+                        value={profile.organizationActivity.startYear || ''}
+                        onChange={(event) =>
+                          handleOrganizationActivityChange('startYear', event.target.value)
+                        }
+                      >
+                        <option value="">Pilih tahun mulai</option>
+                        {EXPERIENCE_YEAR_OPTIONS.map((yearOption) => (
+                          <option key={`organization-start-${yearOption}`} value={yearOption}>
+                            {yearOption}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="candidate-profile-field">
+                      <span>Tahun Selesai</span>
+                      <select
+                        value={profile.organizationActivity.endYear || ''}
+                        onChange={(event) =>
+                          handleOrganizationActivityChange('endYear', event.target.value)
+                        }
+                      >
+                        <option value="">Pilih tahun selesai</option>
+                        <option value="current">{ORGANIZATION_ACTIVITY_CURRENT_LABEL}</option>
+                        {EXPERIENCE_YEAR_OPTIONS.filter(
+                          (yearOption) =>
+                            !profile.organizationActivity.startYear ||
+                            Number(yearOption) >= Number(profile.organizationActivity.startYear)
+                        ).map((yearOption) => (
+                          <option key={`organization-end-${yearOption}`} value={yearOption}>
+                            {yearOption}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <label className="candidate-profile-field">
+                    <span>Deskripsi Kegiatan</span>
+                    <textarea
+                      rows="4"
+                      placeholder="Jelaskan kontribusi, kegiatan utama, atau pencapaian Anda saat aktif di organisasi / relawan."
+                      value={profile.organizationActivity.description || ''}
+                      onChange={(event) =>
+                        handleOrganizationActivityChange('description', event.target.value)
+                      }
+                    />
+                  </label>
+
+                  {(profile.organizationActivity.startYear ||
+                    profile.organizationActivity.endYear) && (
+                    <p className="candidate-profile-experience-period-note">
+                      Rentang:{' '}
+                      {buildYearRangeLabel(
+                        profile.organizationActivity.startYear,
+                        profile.organizationActivity.endYear,
+                        ORGANIZATION_ACTIVITY_CURRENT_LABEL
+                      )}
+                    </p>
+                  )}
+                </div>
+              </article>
+
+              <article className="candidate-profile-card" data-reveal data-reveal-delay="200ms">
                 <div className="candidate-profile-card-head">
                   <div className="candidate-profile-card-title">
                     <span className="candidate-profile-card-mark" aria-hidden="true">
@@ -2055,14 +2333,12 @@ const CandidateDashboardPage = () => {
                     <div className="candidate-profile-salary-shell">
                       <span className="candidate-profile-salary-prefix">Rp</span>
                       <input
-                        type="number"
-                        min="0"
-                        placeholder="Contoh: 15.000.000"
-                        value={profile.salaryMin}
-                        onChange={(event) => {
-                          handleProfileFieldChange('salaryMin', event.target.value);
-                          handleProfileFieldChange('salaryMax', event.target.value);
-                        }}
+                        type="text"
+                        inputMode="numeric"
+                        className="candidate-profile-salary-input"
+                        placeholder="15.000.000"
+                        value={formattedSalaryExpectation}
+                        onChange={(event) => handleSalaryExpectationChange(event.target.value)}
                       />
                     </div>
                   </label>

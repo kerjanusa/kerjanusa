@@ -21,6 +21,13 @@ const createExperienceItem = () => ({
   referenceName: '',
   referencePhone: '',
 });
+const createOrganizationActivityItem = () => ({
+  organizationName: '',
+  role: '',
+  startYear: '',
+  endYear: '',
+  description: '',
+});
 
 const normalizeStringList = (items, maxLength) =>
   Array.from({ length: maxLength }, (_, index) => String(items?.[index] || ''));
@@ -43,6 +50,11 @@ const normalizeAgeValue = (value) => {
 
   return String(Math.max(0, Math.min(100, parsedAge)));
 };
+const normalizeSalaryValue = (value) =>
+  String(value ?? '')
+    .replace(/[^\d]/g, '')
+    .replace(/^0+(?=\d)/, '')
+    .slice(0, 12);
 const normalizeExperienceYearValue = (value, { allowCurrent = false } = {}) => {
   const normalizedValue = String(value ?? '').trim().toLowerCase();
 
@@ -81,11 +93,11 @@ const buildExperienceYearRange = (startYear = '', endYear = '') => {
   }
 
   if (!normalizedStartYear && normalizedEndYear === 'current') {
-    return 'Sekarang';
+    return 'Masih bekerja';
   }
 
   return `${normalizedStartYear || '-'} - ${
-    normalizedEndYear === 'current' ? 'Sekarang' : normalizedEndYear
+    normalizedEndYear === 'current' ? 'Masih bekerja' : normalizedEndYear
   }`;
 };
 const parseLegacyExperienceYearRange = (value = '') => {
@@ -178,6 +190,7 @@ export const createCandidateProfile = (user) => ({
     startYear: '',
     endYear: '',
   },
+  organizationActivity: createOrganizationActivityItem(),
   experiences: Array.from({ length: 5 }, createExperienceItem),
   skills: Array.from({ length: 5 }, () => ''),
   preferredLocations: Array.from({ length: 5 }, () => ''),
@@ -225,6 +238,19 @@ export const mergeCandidateProfile = (user, savedProfile) => {
     education: {
       ...baseProfile.education,
       ...(savedProfile.education || {}),
+      startYear: normalizeExperienceYearValue(savedProfile.education?.startYear),
+      endYear: normalizeExperienceYearValue(savedProfile.education?.endYear),
+    },
+    organizationActivity: {
+      ...baseProfile.organizationActivity,
+      ...(savedProfile.organizationActivity || {}),
+      organizationName: trimText(savedProfile.organizationActivity?.organizationName),
+      role: trimText(savedProfile.organizationActivity?.role),
+      startYear: normalizeExperienceYearValue(savedProfile.organizationActivity?.startYear),
+      endYear: normalizeExperienceYearValue(savedProfile.organizationActivity?.endYear, {
+        allowCurrent: true,
+      }),
+      description: trimText(savedProfile.organizationActivity?.description),
     },
     experiences: baseProfile.experiences.map((item, index) => {
       const savedExperience = savedProfile.experiences?.[index] || {};
@@ -303,6 +329,8 @@ export const saveCandidateProfile = (user, profile) => {
     age: normalizeAgeValue(profile?.age),
     employmentType: trimText(profile?.employmentType),
     targetIndustry: trimText(profile?.targetIndustry),
+    salaryMin: normalizeSalaryValue(profile?.salaryMin),
+    salaryMax: normalizeSalaryValue(profile?.salaryMax),
     photoFileName: trimText(profile?.photoFileName),
     photoDataUrl: trimText(profile?.photoDataUrl),
     profileSummary: trimText(profile?.profileSummary) || buildAutoProfileSummary(profile),

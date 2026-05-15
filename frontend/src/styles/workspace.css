@@ -2441,7 +2441,8 @@
 }
 
 .candidate-profile-field input,
-.candidate-profile-field select {
+.candidate-profile-field select,
+.candidate-profile-field textarea {
   width: 100%;
   min-height: 3.35rem;
   padding: 0.95rem 1rem;
@@ -2453,6 +2454,10 @@
 }
 
 .candidate-profile-field input::placeholder {
+  color: #b69ba7;
+}
+
+.candidate-profile-field textarea::placeholder {
   color: #b69ba7;
 }
 
@@ -2469,12 +2474,20 @@
 }
 
 .candidate-profile-field input:focus,
-.candidate-profile-field select:focus {
+.candidate-profile-field select:focus,
+.candidate-profile-field textarea:focus {
   outline: 0;
   border-color: rgba(222, 178, 74, 0.48);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 0 0 3px rgba(236, 196, 90, 0.16);
+}
+
+.candidate-profile-field textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.55;
 }
 
 .candidate-profile-input-shell,
@@ -2631,11 +2644,46 @@
 .candidate-profile-experience-entry-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.55rem;
   color: #6f4854;
   font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.candidate-profile-experience-remove {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(161, 123, 139, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 249, 251, 0.96);
+  color: #7a3d5e;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.candidate-profile-experience-remove:hover {
+  transform: translateY(-1px);
+  border-color: rgba(161, 123, 139, 0.48);
+  box-shadow: 0 10px 22px rgba(80, 32, 64, 0.08);
+}
+
+.candidate-profile-experience-remove:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(236, 196, 90, 0.22);
 }
 
 .candidate-profile-experience-period-note {
@@ -2647,13 +2695,19 @@
 
 .candidate-profile-salary-prefix {
   position: absolute;
-  left: 1rem;
+  left: 1.1rem;
+  z-index: 1;
   color: #774752;
   font-weight: 800;
 }
 
 .candidate-profile-salary-shell input {
-  padding-left: 3rem;
+  padding-left: 4.35rem;
+}
+
+.candidate-profile-salary-input {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
 .candidate-profile-upload-zone {
@@ -2913,9 +2967,18 @@
   }
 
   .candidate-profile-field input,
-  .candidate-profile-field select {
+  .candidate-profile-field select,
+  .candidate-profile-field textarea {
     min-height: 3.12rem;
     padding: 0.88rem 0.92rem;
+  }
+
+  .candidate-profile-field textarea {
+    min-height: 7rem;
+  }
+
+  .candidate-profile-salary-shell .candidate-profile-salary-input {
+    padding-left: 4.1rem;
   }
 
   .candidate-profile-actions {
