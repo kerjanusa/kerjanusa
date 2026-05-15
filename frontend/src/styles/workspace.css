@@ -2028,8 +2028,8 @@
     padding-bottom: 6rem;
   }
 
-  .workspace-topbar-candidate .workspace-user-chip,
-  .workspace-topbar-candidate .workspace-logout {
+  .workspace-topbar-candidate .workspace-actions .workspace-user-chip,
+  .workspace-topbar-candidate .workspace-actions .workspace-logout {
     display: none;
   }
 

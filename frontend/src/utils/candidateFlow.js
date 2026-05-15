@@ -22,6 +22,8 @@ const normalizeStringList = (items, maxLength) =>
   Array.from({ length: maxLength }, (_, index) => String(items?.[index] || ''));
 
 const trimText = (value) => String(value || '').trim();
+const getFileExtension = (fileName = '') => String(fileName || '').trim().toLowerCase().split('.').pop() || '';
+const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
 
 const firstFilledText = (items = []) => items.find((item) => trimText(item)) || '';
 
@@ -133,7 +135,9 @@ export const mergeCandidateProfile = (user, savedProfile) => {
     skills: normalizedSkills,
     preferredLocations: normalizedPreferredLocations,
     preferredRoles: normalizeStringList(savedProfile.preferredRoles, 5),
-    resumeFiles: Array.isArray(savedProfile.resumeFiles) ? savedProfile.resumeFiles.slice(0, 3) : [],
+    resumeFiles: Array.isArray(savedProfile.resumeFiles)
+      ? savedProfile.resumeFiles.filter(isPdfResumeFileName).slice(0, 3)
+      : [],
     certificateFiles: Array.isArray(savedProfile.certificateFiles)
       ? savedProfile.certificateFiles.slice(0, 5)
       : [],

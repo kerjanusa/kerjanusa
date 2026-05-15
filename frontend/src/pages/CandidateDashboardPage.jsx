@@ -48,6 +48,8 @@ const isPdfResumeFile = (file) => {
   return file.type === 'application/pdf' || getFileExtension(file.name) === 'pdf';
 };
 
+const isPdfResumeFileName = (fileName = '') => getFileExtension(fileName) === 'pdf';
+
 const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
   'Full-time / Tetap',
   'Part-time',
@@ -521,10 +523,22 @@ const CandidateDashboardPage = () => {
     setFeedback(null);
   };
 
-  const handleFileChange = (field, files, maxFiles) => {
-    const nextFiles = Array.from(files || []).slice(0, maxFiles);
+  const handleFileChange = (field, inputElement, maxFiles) => {
+    const nextFiles = Array.from(inputElement?.files || []).slice(0, maxFiles);
     const fileNames = nextFiles.map((file) => file.name);
     const primaryFile = nextFiles[0] || null;
+
+    if (field === 'resumeFiles' && nextFiles.some((file) => !isPdfResumeFile(file))) {
+      if (inputElement) {
+        inputElement.value = '';
+      }
+
+      setFeedback({
+        type: 'error',
+        message: 'CV wajib format PDF. File selain PDF tidak bisa diunggah.',
+      });
+      return;
+    }
 
     setProfile((currentProfile) => ({
       ...currentProfile,
@@ -552,6 +566,18 @@ const CandidateDashboardPage = () => {
 
   const handleSaveProfile = async () => {
     if (!user) {
+      return;
+    }
+
+    const invalidResumeFileName = profile.resumeFiles.find(
+      (fileName) => !isPdfResumeFileName(fileName)
+    );
+
+    if (invalidResumeFileName) {
+      setFeedback({
+        type: 'error',
+        message: `CV wajib format PDF. File "${invalidResumeFileName}" tidak bisa disimpan.`,
+      });
       return;
     }
 
@@ -1394,9 +1420,9 @@ const CandidateDashboardPage = () => {
                       id="candidate-resume-upload"
                       className="candidate-profile-upload-input"
                       type="file"
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,application/pdf"
                       multiple
-                      onChange={(event) => handleFileChange('resumeFiles', event.target.files, 3)}
+                      onChange={(event) => handleFileChange('resumeFiles', event.target, 3)}
                     />
                   </div>
 
