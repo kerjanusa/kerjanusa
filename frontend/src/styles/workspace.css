@@ -2532,6 +2532,23 @@
   box-shadow: 0 18px 36px rgba(56, 23, 50, 0.08);
 }
 
+.candidate-profile-preview-document {
+  width: min(100%, 19rem);
+  height: 24rem;
+  overflow: hidden;
+  border: 1px solid rgba(230, 211, 216, 0.92);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 245, 247, 0.96));
+  box-shadow: 0 18px 36px rgba(56, 23, 50, 0.08);
+}
+
+.candidate-profile-preview-document iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
 .candidate-profile-preview-sheet-header,
 .candidate-profile-preview-sheet-line,
 .candidate-profile-preview-sheet-grid span {
@@ -2571,6 +2588,15 @@
   color: #836c78;
   text-align: center;
   line-height: 1.55;
+}
+
+.candidate-profile-preview-hint {
+  max-width: 19rem;
+  margin: 0;
+  color: #9a8490;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .candidate-profile-actions {

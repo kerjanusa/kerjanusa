@@ -33,6 +33,21 @@ const CANDIDATE_SECTION_OPTIONS = [
 const CONTACT_WHATSAPP_LINK =
   'https://api.whatsapp.com/send?phone=6281286402753&text=Halo%20KerjaNusa';
 
+const getFileExtension = (fileName = '') => {
+  const normalizedFileName = String(fileName || '').trim().toLowerCase();
+  const segments = normalizedFileName.split('.');
+
+  return segments.length > 1 ? segments.pop() || '' : '';
+};
+
+const isPdfResumeFile = (file) => {
+  if (!file) {
+    return false;
+  }
+
+  return file.type === 'application/pdf' || getFileExtension(file.name) === 'pdf';
+};
+
 const CANDIDATE_EMPLOYMENT_TYPE_OPTIONS = [
   'Full-time / Tetap',
   'Part-time',
@@ -250,6 +265,7 @@ const CandidateDashboardPage = () => {
   const [selectedChatContact, setSelectedChatContact] = useState(null);
   const [chatDraftMessage, setChatDraftMessage] = useState('');
   const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [resumePreview, setResumePreview] = useState(null);
 
   useEffect(() => {
     setActiveSection(resolveCandidateSectionFromHash(location.hash));
@@ -259,6 +275,20 @@ const CandidateDashboardPage = () => {
   useEffect(() => {
     setProfile(readCandidateProfile(user, { preferStoredDraft: false }));
   }, [user]);
+
+  useEffect(() => {
+    if (!resumePreview?.url) {
+      return undefined;
+    }
+
+    return () => {
+      window.URL.revokeObjectURL(resumePreview.url);
+    };
+  }, [resumePreview?.url]);
+
+  useEffect(() => {
+    setResumePreview(null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (user?.role !== 'candidate') {
@@ -394,7 +424,23 @@ const CandidateDashboardPage = () => {
     'Belum diisi'
   );
   const latestExperience = profile.experiences[0];
-  const resumePreviewName = profile.resumeFiles[0] || 'CV belum diunggah';
+  const resumePreviewName = resumePreview?.name || profile.resumeFiles[0] || 'CV belum diunggah';
+  const persistedResumeName = profile.resumeFiles[0] || '';
+  const persistedResumeExtension = getFileExtension(persistedResumeName);
+  const hasResumePreview = Boolean(resumePreview?.url);
+  const hasStoredResume = Boolean(persistedResumeName);
+  const resumePreviewLabel = hasResumePreview
+    ? 'Preview resume terbaru'
+    : hasStoredResume
+      ? 'Resume tersimpan'
+      : 'Preview resume';
+  const resumePreviewHint = hasResumePreview
+    ? 'CV yang baru dipilih tampil di sini sebelum disimpan.'
+    : persistedResumeExtension === 'pdf'
+      ? 'Upload ulang file PDF bila ingin menampilkan preview visual CV di browser ini.'
+      : hasStoredResume
+        ? 'Preview visual saat ini hanya tersedia untuk file PDF yang baru dipilih.'
+        : 'Unggah CV format PDF agar preview visual muncul di sini.';
   const completionRingRadius = 52;
   const completionRingCircumference = 2 * Math.PI * completionRingRadius;
   const completionRingOffset =
@@ -476,14 +522,31 @@ const CandidateDashboardPage = () => {
   };
 
   const handleFileChange = (field, files, maxFiles) => {
-    const fileNames = Array.from(files || [])
-      .slice(0, maxFiles)
-      .map((file) => file.name);
+    const nextFiles = Array.from(files || []).slice(0, maxFiles);
+    const fileNames = nextFiles.map((file) => file.name);
+    const primaryFile = nextFiles[0] || null;
 
     setProfile((currentProfile) => ({
       ...currentProfile,
       [field]: fileNames,
     }));
+
+    if (field === 'resumeFiles') {
+      setResumePreview(
+        primaryFile && isPdfResumeFile(primaryFile)
+          ? {
+              name: primaryFile.name,
+              url: window.URL.createObjectURL(primaryFile),
+            }
+          : primaryFile
+            ? {
+                name: primaryFile.name,
+                url: '',
+              }
+            : null
+      );
+    }
+
     setFeedback(null);
   };
 
@@ -1338,22 +1401,30 @@ const CandidateDashboardPage = () => {
                   </div>
 
                   <div className="candidate-profile-resume-preview">
-                    <span className="candidate-profile-preview-label">
-                      Preview resume sebelumnya
-                    </span>
-                    <div className="candidate-profile-preview-sheet">
-                      <div className="candidate-profile-preview-sheet-header" />
-                      <div className="candidate-profile-preview-sheet-line is-wide" />
-                      <div className="candidate-profile-preview-sheet-line" />
-                      <div className="candidate-profile-preview-sheet-line" />
-                      <div className="candidate-profile-preview-sheet-line is-wide" />
-                      <div className="candidate-profile-preview-sheet-grid">
-                        <span />
-                        <span />
-                        <span />
+                    <span className="candidate-profile-preview-label">{resumePreviewLabel}</span>
+                    {hasResumePreview ? (
+                      <div className="candidate-profile-preview-document">
+                        <iframe
+                          title={`Preview ${resumePreviewName}`}
+                          src={resumePreview.url}
+                        />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="candidate-profile-preview-sheet" aria-hidden="true">
+                        <div className="candidate-profile-preview-sheet-header" />
+                        <div className="candidate-profile-preview-sheet-line is-wide" />
+                        <div className="candidate-profile-preview-sheet-line" />
+                        <div className="candidate-profile-preview-sheet-line" />
+                        <div className="candidate-profile-preview-sheet-line is-wide" />
+                        <div className="candidate-profile-preview-sheet-grid">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
+                    )}
                     <small>{resumePreviewName}</small>
+                    <p className="candidate-profile-preview-hint">{resumePreviewHint}</p>
                   </div>
                 </div>
               </article>
