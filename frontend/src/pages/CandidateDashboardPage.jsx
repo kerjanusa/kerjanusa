@@ -64,6 +64,10 @@ const CANDIDATE_GENDER_OPTIONS = [
   { value: 'male', label: 'Laki-laki' },
   { value: 'female', label: 'Perempuan' },
 ];
+const EDUCATION_END_STATUS_OPTIONS = [
+  { value: 'ongoing', label: 'Masih pendidikan' },
+  { value: 'not_graduated', label: 'Tidak lulus' },
+];
 const ORGANIZATION_ACTIVITY_CURRENT_LABEL = 'Masih aktif';
 const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
 const EXPERIENCE_YEAR_OPTIONS = Array.from(
@@ -2180,6 +2184,11 @@ const CandidateDashboardPage = () => {
                             }
                           >
                             <option value="">Pilih tahun selesai</option>
+                            {EDUCATION_END_STATUS_OPTIONS.map((option) => (
+                              <option key={`education-end-status-${option.value}`} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                             {EXPERIENCE_YEAR_OPTIONS.filter(
                               (yearOption) =>
                                 !profile.education.startYear ||

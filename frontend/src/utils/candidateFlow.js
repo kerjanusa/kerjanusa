@@ -55,6 +55,19 @@ const normalizeSalaryValue = (value) =>
     .replace(/[^\d]/g, '')
     .replace(/^0+(?=\d)/, '')
     .slice(0, 12);
+const normalizeEducationEndYearValue = (value) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+
+  if (['ongoing', 'in-progress', 'masih pendidikan', 'sedang pendidikan'].includes(normalizedValue)) {
+    return 'ongoing';
+  }
+
+  if (['not_graduated', 'not-graduated', 'tidak lulus'].includes(normalizedValue)) {
+    return 'not_graduated';
+  }
+
+  return normalizeExperienceYearValue(value);
+};
 const normalizeExperienceYearValue = (value, { allowCurrent = false } = {}) => {
   const normalizedValue = String(value ?? '').trim().toLowerCase();
 
@@ -239,7 +252,7 @@ export const mergeCandidateProfile = (user, savedProfile) => {
       ...baseProfile.education,
       ...(savedProfile.education || {}),
       startYear: normalizeExperienceYearValue(savedProfile.education?.startYear),
-      endYear: normalizeExperienceYearValue(savedProfile.education?.endYear),
+      endYear: normalizeEducationEndYearValue(savedProfile.education?.endYear),
     },
     organizationActivity: {
       ...baseProfile.organizationActivity,
